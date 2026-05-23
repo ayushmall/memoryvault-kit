@@ -9,6 +9,33 @@ and any MCP-aware client.
 > We measured every variant where the LLM touched retrieval — every one regressed.
 > So retrieval stays a database problem; intelligence sits on either side of it.
 
+**Maintainer:** [@ayushmall](https://github.com/ayushmall). MIT licensed.
+
+---
+
+## Is this for you?
+
+You probably want this if:
+
+- You take notes in markdown and have built up a few hundred (or more) of them
+- You've tried Cursor's MCP memory, ChatGPT memory, or Obsidian Smart Connections
+  and found they couldn't:
+  - **join facts across sources** ("what did Andy say after the Q1 review?")
+  - **disambiguate** ("which Tom — the customer-side one or the engineer?")
+  - **abstain** when your vault genuinely doesn't know (instead of hallucinating)
+  - **show you when retrieval is getting worse** (vs just running on vibes)
+- You care more about owning your data + auditing your retrieval than about
+  a slick UI
+
+You probably *don't* want this if:
+
+- You need a hosted SaaS — this runs entirely on your filesystem
+- You don't have a notes corpus yet — the kit assumes you have something to index
+- You want pure semantic search — we use BM25 + structural retrieval, not embeddings
+  (intentional; see [docs/retrieval_internals.md](docs/retrieval_internals.md))
+- You're scaling past ~5,000 memories — at that point you'd want a dense layer
+  added on top
+
 ---
 
 ## Try it in 60 seconds
@@ -16,7 +43,10 @@ and any MCP-aware client.
 ```bash
 git clone https://github.com/ayushmall/memoryvault-kit.git
 cd memoryvault-kit
-pip install -e .                                       # editable install (no PyPI yet)
+
+# Most macOS/Linux pythons block system-wide pip these days, so use a venv:
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
 
 # Point at the synthetic example vault (10 memories, 8 entities)
 export MEMORYVAULT_ROOT=$(pwd)/examples/tiny_vault
@@ -26,11 +56,29 @@ mv ask "What does Acme need before they can go to production?"
 # → top-1: "Acme Corp kickoff — SSO and audit logs are blockers"
 ```
 
-If `pip install -e .` is blocked on your system (PEP 668), use a venv:
+That's the round-trip: `clone → install → query`. The synthetic vault has 10
+memories about two fictional customers (Acme Corp, North River); you can read
+them in `examples/tiny_vault/memories/`.
 
-```bash
-python3 -m venv .venv && source .venv/bin/activate && pip install -e .
-```
+---
+
+## Example questions this answers
+
+Once you point it at your own notes, you can ask things like:
+
+| question pattern | what kind of memory it retrieves |
+|---|---|
+| "What did `<person>` say about `<topic>` last week?" | event/observation memories with both wikilinked |
+| "Who's championing `<customer>`?" | relationship memories like "X is champion at Y" |
+| "What did we *defer* in the last roadmap discussion?" | negation-rejection retrieval — finds "what we said no to" |
+| "Which customers asked for `<feature>`?" | aggregate-style — walks the entity graph |
+| "What was the budget cap `<customer>` mentioned?" | needle-in-haystack — specific facts in long bodies |
+| "When did we ship `<thing>` and what slipped?" | temporal + decision retrieval combined |
+| "What's the latest on `<project>`?" | recency + importance ranking |
+| "Is there a memory about `<topic>`? (or am I imagining it?)" | abstention — returns `[]` if vault genuinely doesn't know |
+
+Each of these maps to a bucket in the [eval methodology](docs/eval_methodology.md)
+the system was built and tuned against.
 
 ---
 
@@ -50,8 +98,12 @@ mv daily
 mv ask "..."
 ```
 
-**[→ Full setup guide (SETUP.md)](SETUP.md)** — schema, entity design, daily refresh
-agent, MCP connectors, eval methodology.
+If you don't have a notes corpus yet, hand-write a few memories using the
+[schema reference](docs/schema.md) — even 10 memories about your actual work
+gives you a working system to learn from.
+
+**[→ Full setup guide (SETUP.md)](SETUP.md)** — schema, entity design, daily
+refresh agent, MCP connectors, eval methodology.
 
 ---
 
@@ -77,13 +129,69 @@ agent, MCP connectors, eval methodology.
 - **Obsidian compatible** — open the vault folder in Obsidian → free graph view,
   backlinks, Bases query layer
 
-## What it doesn't do (yet)
+---
 
-- No vector embeddings. BM25 + graph beats embeddings on <5,000-memory vaults
-  in our eval. Will add a dense layer only if the eval set demands it
-- No hosted service. Your data lives on your filesystem
-- No magic ingestion. The MCP connectors are yours to wire (Slack, Granola,
-  Calendar, etc.); the kit reads the markdown they produce
+## How retrieval works (the short version)
+
+```
+question
+  → tokenize (regex; stopwords filtered; numbers + version strings survive)
+  → BM25 over all memories (IDF + length norm + TF saturation)
+  → × (0.7 + 0.6 × importance)                    # modest importance tiebreaker
+  → + alias phrase bonus                          # for non-canonical names
+  → top-5 BM25 seeds
+  → graph walk: pull memories sharing distinctive entities (df ≤ 19)
+                + memories in seed's `related:` field
+                + memories wikilinking entities named in the question
+  → rerank: BM25 + 0.8×distinctive_overlap + 3×related + 1.5×q_entity
+  → top-K returned
+```
+
+See `docs/retrieval_internals.md` for the full math + tuning notes.
+
+---
+
+## Benchmarks
+
+Measured on the maintainer's personal 470-memory vault against a 220-question
+eval set across 10 failure-mode buckets (needle, multi-hop, alias,
+disambiguation, aggregate, lateral, paraphrase, temporal, negation-rejection,
+abstention).
+
+| retriever | R@5 | R@10 | MRR | Entity@5 |
+|---|---|---|---|---|
+| grep (baseline) | 0.660 | 0.779 | 0.646 | 0.618 |
+| BM25 (kit core) | 0.850 | 0.905 | 0.811 | 0.783 |
+| **graph_walk (kit full)** | **0.864** | **0.920** | **0.823** | **0.796** |
+
+**Per-question decomposition:** 23% of questions fail with naive grep but
+succeed with the kit. Multi-hop and alias buckets lift by **+0.37** and
+**+0.34** respectively. Reproduce on your own vault with `mv eval run`.
+
+---
+
+## Honest limitations
+
+This is alpha. Specifically:
+
+- **No semantic search.** "Q1 wins" won't match memories titled "first quarter
+  successes." You either repeat tokens in your titles or use aliases. We
+  measured this is fine under 5,000 memories. Above that, you'll want to add a
+  dense layer.
+- **Daily refresh agent is a prompt, not a deployed service.** The agent
+  prompt is written and tested manually, but the autonomous scheduled run
+  requires either local cron + Claude Code OR Anthropic Routines setup —
+  documented but not one-click.
+- **Not on PyPI yet.** Install is from source. Will publish once the schema
+  stabilizes for a couple of releases.
+- **Tested on macOS + Linux only.** Should work on Windows but unverified.
+- **English-only stopword list.** Multilingual notes work but token-level
+  filtering only knows English stopwords.
+- **MCP server has no rate limiting.** Fine for personal use; would need
+  auth + limits before exposing publicly.
+
+What's *not* a limitation: data ownership. The vault is yours, on disk, in
+markdown. Nothing leaves your filesystem unless you wire a connector to do so.
 
 ---
 
@@ -140,54 +248,16 @@ memoryvault-kit/
 
 ---
 
-## How retrieval works (the short version)
-
-```
-question
-  → tokenize (regex; stopwords filtered; numbers + version strings survive)
-  → BM25 over all memories (IDF + length norm + TF saturation)
-  → × (0.7 + 0.6 × importance)                    # modest importance tiebreaker
-  → + alias phrase bonus                          # for non-canonical names
-  → top-5 BM25 seeds
-  → graph walk: pull memories sharing distinctive entities (df ≤ 19)
-                + memories in seed's `related:` field
-                + memories wikilinking entities named in the question
-  → rerank: BM25 + 0.8×distinctive_overlap + 3×related + 1.5×q_entity
-  → top-K returned
-```
-
-See `docs/retrieval_internals.md` for the full math + tuning notes.
-
----
-
-## Benchmarks
-
-Measured on the maintainer's personal 470-memory vault against a 220-question
-eval set across 10 failure-mode buckets (needle, multi-hop, alias,
-disambiguation, aggregate, lateral, paraphrase, temporal, negation-rejection,
-abstention).
-
-| retriever | R@5 | R@10 | MRR | Entity@5 |
-|---|---|---|---|---|
-| grep (baseline) | 0.660 | 0.779 | 0.646 | 0.618 |
-| BM25 (kit core) | 0.850 | 0.905 | 0.811 | 0.783 |
-| **graph_walk (kit full)** | **0.864** | **0.920** | **0.823** | **0.796** |
-
-**Per-question decomposition:** 23% of questions fail with naive grep but
-succeed with the kit. Multi-hop and alias buckets lift by **+0.37** and
-**+0.34** respectively. Reproduce on your own vault with `mv eval run`.
-
----
-
-## License
-
-MIT. See `LICENSE`.
-
 ## Status
 
-Alpha. Battle-tested on the maintainer's personal vault. Schema and CLI are
+Alpha. Battle-tested on the maintainer's personal vault (470 memories ingested
+across 7 sources, six weeks of daily use, zero data loss). Schema and CLI are
 stable. The daily-refresh agent ships as a prompt + scaffolding rather than a
 fully autonomous pipeline — pick a deployment shape from
 [SETUP.md §9](SETUP.md#9-set-up-the-daily-refresh-agent).
 
 Issues + PRs welcome: https://github.com/ayushmall/memoryvault-kit/issues
+
+## License
+
+MIT. See `LICENSE`.
