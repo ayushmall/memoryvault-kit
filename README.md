@@ -20,7 +20,7 @@ mature today.
 
 ## Is this for you?
 
-Two reasons to adopt this. Either alone is sufficient.
+Three reasons to adopt this. Any one alone is sufficient.
 
 ### 1. Retrieval that's measurably better, faster, and reproducible
 
@@ -32,7 +32,38 @@ Two reasons to adopt this. Either alone is sufficient.
   regression. You can audit ranking decisions (each result shows `bm25=...
   graph=+...` score breakdown).
 
-### 2. An architecture you can measure and own
+### 2. Your memory becomes a service every surface can query
+
+The kit doesn't just store your memory — it **serves** it. `mv mcp` runs an
+MCP server (stdio for local Claude Code, HTTP/SSE for everything else).
+Every MCP-aware client gets the same five tools: `memory_ask`,
+`memory_search_entity`, `memory_recent`, `memory_health`, `memory_save`.
+
+```
+                YOUR VAULT (markdown files you own)
+                            │
+                            ▼
+                   memoryvault-kit MCP server
+                     stdio    +    HTTPS/SSE
+                            │
+      ┌─────────────────────┼─────────────────────┐
+      ▼                     ▼                     ▼
+ Claude Code             Cowork              Cursor / future
+ (local stdio)         (tunnel+token)        agent platforms
+      │                     │                     │
+      └─────────────────────┼─────────────────────┘
+                            │
+                            ▼
+                Custom apps + SaaS products
+                (HTTPS + bearer auth)
+```
+
+One memory layer your entire AI stack queries. Versus today's reality:
+ChatGPT remembers some things, Claude remembers others, Cursor has its own
+silo — and none of them share. The kit makes your professional context
+**portable across tools**.
+
+### 3. An architecture you can measure and own
 
 - **Plain markdown files on your disk.** Open in Obsidian, grep from terminal,
   query from any LLM. Portable forever.
