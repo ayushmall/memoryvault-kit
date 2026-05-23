@@ -1,18 +1,23 @@
 # memoryvault-kit
 
-A personal memory layer that lives in a folder of markdown files. BM25 + entity-graph
-retrieval over your notes, with a quality loop that keeps the graph from rotting as
-you ingest more. Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code)'s
-MCP ecosystem; the architecture is portable to any MCP-aware client.
+**A personal memory layer for your AI tools.** Your professional context —
+meetings, decisions, customers, projects — lives in plain markdown files you
+own. Any AI tool that speaks [MCP](https://modelcontextprotocol.io) can
+query it. The kit retrieves better and faster than the alternatives, and the
+quality of your memory layer is something you can actually measure.
 
-> **The model is intelligent. The retrieval is not. The data is structured.**
-> We measured every variant where the LLM touched retrieval — every one regressed.
-> So retrieval stays a database problem; intelligence sits on either side of it.
+Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code).
+The architecture works with any future AI tool that supports MCP — Cursor,
+OpenAI's Agents SDK, and others are converging on the same standard.
 
-**Built on Claude Code, not a substitute for it.** The kit composes with Anthropic's
-agent ecosystem rather than replacing it. Same architecture works on Cursor, OpenAI's
-Agents SDK, or any future MCP-aware runtime — Claude Code is just where MCP is most
-mature today.
+> **The AI model is intelligent. The retrieval is not. The data is structured.**
+> We measured every variant where the LLM touched retrieval — every one
+> regressed. So retrieval stays a search-engine problem; intelligence sits on
+> either side of it.
+
+**Built on Claude Code, not a substitute for it.** The kit complements Anthropic's
+tools rather than replacing them. You can use Claude's chat, Cowork, and the kit
+together — they're designed to compose.
 
 **Maintainer:** [@ayushmall](https://github.com/ayushmall). MIT licensed.
 
@@ -32,36 +37,41 @@ Three reasons to adopt this. Any one alone is sufficient.
   regression. You can audit ranking decisions (each result shows `bm25=...
   graph=+...` score breakdown).
 
-### 2. Your memory becomes a service every surface can query
+### 2. Your memory becomes a service every AI tool can plug into
 
-The kit doesn't just store your memory — it **serves** it. `mv mcp` runs an
-MCP server (stdio for local Claude Code, HTTP/SSE for everything else).
-Every MCP-aware client gets the same five tools: `memory_ask`,
-`memory_search_entity`, `memory_recent`, `memory_health`, `memory_save`.
+The kit doesn't just store your memory — it **serves** it. Running `mv mcp`
+turns your vault into a small backend that any AI tool can ask questions to.
+It's an [MCP server](https://modelcontextprotocol.io) — MCP is the open
+standard Anthropic, OpenAI, and others are converging on for letting AI
+agents talk to your tools and data.
+
+Once it's running, the same five operations (`ask`, `search-entity`,
+`recent`, `health`, `save`) are callable from every AI surface in your life:
 
 ```
-                YOUR VAULT (markdown files you own)
-                            │
-                            ▼
-                   memoryvault-kit MCP server
-                     stdio    +    HTTPS/SSE
-                            │
-      ┌─────────────────────┼─────────────────────┐
-      ▼                     ▼                     ▼
- Claude Code             Cowork              Cursor / future
- (local stdio)         (tunnel+token)        agent platforms
-      │                     │                     │
-      └─────────────────────┼─────────────────────┘
-                            │
-                            ▼
-                Custom apps + SaaS products
-                (HTTPS + bearer auth)
+              YOUR VAULT (markdown files you own)
+                          │
+                          ▼
+                 memoryvault-kit MCP server
+              (talks to local apps via your terminal,
+                 and to cloud/web apps over HTTPS)
+                          │
+   ┌──────────────────────┼──────────────────────┐
+   ▼                      ▼                      ▼
+Claude Code            Cowork                Cursor / future
+in your terminal     (Claude in cloud)        AI tools
+   │                      │                      │
+   └──────────────────────┼──────────────────────┘
+                          │
+                          ▼
+              Your own apps + web products
+              (call it like any other web service)
 ```
 
-One memory layer your entire AI stack queries. Versus today's reality:
-ChatGPT remembers some things, Claude remembers others, Cursor has its own
-silo — and none of them share. The kit makes your professional context
-**portable across tools**.
+**One memory layer your entire AI stack queries.** Today, ChatGPT remembers
+some things, Claude remembers others, Cursor has its own silo, your work apps
+remember nothing — and none of them share. The kit makes your professional
+context **portable** — same memory, every tool, your data.
 
 ### 3. An architecture you can measure and own
 
@@ -308,11 +318,11 @@ Issues + PRs welcome: https://github.com/ayushmall/memoryvault-kit/issues
 
 This kit only exists because of the platforms it's built on:
 
-- **[Claude Code](https://docs.claude.com/en/docs/claude-code) and the MCP ecosystem** — the entire ingest pipeline (Granola/Slack/Notion/Calendar/GDrive/Gmail/Linear connectors) is enabled by MCP. The local `mv mcp` server, the daily refresh agent prompt, and the retrieval iteration loop all use Claude Code as the runtime.
-- **[Anthropic's Cowork](https://claude.ai/customize/connectors)** — the right model for hosting the daily ingest agent without managing infrastructure yourself.
-- **The OSS retrieval lineage** — BM25 (Robertson + Walker, 1994), the `rank_bm25` library for the canonical implementation we benchmark against, sentence-transformers for the dense baseline.
+- **[Claude Code](https://docs.claude.com/en/docs/claude-code) and MCP** — the daily ingest pipeline plugs into Granola, Slack, Notion, Calendar, GDrive, Gmail, and Linear through Anthropic's [Model Context Protocol](https://modelcontextprotocol.io) (MCP). Without that open standard, the kit couldn't reach those data sources at all.
+- **[Anthropic's Cowork](https://claude.ai/customize/connectors)** — the cloud version of Claude Code, which lets the daily ingest agent run on a schedule without needing your laptop to be on.
+- **Open-source search research** — the kit's BM25 ranker is based on Robertson & Walker (1994), and we benchmark against the [`rank_bm25`](https://pypi.org/project/rank-bm25/) Python library and [`sentence-transformers`](https://www.sbert.net) (the leading open-source embedding library) to make sure the kit isn't winning against a strawman.
 
-The kit is one way of working *with* these platforms — treating memory as a first-class artifact you own and measure, rather than leaving it implicit inside an agent. The same pattern would work on Cursor, OpenAI's Agents SDK, or any future MCP-aware runtime; I shipped on Claude Code because that's where the primitives are mature today.
+The kit is one way of working *with* these tools — treating memory as something you own and can measure, instead of leaving it locked inside an AI vendor's product. The same architecture would work on Cursor, OpenAI's Agents SDK, or any future AI tool that speaks MCP.
 
 ## License
 
