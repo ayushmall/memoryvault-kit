@@ -2,12 +2,17 @@
 
 A personal memory layer that lives in a folder of markdown files. BM25 + entity-graph
 retrieval over your notes, with a quality loop that keeps the graph from rotting as
-you ingest more. Designed for [Claude Code](https://docs.claude.com/en/docs/claude-code)
-and any MCP-aware client.
+you ingest more. Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code)'s
+MCP ecosystem; the architecture is portable to any MCP-aware client.
 
 > **The model is intelligent. The retrieval is not. The data is structured.**
 > We measured every variant where the LLM touched retrieval — every one regressed.
 > So retrieval stays a database problem; intelligence sits on either side of it.
+
+**Built on Claude Code, not a substitute for it.** The kit composes with Anthropic's
+agent ecosystem rather than replacing it. Same architecture works on Cursor, OpenAI's
+Agents SDK, or any future MCP-aware runtime — Claude Code is just where MCP is most
+mature today.
 
 **Maintainer:** [@ayushmall](https://github.com/ayushmall). MIT licensed.
 
@@ -267,6 +272,16 @@ fully autonomous pipeline — pick a deployment shape from
 [SETUP.md §9](SETUP.md#9-set-up-the-daily-refresh-agent).
 
 Issues + PRs welcome: https://github.com/ayushmall/memoryvault-kit/issues
+
+## Acknowledgments
+
+This kit only exists because of the platforms it's built on:
+
+- **[Claude Code](https://docs.claude.com/en/docs/claude-code) and the MCP ecosystem** — the entire ingest pipeline (Granola/Slack/Notion/Calendar/GDrive/Gmail/Linear connectors) is enabled by MCP. The local `mv mcp` server, the daily refresh agent prompt, and the retrieval iteration loop all use Claude Code as the runtime.
+- **[Anthropic's Cowork](https://claude.ai/customize/connectors)** — the right model for hosting the daily ingest agent without managing infrastructure yourself.
+- **The OSS retrieval lineage** — BM25 (Robertson + Walker, 1994), the `rank_bm25` library for the canonical implementation we benchmark against, sentence-transformers for the dense baseline.
+
+The kit is one way of working *with* these platforms — treating memory as a first-class artifact you own and measure, rather than leaving it implicit inside an agent. The same pattern would work on Cursor, OpenAI's Agents SDK, or any future MCP-aware runtime; I shipped on Claude Code because that's where the primitives are mature today.
 
 ## License
 
