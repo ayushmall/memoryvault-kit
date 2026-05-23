@@ -246,3 +246,72 @@ Look for:
   something with high confidence, the question isn't really abstention
 
 Iterate the eval set, not just the retriever. The eval IS the spec.
+
+---
+
+## Defending the numbers against scrutiny
+
+If you're going to publish numbers, expect critique. Five things that make eval claims defensible:
+
+### 1. Audit your own questions for triviality
+
+Run the audit script (`evals/retrieval/audit_eval_set.py` in the kit, adapted to your vault):
+
+- Of N gold-answered questions, how many are **trivial** (every retriever finds gold in top-5)?
+- How many are **impossible** (no retriever finds gold in top-30)?
+
+If trivial > 70%, your eval set is doing little work. Add harder questions until trivial drops to 50-60%.
+Real signal lives in the **discriminative** questions — where retrievers disagree.
+
+### 2. Reverse-design questions from the data, not from intuition
+
+Authors writing their own eval set bias toward "what they know the retriever does well." Counter this by **generating questions from vault structure**:
+
+- For each entity with df 2-15, write a "what's the latest on X?" question
+- For each pair of memories sharing a rare entity (df ≤ 6), write a multi-hop question
+- For each memory containing "deferred"/"rejected", write a negation question
+- For each first-name collision, write a disambiguation question
+
+The kit's `generate_questions.py` does this automatically. Aim for at least 50% of your eval set to be reverse-designed.
+
+### 3. Test against baselines you didn't write
+
+Comparing your retriever only to "naive grep that I wrote" is suspicious. Add:
+
+- **`rank_bm25`** (the canonical Python library) — if your handcrafted BM25 doesn't match `rank_bm25` within 0.02 R@5, something is off.
+- **`sentence-transformers` `all-MiniLM-L6-v2`** — the OSS dense-embeddings standard.
+- **Optional but stronger:** a paid dense model (OpenAI `text-embedding-3-large`, Anthropic Voyage) — if you've claimed sparse beats dense, this is the test that matters most.
+
+Document which baselines you tested AND which you didn't. Honest disclosure beats hidden caveats.
+
+### 4. Report Wilson 95% confidence intervals per bucket
+
+R@5 = 0.85 on 22 questions has a CI of [0.65, 0.95]. R@5 = 0.85 on 60 questions has a CI of [0.74, 0.92]. The first is barely above noise; the second is meaningful.
+
+For each bucket, compute the Wilson interval:
+
+```python
+def wilson_ci(p, n, z=1.96):
+    if n == 0: return (0, 0)
+    denom = 1 + z*z/n
+    center = (p + z*z/(2*n)) / denom
+    margin = z * math.sqrt((p*(1-p) + z*z/(4*n)) / n) / denom
+    return (max(0, center - margin), min(1, center + margin))
+```
+
+A claim like "graph walk beats BM25 in bucket X" is **statistically supported** only if the bucket-level CIs for the two retrievers don't overlap. Show this in your tables.
+
+### 5. Decompose per-question wins/losses, not just averages
+
+A retrieval score is abstract. Per-question decomposition tells the user-facing story:
+
+- "All 3 retrievers succeed" = trivial questions, eval not discriminating
+- "Only the kit succeeds" = the kit's real value
+- "Only the dense baseline succeeds" = where you should consider adding embeddings
+- "None succeed" = the eval-set's hard problems, candidates for human review
+
+The narrative "X% of questions would fail without the kit" is more durable than "R@5 = 0.86."
+
+### Reproducibility: freeze your eval set
+
+Tag the questions file at a specific commit. When you re-run the eval months later, you want the same numbers — not silent drift from gold-ID changes or vault edits. The kit stores both `questions.jsonl` (live) and `questions_v1_220.jsonl.bak` (frozen baseline) so versions remain comparable.
