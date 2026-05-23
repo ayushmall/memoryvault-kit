@@ -432,11 +432,22 @@ def cmd_mcp(args):
 
 
 def cmd_eval(args):
-    """Eval set management: init seeds a starter file, run scores it, add appends."""
+    """Eval set management: init seeds a starter file, run scores it, add appends.
+    pipeline computes end-to-end quality = capture × fidelity × retrieval."""
     vault = find_vault()
     eval_dir = vault / "evals" / "retrieval"
     questions_path = eval_dir / "questions.jsonl"
     results_log = vault / "evals" / "results_log.jsonl"
+
+    if args.action == "pipeline":
+        # Delegate to the pipeline module
+        pipeline_script = Path(__file__).parent / "eval" / "pipeline.py"
+        extra = []
+        if getattr(args, "captured", None) is not None: extra += ["--captured", str(args.captured)]
+        if getattr(args, "total_events", None) is not None: extra += ["--total-events", str(args.total_events)]
+        if getattr(args, "window_days", None): extra += ["--window-days", str(args.window_days)]
+        if getattr(args, "json", False): extra += ["--json"]
+        return run_module(pipeline_script, extra)
 
     if args.action == "init":
         if questions_path.exists():
@@ -722,9 +733,14 @@ def main():
     s.set_defaults(fn=cmd_mcp)
 
     s = sub.add_parser("eval", help="eval set tools")
-    s.add_argument("action", choices=["init", "run", "add"])
+    s.add_argument("action", choices=["init", "run", "add", "pipeline"])
     s.add_argument("--retriever", choices=["bm25", "graph"], help="for `run`")
     s.add_argument("--log", action="store_true", help="for `run`: append to results_log.jsonl")
+    # pipeline-specific args
+    s.add_argument("--captured", type=int, help="(pipeline) memories captured in time window")
+    s.add_argument("--total-events", type=int, help="(pipeline) total real-world events in window")
+    s.add_argument("--window-days", type=int, default=60, help="(pipeline) capture window")
+    s.add_argument("--json", action="store_true", help="(pipeline) machine-readable output")
     s.set_defaults(fn=cmd_eval)
 
     s = sub.add_parser("schedule", help="generate scheduling configs")
