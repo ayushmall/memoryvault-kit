@@ -1,0 +1,12 @@
+{
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "showLineNumber": true,
+  "promptDelete": false,
+  "attachmentFolderPath": "_attachments",
+  "userIgnoreFilters": [
+    ".mvkit/",
+    "evals/"
+  ]
+}

@@ -1,0 +1,22 @@
+filters:
+  and:
+    - file.path.startsWith("entities/companies/")
+    - parent != "entity:wisdomai"
+formulas:
+  backlink_count: file.inlinks.size
+properties:
+  backlink_count:
+    displayName: Mentions
+  status:
+    displayName: Status
+views:
+  - type: table
+    name: All customers
+    order:
+      - name
+      - backlink_count
+      - status
+      - aliases
+    sort:
+      - property: backlink_count
+        direction: DESC

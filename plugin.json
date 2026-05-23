@@ -1,0 +1,24 @@
+{
+  "name": "memoryvault-kit",
+  "version": "0.1.0",
+  "description": "Personal memory layer over a folder of markdown notes. BM25 + entity-graph retrieval, ingest-time lint, daily quality audit. Brings up to a 0.87 R@5 on a 220-question personal eval set.",
+  "author": "Ayush Mall",
+  "homepage": "https://github.com/ayushmall/memoryvault-kit",
+  "skills": [
+    "memory-ask",
+    "memory-audit",
+    "memory-refresh",
+    "memory-heal",
+    "memory-ingest",
+    "memory-save"
+  ],
+  "mcp_servers": {
+    "memoryvault": {
+      "command": "python3",
+      "args": ["-m", "memoryvault_kit.mcp_server"],
+      "env": {
+        "MEMORYVAULT_ROOT": "$MEMORYVAULT_ROOT"
+      }
+    }
+  }
+}

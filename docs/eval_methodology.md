@@ -1,0 +1,248 @@
+# Eval methodology
+
+The single highest-ROI thing you can do for this system. Without an eval set,
+you have no way to tell whether a change made retrieval better or worse — only
+"feels right." With one, you can iterate on retrieval, ingestion, and entity
+design with confidence.
+
+> Build the eval set *before* optimizing the retriever. That's the order that
+> works.
+
+---
+
+## Why eval first
+
+When I started this project, the temptation was to dive into "make BM25 better"
+or "add embeddings." Three things forced me out of that mode:
+
+1. **I didn't know what good was.** Without a target, every change felt like an
+   improvement to whatever I tested it on.
+2. **Algorithms have non-obvious failure modes.** "BM25 returns the right top-1
+   for the question I tested" doesn't mean "BM25 returns the right top-5 across
+   multi-hop, disambiguation, alias, and aggregate questions."
+3. **The data layer matters more than the algorithm.** I learned this only
+   because the eval set let me see that fixing 11 dead wikilinks moved the
+   needle more than swapping retrievers did.
+
+So: 220 questions, 10 buckets, ~22 questions each, built over 2–3 hours from
+my actual vault. The retriever could then be tuned with the eval as the ground
+truth.
+
+---
+
+## The 10-bucket taxonomy
+
+Each bucket targets a *failure mode* keyword-only retrieval typically has. By
+building 20+ questions per bucket, you guarantee that any change either helps
+or hurts a measurable thing.
+
+| bucket | what it tests | typical failure mode if you skip it |
+|---|---|---|
+| **needle-in-haystack** | One memory has the answer; can you find it? | Baseline; rarely fails |
+| **negation-rejection** | "What did we *not* ship / *reject* / *defer*?" | Retriever ignores the negation cue |
+| **multi-hop** | Answer requires joining 2+ memories | Top result only has half the answer |
+| **temporal** | Date-bound ("what happened *last* April?") | No date filtering, irrelevant matches |
+| **alias** | Question uses non-canonical name | Memory uses canonical, no match |
+| **disambiguation** | Colliding names ("which Tom?") | Wrong person retrieved |
+| **aggregate** | "List all customers who asked for X" | Returns top-1, misses the rest |
+| **lateral** | Look up by attribute (owner, status, blocker) | Keyword overlap on attribute, not target |
+| **paraphrase** | Same Q phrased differently | One phrasing works, the other doesn't |
+| **abstention** | Vault genuinely doesn't know | Returns *something* anyway, confidently |
+
+### How to write a good question for each bucket
+
+**needle-in-haystack** — Use specific, distinctive language from a single memory
+in your vault. The Q should not be answerable from any other memory.
+
+> Good: "What was the budget cap North River set for the pricing tier?"
+> Bad: "What's North River's situation?"
+
+**negation-rejection** — Lead with the negation cue. The retriever should
+recognize "deferred" / "rejected" / "won't ship" as a constraint.
+
+> Good: "What customer asks did we *defer* to Q3?"
+> Bad: "What did we do in Q3?" (no negation cue)
+
+**multi-hop** — Answer requires combining facts from 2+ memories. The gold
+answer set should be a list of memory IDs, all required.
+
+> Good: "Given Acme's parameterized-agents ask, who at your team is starting
+> the workstream and from when?"
+> Gold: [mem_ASK, mem_WORKSTREAM, mem_PERSON]
+
+**temporal** — Include a date constraint that filters the answer space.
+
+> Good: "What decisions did Sara make in March?"
+> Gold: all decision-type memories with created in March
+
+**alias** — Use the non-canonical name *deliberately* to test alias resolution.
+
+> Good: "What is Canvas V2?" (where the canonical entity is "chat-v2")
+
+**disambiguation** — Use a first-name or short name that collides.
+
+> Good: "What did Tom (from North River) say about MCP?"
+> The constraint "from North River" requires the retriever to disambiguate Tom Williams
+> (North River) vs Tom Williams (your team).
+
+**aggregate** — Frame as a list-question. Gold is multiple IDs.
+
+> Good: "Which customers have raised determinism issues?"
+> Gold: 4–8 memory IDs across different customer entities
+
+**lateral** — Query by attribute, not by topic.
+
+> Good: "Which projects are blocked on authentication?"
+> Forces the retriever to filter by an attribute rather than match topic words.
+
+**paraphrase** — Write two phrasings of the *same* Q in two separate entries,
+link them with `paraphrase_of: qNNN`. Tests stability.
+
+> Q1: "Why did we park North River?"
+> Q2: "Reason for stopping the North River deal"
+> Both have the same gold answer.
+
+**abstention** — Genuinely unanswerable from your vault. Used to test whether
+the retriever knows when to say "I don't know."
+
+> Good: "What was Q4 2025 ARR?" (if your vault has no ARR data)
+> Set `expect_abstain: true` and no `expected_memory_ids`.
+
+---
+
+## Gold answer format
+
+The eval set is a JSONL file at `evals/retrieval/questions.jsonl`. Each line:
+
+```json
+{
+  "id": "q001",
+  "bucket": "needle-in-haystack",
+  "question": "What budget cap did North River set?",
+  "expected_memory_ids": ["mem_DEMO_north_river_pricing"],
+  "expected_entities": ["[[North River]]", "[[Marcus Webb]]"],
+  "expected_tags": ["customer", "pricing"],
+  "notes": "Anchor: Marcus mentioned 2x budget cap in Mar 25 sync"
+}
+```
+
+For abstention:
+
+```json
+{
+  "id": "q200",
+  "bucket": "abstention",
+  "question": "What was our 2025 Q4 revenue?",
+  "expect_abstain": true,
+  "notes": "Vault has no revenue/ARR memories"
+}
+```
+
+For paraphrase:
+
+```json
+{"id": "q150", "bucket": "paraphrase", "question": "...", "expected_memory_ids": [...]}
+{"id": "q151", "bucket": "paraphrase", "question": "<rephrased>", "paraphrase_of": "q150", "expected_memory_ids": [...]}
+```
+
+### Fields
+
+| field | required | notes |
+|---|---|---|
+| `id` | yes | `q001`, `q002`, ... (any unique string works) |
+| `bucket` | yes | One of the 10 buckets |
+| `question` | yes | The query as a human would phrase it |
+| `expected_memory_ids` | yes (unless abstention) | List of gold memory IDs |
+| `expected_entities` | no | Gold entity wikilinks for entity-recall metric |
+| `expected_tags` | no | Gold tags for tag-recall metric |
+| `expect_abstain` | for abstention | `true` for abstention bucket |
+| `paraphrase_of` | for paraphrase | The other question this one paraphrases |
+| `notes` | no | Free-form anchor — *how* you'd answer this manually |
+
+---
+
+## Metrics computed
+
+`mv eval run` computes:
+
+| metric | what it measures | when it matters |
+|---|---|---|
+| **Recall@5** | Fraction of gold IDs that appear in top-5 | Primary metric. Aim ≥0.85. |
+| **Recall@10** | Same, top-10 | Tells you if your candidate set is right but ranking is off |
+| **Precision@5** | Fraction of top-5 that are gold | For aggregate questions |
+| **MRR** | Mean Reciprocal Rank — where's the *first* gold? | High if ranking is sharp |
+| **Entity-recall@5 (loose)** | Fraction of gold entities that appear in any top-5 memory's entities list | Even if you got the wrong memory, did you spray the right topic? |
+| **Entity-recall@5 (strict)** | Fraction of gold entities that appear in *correctly-retrieved* top-5 memories | Honest entity-correctness signal |
+| **Tag-recall@5** | Like entity-recall but for tags | Useful if your tags are well-curated |
+| **Abstain-correct rate** | For abstention questions: did you return `[]`? | High = doesn't hallucinate |
+
+Per-bucket breakdowns are shown automatically. Watch for one bucket regressing
+while the average rises — that's the signal a "general improvement" only
+helped one failure mode.
+
+---
+
+## Calibrating abstention
+
+Abstention is the hardest bucket. Two approaches:
+
+1. **Score threshold** — return `[]` if top-1 score is below some `T`. Easy to
+   implement (`mv ask` does this with `--abstain-threshold`). The tricky part
+   is picking `T`: too high and you abstain on real questions; too low and you
+   answer when you shouldn't.
+
+   Calibrate by plotting the top-1 score distribution split by
+   `expect_abstain: true/false` in your eval set. Pick `T` to maximize
+   (TP_abstain − FP_abstain). In my vault, the 5th percentile of non-abstain
+   top scores ≈ the 95th percentile of abstain top scores, so a clean
+   threshold doesn't exist — they overlap.
+
+2. **LLM judge** — pass the question + top-3 snippets to an LLM and ask
+   "is this answerable?" Higher accuracy potential but adds cost and latency.
+   My test showed it lifted abstain rate to 0.5 but cost 0.07 R@5 — net
+   negative.
+
+A working alternative: **don't abstain at retrieval time**; let the answer
+synthesis layer (`mv ask --answer`) be the one that says "I don't know." That
+way retrieval stays optimistic and the LLM does the final filtering.
+
+---
+
+## Sizing the eval set
+
+| vault size | min eval set | per-bucket target |
+|---|---|---|
+| 50 memories | 100 questions | 10/bucket |
+| 100–300 memories | 150–220 questions | 15–22/bucket |
+| 300+ memories | 220+ questions | 22+/bucket |
+
+Don't try to write 220 questions in one sitting. Pattern that works:
+
+1. **30 minutes:** write 1 question per bucket. Confirm the eval pipeline runs.
+2. **2 hours over 3 days:** Add 1–2 per bucket each session, drawing from
+   real questions you'd ask the system in daily life.
+3. **Ongoing:** every time the retriever surprises you (good or bad), add the
+   question to the eval set. The set grows organically with your usage.
+
+---
+
+## Sanity-checking your eval set
+
+Before relying on it, sanity-check:
+
+```bash
+mv eval run --retriever bm25     # baseline
+mv eval run --retriever graph    # current
+```
+
+Look for:
+
+- **No bucket scores below 0.3** on baseline BM25 — if it does, the questions
+  in that bucket might be unanswerable from your vault (gold IDs wrong) or
+  ambiguous
+- **Paraphrase pairs scoring similarly** — if Q1 hits 1.0 and Q2 hits 0.0,
+  the eval is over-fit to phrasing not concepts
+- **Abstain bucket actually unanswerable** — spot-check 2–3; if BM25 returns
+  something with high confidence, the question isn't really abstention
+
+Iterate the eval set, not just the retriever. The eval IS the spec.

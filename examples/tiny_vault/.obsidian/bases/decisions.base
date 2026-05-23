@@ -1,0 +1,32 @@
+filters:
+  and:
+    - file.path.startsWith("memories/")
+    - type == "decision"
+formulas:
+  importance_pct: importance * 100
+properties:
+  created:
+    displayName: When
+  importance_pct:
+    displayName: Importance
+views:
+  - type: table
+    name: All decisions
+    order:
+      - title
+      - created
+      - importance_pct
+      - tags
+    sort:
+      - property: created
+        direction: DESC
+  - type: cards
+    name: By importance
+    sort:
+      - property: importance
+        direction: DESC
+    card:
+      title: title
+      meta:
+        - created
+        - tags

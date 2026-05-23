@@ -1,0 +1,67 @@
+# Memory type schemas — Tana-style supertags.
+#
+# Each memory's `type:` field looks up a schema here. The lint enforces that
+# required fields are present in the frontmatter (or, for entities/tags, that
+# the memory wikilinks the right kind of thing).
+#
+# Fields are checked at lint time. `recommended` is a warning, `required` is
+# an error. You can extend this file with new memory types — but if you add a
+# type that doesn't appear in VALID_MEMORY_TYPES in lint.py, the lint will
+# reject the memory itself for using an unknown type.
+
+schemas:
+  decision:
+    # A choice was made. Who made it, what does it reverse?
+    required:
+      - made_by          # frontmatter key OR wikilinked person entity
+    recommended:
+      - reverses         # other memory ID this decision overrides
+      - supersedes       # other memory ID this replaces
+    notes: "High retrieval value — be thorough."
+
+  event:
+    # Meetings, releases, dated occurrences.
+    required: []
+    recommended:
+      - attendees        # array of person wikilinks (also acceptable in entities:)
+      - source_ref       # link to Granola, Calendar, etc.
+
+  project_fact:
+    # Facts about ongoing work.
+    required: []
+    recommended:
+      - source_ref
+
+  reference:
+    # Pointer to a doc / dashboard / link.
+    required:
+      - source_ref       # the thing being referenced
+    recommended: []
+
+  relationship:
+    # Facts about a person or how two entities relate.
+    # `entities` array already establishes the relationship — must have ≥2 entities.
+    required: []         # enforced via min_entities check below
+    recommended: []
+    min_entities: 2
+    notes: "Title should be a declarative sentence: 'X is the Y at Z'."
+
+  observation:
+    # Passing note worth keeping.
+    required: []
+    recommended: []
+
+  user_fact:
+    # Facts about you. Low retrieval but high stability.
+    required: []
+    recommended: []
+
+  feedback:
+    # Critique you received.
+    required: []
+    recommended: []
+
+  preference:
+    # Stable preferences.
+    required: []
+    recommended: []

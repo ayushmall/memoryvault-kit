@@ -1,0 +1,34 @@
+filters:
+  and:
+    - file.path.startsWith("memories/")
+    - created >= date(now) - 30d
+properties:
+  created:
+    displayName: Date
+  type:
+    displayName: Type
+  importance:
+    displayName: ★
+views:
+  - type: table
+    name: Last 30 days
+    order:
+      - created
+      - title
+      - type
+      - importance
+      - tags
+    sort:
+      - property: created
+        direction: DESC
+  - type: cards
+    name: Timeline
+    sort:
+      - property: created
+        direction: DESC
+    card:
+      title: title
+      meta:
+        - created
+        - type
+        - tags
