@@ -15,26 +15,36 @@ and any MCP-aware client.
 
 ## Is this for you?
 
-You probably want this if:
+Two reasons to adopt this. Either alone is sufficient.
 
-- You take notes in markdown and have built up a few hundred (or more) of them
-- You've tried Cursor's MCP memory, ChatGPT memory, or Obsidian Smart Connections
-  and found they couldn't:
-  - **join facts across sources** ("what did Andy say after the Q1 review?")
-  - **disambiguate** ("which Tom — the customer-side one or the engineer?")
-  - **abstain** when your vault genuinely doesn't know (instead of hallucinating)
-  - **show you when retrieval is getting worse** (vs just running on vibes)
-- You care more about owning your data + auditing your retrieval than about
-  a slick UI
+### 1. Retrieval that's measurably better, faster, and reproducible
 
-You probably *don't* want this if:
+- R@5 = 0.87 on a 482-question hardened eval set, vs grep 0.58 and
+  sentence-transformers 0.57. The kit beats both with 95% CIs that don't overlap.
+- <100ms per query — single MCP call instead of multi-second LLM-mediated
+  grep loops.
+- Deterministic: same input → same output. You can test it. You can detect
+  regression. You can audit ranking decisions (each result shows `bm25=...
+  graph=+...` score breakdown).
 
-- You need a hosted SaaS — this runs entirely on your filesystem
+### 2. An architecture you can measure and own
+
+- **Plain markdown files on your disk.** Open in Obsidian, grep from terminal,
+  query from any LLM. Portable forever.
+- **Pipeline quality decomposes** into capture × authoring × retrieval, each
+  measurable with one command. When something drifts, you know which stage.
+- **Quality enforcement at write time** — `mv lint` blocks dead wikilinks;
+  pre-write checks block low-fidelity memories before they land.
+- **Zero vendor lock-in.** The vault outlives any single LLM. If Anthropic
+  deprecates a feature or you switch tools, your memory layer stays intact.
+
+### When the kit isn't the right choice
+
+- You want a hosted SaaS — this runs entirely on your filesystem
 - You don't have a notes corpus yet — the kit assumes you have something to index
-- You want pure semantic search — we use BM25 + structural retrieval, not embeddings
-  (intentional; see [docs/retrieval_internals.md](docs/retrieval_internals.md))
-- You're scaling past ~5,000 memories — at that point you'd want a dense layer
-  added on top
+- You're scaling past ~5,000 memories — at that point you'd want a dense layer added on top
+- You're happy to trust Anthropic/OpenAI with your professional memory and
+  never need to audit it — the kit's auditability is extra weight you won't use
 
 ---
 
