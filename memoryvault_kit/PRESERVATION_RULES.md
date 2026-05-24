@@ -156,6 +156,164 @@ If all five pass, you're writing a memory that earns its place in the vault.
 
 ---
 
+## Authoring rules added from the retrieval eval (2026-05-24 audit)
+
+These rules were derived from the **8 remaining failures** on the full
+retrieval stack (BM25 + entity graph + reranker) after a long eval-improvement
+session that lifted coverage from 89.7% → 94.7%. Every failure mode below
+maps to an authoring change that would have prevented it.
+
+### Rule 9 — Put exact specific facts in the title or first sentence
+
+When a memory contains an exact ticket ID, dollar amount, count, or other
+needle-style fact, **put it in the title or first line of the body**. Don't
+bury it in paragraph 5.
+
+> ❌ Title: "Pricing proposal — tiered model with account multipliers"
+>    (gold has "$20" buried mid-body; "exact dollar amount" query misses)
+> ✓ Title: "**$20** tiered pricing model with account multipliers"
+
+Same for ticket IDs:
+> ❌ Title: "Customer X feature customization — P0 critical bug"
+>    (gold has the ticket ID only in body)
+> ✓ Title: "**TICKET-1234**: customer X feature customization (P0)"
+
+Retrieval needs the fact to be near the title for needle-style queries to
+surface the right memory. The body explains *why*; the title carries the
+*what*.
+
+### Rule 10 — Capture compound alias forms as full aliases
+
+When an entity has a parenthetical or hyphenated variant ("Project X
+(Phase 2)", "Foo Bar — Rebrand"), capture **both** the canonical and the
+compound form in the entity's `aliases:` field:
+
+```yaml
+# entities/projects/project-x.md
+aliases: ["Project X", "Project X (Phase 2)", "Phase 2 Project"]
+```
+
+Don't only register the canonical. Users (and your future self) WILL ask
+about the compound form because that's what the meeting transcript called it.
+
+### Rule 11 — For decision memories, name the decision-maker in the title
+
+When the type is `decision`, put the person's name in the title:
+
+> ❌ Title: "Q2 strategic priorities locked"
+> ✓ Title: "**Alex** locks Q2 priorities: enterprise focus + verticalized agents"
+
+Why: queries like "which decisions did Alex make?" filter by
+type=decision AND person=Alex. If Alex only appears in the body, the
+attribute-lookup short-circuit may rank older but title-prominent
+mentions higher. Title prominence wins.
+
+### Rule 12 — Email handles ARE aliases. Capture them.
+
+When ingesting from email or Slack and you encounter a person, their email
+handle (`alice@example.com`) is a legitimate alias. Register it in the
+entity's `aliases:` field:
+
+```yaml
+# entities/people/alice-zhang.md
+aliases: ["Alice", "alice@example.com", "alice"]
+```
+
+Why: a future query "what's the latest on alice@example.com?" should
+resolve to Alice Zhang. Without the alias, the kit returns memories that
+incidentally mention "example.com" and miss the person entirely.
+
+### Rule 13 — Treat product acronyms as first-class aliases
+
+3-4 letter project codes (e.g. internal codenames or acronyms) are some of the
+most-queried surface forms. Always register them as aliases — don't drop
+them even if they feel "too short to be useful":
+
+```yaml
+aliases: ["Internal Tool Name", "ITN", "Tool"]
+```
+
+The kit's BM25 filter used to skip aliases under 4 chars, which killed
+exactly the high-value short codes. That bug is fixed; your authoring
+should match.
+
+### Rule 16 — Connect every entity that's body-mentioned
+
+The biggest silent failure mode (after Rule 15) was discovered when the
+vault owner looked at the Obsidian graph and saw entities like "GenUI
+Infra" floating with almost no connections — despite 23 memories
+mentioning it in body. Only 13 actually wikilinked it.
+
+The rule: **when authoring or ingesting a memory, if the body or title
+mentions a canonical entity name (or any of its aliases), the entity
+MUST appear in the `entities:` frontmatter.** No silent participants.
+
+Authoring agents should:
+1. Load the vault's alias map (`<vault>/.alias_map.json`)
+2. For the memory being written: scan body+title for any registered
+   surface form
+3. For each match, ensure the canonical name is in `entities:`
+4. If the match is ambiguous (one surface, multiple canonicals), log
+   the ambiguity for human review — don't auto-link
+
+For existing vaults that predate this rule:
+
+    python3 -m memoryvault_kit.graph.connect_entities --apply
+
+This walks every memory and back-fills the missing wikilinks. On the
+maintainer's vault this added **3,380 links across 898 memories** —
+the kit's graph went from "sparse" to "actually connected."
+
+Connection completeness is a measurable property. If a product entity
+exists and 23 memories mention it but only 13 link, the gap is 43% —
+that's the percentage of memories Obsidian's graph view will render
+as "detached" from this product. The connect_entities heal closes
+that gap.
+
+### Rule 15 — The vault owner is a participant by default
+
+The vault owner — whoever runs this kit — is, by definition, present in
+their own:
+- calendar events (they're invited)
+- emails (their inbox)
+- meeting notes (they were on the call)
+- authored PRs (their commits)
+- their own Linear tickets (assigned to them)
+
+**Every such memory must wikilink the vault owner in `entities:`** — not
+as a footnote, but as a primary participant. This was the #1 silent
+ingest failure mode found in the v1 kit: ingest agents stripped the
+owner out as "viewpoint" instead of "participant," leaving the owner
+disconnected in the entity graph despite being central to every memory.
+
+How to detect the vault owner during ingest:
+1. Check entity files for `vault_owner: true` in frontmatter — there
+   should be exactly one
+2. Their email + first name + GitHub login(s) are the disambiguating
+   surface forms
+
+For sources where ownership is not necessary (Slack threads they may not
+have read, Notion docs in shared workspaces they didn't edit, PRs not
+authored or reviewed by them), apply this rule only if their name
+appears in title or body. **Conservative:** wikilink only when their
+participation is clear, not when they're a possible bystander.
+
+The `mv heal-user` command runs this backfill on existing vaults that
+were ingested before this rule.
+
+### Rule 14 — When ingesting code, link PRs to the product (not just the repo)
+
+Code memories ingested via `mv ingest-code` should be classified into
+**product entities**, not just the repo entity. Configure the
+`<vault>/.mvkit/products/<repo>.json` mapping so PRs touching
+`agents/builder/*` link to `[[Agents]]` not just `[[wisdom-repo]]`.
+
+Cross-cutting PRs (touching multiple product paths) should be linked to
+ALL relevant product entities. That makes "what changed in Embedded?"
+work even when the PR also touched Agents code.
+
+---
+
 ## Reference: the answer-coverage scorecard
 
 | bucket | hard to preserve? | why |

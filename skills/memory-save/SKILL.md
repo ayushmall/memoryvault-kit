@@ -10,6 +10,46 @@ When the user wants to persist something to their MemoryVault, use the
 
 ---
 
+## First: read the memory-gap queue
+
+Before saving, **read `<vault>/.mvkit/memory-gaps.md`**. It lists topics
+that previous query sessions tried to look up but came back empty. If
+what the user is asking you to save matches any active gap (e.g. an eval
+result they're sharing matches the "What was the eval result?" gap):
+
+1. Save the memory with extra care — title-prominent keywords from the
+   gap question, body that answers it directly
+2. Mark the gap `[x]` in `memory-gaps.md` and append a link to the new
+   memory ID
+
+This is the **compounding quality loop**: retrieval failures inform
+authoring, authoring fills the gaps, future retrievals succeed.
+
+Also check the "Patterns the authoring agent should proactively check
+for" section — if today's capture matches a recurring pattern (e.g.,
+a kit-development decision, an eval result, a "why we decided"
+rationale), elevate its importance score to 0.8+ and use title
+phrasing that matches likely future queries.
+
+## Then: consult mature entities
+
+Before writing wikilinks, scan `<vault>/.mvkit/mature_entities.md`. The
+"hub" + "mature" sections list canonical names with high in-degree —
+these are the entities the vault is *already organized around*. When
+deciding which entities to link in this memory, prefer hub canonicals
+over creating new stubs.
+
+Examples (illustrative):
+- A common product alias → link the existing hub canonical, not a new variant
+- "the eng team" → link `[[Engineering Team]]` if that's a hub
+- A teammate's first name → link their existing hub entity, don't create a new stub
+
+If the memory references something that *should* be a hub but isn't yet
+(e.g., a new customer commitment), still link it — that's how new
+entities mature. But avoid duplicating with slightly-different spellings.
+
+---
+
 ## Preservation rules — what you MUST keep
 
 The full rules are in `memoryvault_kit/PRESERVATION_RULES.md`. The 8

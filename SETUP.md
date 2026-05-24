@@ -267,7 +267,7 @@ id: mem_NOTE_first_signal
 title: "Acme wants parameterized agent inputs by May"
 type: project_fact
 entities: ["[[Acme Corp]]", "[[Lisa Chen]]", "[[Q2 Launch]]"]
-tags: [customer, conoco, parameterized-agents, q2-commit]
+tags: [customer, acme, parameterized-agents, q2-commit]
 source_host: manual
 importance: 0.85
 created: 2026-04-15

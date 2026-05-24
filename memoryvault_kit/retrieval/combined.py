@@ -179,6 +179,16 @@ def eval_all_modes():
 
 def main():
     if "--eval" in sys.argv:
+        # Optional: --questions <path> to use a different question file
+        # (default: questions_train.jsonl; pass --blind for the held-out set)
+        global QUESTIONS_TRAIN
+        if "--blind" in sys.argv:
+            QUESTIONS_TRAIN = VAULT / "evals" / "retrieval" / "questions_blind.jsonl"
+            print(f"  USING BLIND SET: {QUESTIONS_TRAIN}", file=sys.stderr)
+        elif "--questions" in sys.argv:
+            idx = sys.argv.index("--questions")
+            QUESTIONS_TRAIN = Path(sys.argv[idx + 1])
+            print(f"  USING: {QUESTIONS_TRAIN}", file=sys.stderr)
         eval_all_modes()
     else:
         print(__doc__)

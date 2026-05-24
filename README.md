@@ -29,22 +29,21 @@ Three reasons to adopt this. Any one alone is sufficient.
 
 ### 1. Retrieval that's measurably better, faster, and reproducible
 
-- **Coverage@10 = 94.7%** on a 322-question hardened eval set (BM25 + entity
-  graph + cross-encoder reranker + entity-mediated short-circuit).
-- BM25-only baseline: 91.3%. Naive grep: 58%. Modern dense embeddings
-  (BGE-small): 70.6% — they actually *lose* to BM25 here, because this vault
-  is small and name-dense (BM25's strength). Hybrid RRF also loses (-5pp).
-  Negative results are documented.
-- Latency: BM25-only <100ms p50. With reranker enabled: ~300ms on Apple
-  Silicon GPU, ~3s on CPU. Pick based on quality/latency need.
+- **Coverage@10 = 94.9% on a held-out 79-question blind set**, using
+  BM25 + entity-mediated short-circuit (D7). The blind set was carved before
+  any tuning and never inspected during development — this is the number
+  that survives critical review.
+- BM25-only baseline (no D7): 92.4% blind. Naive grep: 58%. Modern dense
+  embeddings (BGE-small): 70.6% — they actually *lose* to BM25 on this
+  small, name-dense vault. Hybrid RRF also loses.
+- **Honest negative result:** a BGE cross-encoder reranker LOOKED great on
+  the train set (+3.4pp) but REGRESSED on the blind set (−2.5pp). It
+  was overfitting train-set quirks. We dropped it from the default stack.
+- Latency: <1ms p50 for the default (BM25 + D7) — no GPU, no LLM in the
+  retrieval path.
 - Deterministic: same input → same output. You can test it. You can detect
   regression. You can audit ranking decisions (each result shows the score
   breakdown).
-
-> **Honesty caveat:** the 94.7% is measured on the *training half* of the
-> author-annotated eval set. A 20% blind set is held out; the blind-set
-> number will be reported separately. Treat the train-set number as an
-> upper bound. See `memoryvault_kit/eval/` for the full pipeline.
 
 ### 2. Your memory becomes a service every AI tool can plug into
 
@@ -224,16 +223,25 @@ disambiguation, aggregate, lateral, paraphrase, temporal, negation-rejection,
 abstention). 95 additional questions are held out as a blind set; the numbers
 below are train-set only.
 
+**Blind set (79 clean questions, never seen during tuning):**
+
 | retriever | Cov@1 | Cov@5 | **Cov@10** | latency p50 |
 |---|---|---|---|---|
-| grep (baseline) | 30.2% | 51.2% | 58.0% | — |
-| Dense — `all-MiniLM-L6-v2` | 37.5% | 59.8% | 67.9% | 54 ms |
-| Dense — `BGE-small-en-v1.5` | 41.1% | 66.1% | 70.6% | 69 ms |
-| Hybrid (BM25 + dense RRF) | 52.9% | 74.8% | 83.5% | ~70 ms |
-| **BM25 (kit core)** | 55.6% | 84.8% | 91.3% | <1 ms |
-| BM25 + D7 entity-lookup | 57.5% | 87.6% | 93.2% | <1 ms |
-| BM25 + reranker | 62.4% | 88.8% | 93.2% | ~3300 ms (CPU) / ~300 ms (MPS) |
-| **BM25 + D7 + reranker (full stack)** | **64.0%** | **91.0%** | **94.7%** | ~3300 ms |
+| BM25 (kit core) | 59.5% | 84.8% | 92.4% | <1 ms |
+| **BM25 + D7 (default)** | **58.2%** | **87.3%** | **94.9%** | <1 ms |
+| BM25 + reranker | 63.3% | 86.1% | **88.6% ⚠️** | ~3300 ms (CPU) / ~300 ms (MPS) |
+| BM25 + D7 + reranker | 62.0% | 87.3% | 92.4% | ~3300 ms |
+
+**Train set (322 clean questions), for comparison:**
+
+| retriever | Cov@10 train | Cov@10 blind | gap |
+|---|---|---|---|
+| BM25 | 91.3% | 92.4% | +1.1pp (generalizes well) |
+| BM25 + D7 | 93.2% | 94.9% | +1.7pp (generalizes well) |
+| BM25 + D7 + reranker | 94.7% | 92.4% | **−2.3pp (overfit signal)** |
+
+The reranker mode is documented as available but no longer the default.
+Train-set looked great; blind set told the truth.
 
 **Notable negative results:** modern dense retrievers (MiniLM, BGE) and hybrid
 RRF both **lose decisively** to BM25 alone on this vault. Reason: small,

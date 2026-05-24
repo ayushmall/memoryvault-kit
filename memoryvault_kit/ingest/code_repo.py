@@ -318,15 +318,42 @@ updated: "{merged_at}"
     return path
 
 
-def _fetch_prs_via_gh(full: str, max_n: int) -> list[dict]:
-    """Use gh CLI to fetch merged PRs as JSON."""
+def _fetch_prs_via_gh(full: str, max_n: int, since: str | None = None) -> list[dict]:
+    """Use gh CLI to fetch merged PRs as JSON.
+
+    If `since` (ISO date) is given, only PRs merged after that date are
+    returned. Used for delta-ingest.
+    """
     fields = "number,title,body,author,mergedAt,files,labels,state"
     cmd = ["gh", "pr", "list", "-R", full, "-s", "merged", "-L", str(max_n),
            "--json", fields]
+    if since:
+        cmd += ["-S", f"merged:>={since}"]
     rc, out, err = _run(cmd)
     if rc != 0:
         raise RuntimeError(f"gh pr list failed: {err.strip()}")
     return json.loads(out)
+
+
+# ---------------------------------------------------------------------------
+# Per-repo state for delta-ingest
+# ---------------------------------------------------------------------------
+
+def _state_path(repo_slug: str) -> Path:
+    return VAULT / ".mvkit" / "code_state" / f"{repo_slug}.json"
+
+
+def load_state(repo_slug: str) -> dict:
+    p = _state_path(repo_slug)
+    if not p.exists():
+        return {}
+    return json.loads(p.read_text())
+
+
+def save_state(repo_slug: str, state: dict):
+    p = _state_path(repo_slug)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(state, indent=2))
 
 
 def _read_metadata(local: Path) -> dict:
@@ -396,14 +423,22 @@ def ingest(repo_arg: str, mode: str, max_prs: int = 50, dry_run: bool = False):
             print(f"  No GitHub remote — can't fetch PRs. Skipping PR ingest.")
             return
         # Load product config (may be empty if user hasn't set one up)
-        products_config = load_products(_slugify(name))
+        slug = _slugify(name)
+        products_config = load_products(slug)
         if products_config:
             print(f"  Product config: {len(products_config)} products defined")
         else:
             print(f"  No product config (run --suggest-products to create one)")
+
+        # Delta-ingest: if we've ingested this repo before, only fetch new PRs
+        state = load_state(slug)
+        last_merged = state.get("last_merged_at")
+        if last_merged:
+            print(f"  Delta mode: last ingest was at {last_merged}, fetching newer PRs only")
+
         print(f"  Fetching up to {max_prs} merged PRs via gh CLI...")
         try:
-            prs = _fetch_prs_via_gh(full, max_prs)
+            prs = _fetch_prs_via_gh(full, max_prs, since=last_merged)
         except RuntimeError as e:
             print(f"  ERROR: {e}")
             return
@@ -429,6 +464,17 @@ def ingest(repo_arg: str, mode: str, max_prs: int = 50, dry_run: bool = False):
         for pr in prs:
             mp = _write_pr_memory(name, full, pr, products_config=products_config)
         print(f"  ✓ Wrote {len(prs)} PR memories to memories/2026/")
+
+        # Save state for delta-ingest: track the most-recent mergedAt we ingested
+        if prs:
+            latest = max((pr.get("mergedAt", "") for pr in prs), default=last_merged or "")
+            if latest:
+                save_state(slug, {
+                    "last_merged_at": latest,
+                    "last_ingested_at": datetime.utcnow().isoformat() + "Z",
+                    "total_prs_ingested": (state.get("total_prs_ingested", 0) + len(prs)),
+                })
+                print(f"  ✓ Updated delta state: next run skips PRs ≤ {latest}")
 
 
 def run_suggest_products(repo_arg: str):
@@ -469,6 +515,8 @@ def main():
                     help="(DANGER) read source contents; requires MVKIT_ENTERPRISE=1")
     ap.add_argument("--suggest-products", action="store_true",
                     help="scan top-level dirs and write a products.json template")
+    ap.add_argument("--awareness", action="store_true",
+                    help="recommended first-time flow: metadata + PRs in one go")
     ap.add_argument("--max", type=int, default=50, help="max PRs to ingest")
     ap.add_argument("--dry-run", action="store_true", help="don't write, just show")
     args = ap.parse_args()
@@ -477,9 +525,26 @@ def main():
         run_suggest_products(args.repo)
         return
 
+    if getattr(args, "awareness", False):
+        # Combined flow: metadata pass first, then PRs. Captures both the
+        # codebase's shape AND its ongoing state in one command.
+        # This is the recommended "first-time per repo" path.
+        print()
+        print("  === Phase 1/2: Structural pass (metadata only) ===")
+        ingest(args.repo, "metadata", max_prs=args.max, dry_run=args.dry_run)
+        print()
+        print("  === Phase 2/2: Ongoing state pass (PR backfill) ===")
+        ingest(args.repo, "prs", max_prs=args.max, dry_run=args.dry_run)
+        print()
+        print("  ✓ Awareness ingest complete.")
+        print(f"    For ongoing updates, re-run with --prs (delta mode kicks in automatically).")
+        print(f"    Or schedule: mv schedule --code-refresh {args.repo}")
+        return
+
     flags = [args.metadata, args.prs, args.source]
     if sum(flags) != 1:
-        ap.error("specify exactly one of --metadata, --prs, --source, --suggest-products")
+        ap.error("specify exactly one of --metadata, --prs, --source, "
+                 "--suggest-products, --awareness")
 
     mode = "metadata" if args.metadata else ("prs" if args.prs else "source")
     ingest(args.repo, mode, max_prs=args.max, dry_run=args.dry_run)

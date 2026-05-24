@@ -29,7 +29,7 @@ ALIAS_MAP_PATH = next(
 
 ALIAS_BLOCKLIST = {
     "customer", "vendor", "founder", "ceo", "cto", "tech lead", "eng lead",
-    "engineering lead", "agents", "viz", "ace", "vab", "pf", "wow", "cls",
+    "engineering lead", "agents", "viz",
     "scim", "sso", "mcp", "gcp", "okta", "gui",
 }
 
@@ -71,6 +71,11 @@ def parse_memory(path: Path) -> dict:
         importance = 0.5
     title = fm.get("title", "").strip().strip('"').strip("'")
     mem_id = fm.get("id", path.stem).strip().strip('"').strip("'")
+    # Pull common structured fields (priority, state, type, source) for D11
+    # filter retrieval. Other downstream code (retrievers, eval) doesn't read
+    # these directly; they're available via mem["fm"] for filters.
+    def _strip(s):
+        return (s or "").strip().strip('"').strip("'") if isinstance(s, str) else s
     return {
         "id": mem_id,
         "title": title,
@@ -79,6 +84,15 @@ def parse_memory(path: Path) -> dict:
         "importance": importance,
         "body": body,
         "path": str(path),
+        # Extra structured fields for filter-based retrieval (D11):
+        "type": _strip(fm.get("type")),
+        "state": _strip(fm.get("state")),
+        "priority": _strip(fm.get("priority")),
+        "source": _strip(fm.get("source")),
+        "assignee": _strip(fm.get("assignee")),
+        "updated": _strip(fm.get("updated")),
+        "created": _strip(fm.get("created")),
+        "fm": fm,  # full raw frontmatter for any other field
     }
 
 

@@ -56,9 +56,260 @@ PATTERNS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# D11 — Structured-filter retrieval
+# ---------------------------------------------------------------------------
+#
+# Many planning queries are *structured filters*, not keyword searches:
+#   "What high-priority items are in Backlog?"
+#   "Issues assigned to me labeled Bug"
+#   "What's open in the current cycle?"
+#
+# BM25 can't answer these via keyword scoring. The right mechanic: parse the
+# query into a structured-filter spec, apply filters on frontmatter fields,
+# then sort by priority (lower number = more urgent) and recency.
+#
+# Detected filter dimensions:
+#   priority:    urgent | high | medium | low | no-priority
+#   state:       backlog | in-progress | done | completed | cancelled
+#   assignee:    "me" | specific person name (resolved via alias map)
+#   labels/tags: any of "bug", "feature", "request", etc.
+#   recency:     "this week", "this month", "today"
+
+# Priority keyword → numeric mapping (matches Linear's scale)
+PRIORITY_KEYWORDS = {
+    "urgent": 1, "p1": 1, "critical": 1, "blocker": 1,
+    "high": 2, "high-priority": 2, "high priority": 2, "p2": 2,
+    "medium": 3, "med": 3, "p3": 3,
+    "low": 4, "low-priority": 4, "low priority": 4, "p4": 4,
+    "no-priority": 0, "no priority": 0,
+}
+
+# Owner-relationship keywords for "what am I leading" style queries.
+RELATION_KEYWORDS = {
+    "leading": "lead", "lead": "lead", "i lead": "lead",
+    "owning": "owner", "own": "owner", "i own": "owner",
+    "mine": "_mine",  # special: matches lead OR owner OR creator OR member
+    "my projects": "_mine", "my initiatives": "_mine",
+    "creator of": "creator", "i created": "creator",
+    "member of": "member", "i'm on": "member",
+    "team-adjacent": "team-adjacent", "my team": "_team",
+    "adjacent": "team-adjacent",
+}
+
+STATE_KEYWORDS = {
+    "backlog": "backlog",
+    "in progress": "started", "in-progress": "started", "active": "started",
+    "in review": "started", "in-review": "started", "review": "started",
+    "done": "completed", "completed": "completed", "shipped": "completed",
+    "closed": "completed",
+    "cancelled": "cancelled", "canceled": "cancelled",
+    "duplicate": "duplicate",
+    "open": "_open",   # special: matches any non-terminal state
+}
+
+LABEL_KEYWORDS = {
+    # common bucket signals
+    "bug", "bugs", "feature", "features", "request", "requests",
+    "blocker", "blockers", "issue", "issues",
+}
+
+
+def detect_filter_query(question: str) -> dict | None:
+    """If the question is a structured filter, return a filter spec dict.
+
+    Returns None when the question doesn't look like a structured query.
+    The spec dict has shape:
+      {
+        priority: int (1-4) or None
+        state: str ("backlog"|"started"|"completed"|"cancelled") or "_open" or None
+        assignee: "me" | canonical_name | None
+        labels: [str] or []
+        is_filter_query: bool  # set True if we found ≥1 dimension
+      }
+    """
+    q = question.lower()
+    spec = {"priority": None, "state": None, "assignee": None,
+            "labels": [], "owner_relation": None,
+            "is_filter_query": False, "matched_phrases": []}
+
+    # Priority
+    for kw, val in PRIORITY_KEYWORDS.items():
+        # Whole-word or phrase match
+        if re.search(rf"\b{re.escape(kw)}\b", q):
+            spec["priority"] = val
+            spec["matched_phrases"].append(f"priority={kw}")
+            break
+
+    # State
+    for kw, val in STATE_KEYWORDS.items():
+        if re.search(rf"\b{re.escape(kw)}\b", q):
+            spec["state"] = val
+            spec["matched_phrases"].append(f"state={kw}")
+            break
+
+    # Assignee
+    if re.search(r"\b(?:assigned to me|my (?:issues|tickets|items|tasks|prs|bugs)|i own|i'?m working on)\b", q):
+        spec["assignee"] = "me"
+        spec["matched_phrases"].append("assignee=me")
+    else:
+        m = re.search(r"\bassigned to ([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)\b", question)
+        if m:
+            spec["assignee"] = m.group(1)
+            spec["matched_phrases"].append(f"assignee={m.group(1)}")
+
+    # Labels — pick up common bucket words OR explicit "labeled X" pattern
+    m = re.search(r"\blabel(?:ed|s)?\s+([a-zA-Z][a-zA-Z0-9 _-]*)\b", q)
+    if m:
+        spec["labels"].append(m.group(1).strip())
+        spec["matched_phrases"].append(f"label={m.group(1)}")
+    # Bare label-like words ("bugs", "feature requests")
+    for word in LABEL_KEYWORDS:
+        if re.search(rf"\b{word}\b", q):
+            spec["labels"].append(word.rstrip("s"))  # bugs → bug
+            spec["matched_phrases"].append(f"label-implicit={word}")
+            break  # one is enough
+
+    # Owner relationship — "what am I leading", "my projects", "team-adjacent"
+    for kw, val in RELATION_KEYWORDS.items():
+        if re.search(rf"\b{re.escape(kw)}\b", q):
+            spec["owner_relation"] = val
+            spec["matched_phrases"].append(f"relation={kw}")
+            break
+
+    # A filter query needs structured-filter signal. Two ways to qualify:
+    #   (a) one dimension + an explicit query word ("what high priority items?")
+    #   (b) two+ dimensions, even without a question word
+    #       ("high priority backlog assigned to me" is clearly a filter)
+    dims_matched = sum(
+        1 for v in (spec["priority"], spec["state"], spec["assignee"], spec["labels"], spec["owner_relation"])
+        if (v is not None and v != [] and v != False)
+    )
+    has_query_word = bool(
+        re.search(r"\b(what|which|list|show|find|give|any|all|how many|count|my)\b", q)
+    )
+    spec["is_filter_query"] = (dims_matched >= 1 and has_query_word) or (dims_matched >= 2)
+    return spec if spec["is_filter_query"] else None
+
+
+def retrieve_by_filters(spec: dict, all_docs: list, k: int = 10, user_alias: str = "Ayush Mall") -> list[dict]:
+    """Filter memories by the structured spec. Sort by priority + recency.
+
+    If `owner_relation` filter is set, retrieves from project ENTITIES
+    (not memories) since vault_owner_relation lives there.
+    """
+    priority_filter = spec.get("priority")
+    state_filter = spec.get("state")
+    assignee_filter = spec.get("assignee")
+    label_filters = [l.lower() for l in (spec.get("labels") or [])]
+    relation_filter = spec.get("owner_relation")
+
+    # Special case: owner-relation queries look at ENTITY files, not memories.
+    # Load project entities from disk and filter by vault_owner_relation.
+    if relation_filter:
+        from pathlib import Path
+        ent_dir = VAULT / "entities" / "projects"
+        if not ent_dir.is_dir():
+            return []
+        matches = []
+        rel_set = {relation_filter}
+        if relation_filter == "_mine":
+            rel_set = {"owner", "lead", "creator", "member"}
+        elif relation_filter == "_team":
+            rel_set = {"owner", "lead", "creator", "member", "team-adjacent"}
+        for path in ent_dir.glob("*.md"):
+            text = path.read_text()
+            rm = re.search(r'vault_owner_relation:\s*"([^"]+)"', text)
+            if not rm or rm.group(1) not in rel_set:
+                continue
+            # Parse name + updated for ranking
+            nm = re.search(r'^name:\s*"?([^"\n]+?)"?\s*$', text, re.MULTILINE)
+            um = re.search(r'updated:\s*"?([^"\n]+?)"?\s*$', text, re.MULTILINE)
+            matches.append({
+                "id": f"entity:{path.stem}",
+                "title": nm.group(1) if nm else path.stem,
+                "score": 100.0,
+                "source": "owner-relation-filter",
+                "relation": rm.group(1),
+                "updated": um.group(1) if um else "",
+            })
+        # Sort: most recent updated first
+        matches.sort(key=lambda x: -(_parse_date(x.get("updated")).timestamp() if _parse_date(x.get("updated")) != datetime.min else 0))
+        return matches[:k]
+
+    if assignee_filter == "me":
+        assignee_filter = user_alias  # caller can override; default for now
+
+    matches = []
+    for d in all_docs:
+        mem = d["mem"]
+        # Priority match
+        if priority_filter is not None:
+            mem_prio = mem.get("priority")
+            try:
+                mem_prio = int(mem_prio) if mem_prio is not None else None
+            except (ValueError, TypeError):
+                mem_prio = None
+            if mem_prio != priority_filter:
+                continue
+        # State match
+        if state_filter:
+            mem_state = (mem.get("state") or "").lower()
+            mem_tags = [t.lower() for t in (mem.get("tags", []) or [])]
+            if state_filter == "_open":
+                # "open" means not completed/cancelled/duplicate
+                if mem_state in {"done", "completed", "cancelled", "canceled", "duplicate"}:
+                    continue
+                # Also require the memory looks like an issue (has state field)
+                if not mem_state:
+                    continue
+            else:
+                # Direct state match — but also check tags (e.g. state_type)
+                state_matched = (state_filter in mem_state) or (state_filter in mem_tags)
+                # Special: "started" could be the state type
+                if state_filter == "started" and ("started" in mem_tags or "in-progress" in mem_tags or "in progress" in mem_state):
+                    state_matched = True
+                if not state_matched:
+                    continue
+        # Assignee match (via entity wikilinks)
+        if assignee_filter:
+            entities = [e.lower() for e in (mem.get("entities", []) or [])]
+            if not any(assignee_filter.lower() in e for e in entities):
+                continue
+        # Label match — at least one label must match if any specified
+        if label_filters:
+            mem_tags = [t.lower() for t in (mem.get("tags", []) or [])]
+            if not any(any(lf in t for t in mem_tags) for lf in label_filters):
+                continue
+        matches.append(d)
+
+    # Sort: priority asc (1=urgent first), then updated desc
+    def sort_key(d):
+        mem = d["mem"]
+        try:
+            p = int(mem.get("priority", 99))
+        except (ValueError, TypeError):
+            p = 99
+        # treat 0 (no-priority) as least-urgent
+        p_sort = p if p > 0 else 99
+        dt = _parse_date(mem.get("updated") or mem.get("created"))
+        return (p_sort, -(dt.timestamp() if dt != datetime.min else 0))
+
+    matches.sort(key=sort_key)
+    return [
+        {
+            "id": d["mem"]["id"],
+            "score": 100.0 - i,
+            "title": d["mem"].get("title", ""),
+            "source": "structured-filter",
+        }
+        for i, d in enumerate(matches[:k])
+    ]
+
+
 # Attribute-lookup patterns (D10). Captures (type_or_tag, entity_surface).
-# Example: "Which decisions did Vivek make or weigh in on?"
-#          → type="decision", entity="Vivek"
+# Example: "Which decisions did Alex make or weigh in on?"
+#          → type="decision", entity="Alex"
 # These need attribute-filtered retrieval, not BM25 ranking.
 ATTRIBUTE_PATTERNS = [
     # "which decisions did X make/own/weigh in on / etc."
@@ -222,11 +473,20 @@ def retrieve_by_entity_and_attribute(
 
 def try_entity_lookup(question: str, index: dict, k: int = 10) -> tuple[list[dict] | None, str]:
     """Main entry. Returns (results, reason).
-    Tries two short-circuit paths in priority order:
-      1. Attribute-lookup ("which decisions did X make") — D10
-      2. Latest-on-entity ("what's the latest on X") — D7
-    Returns None if neither pattern matched.
+    Tries three short-circuit paths in priority order:
+      1. Structured-filter retrieval ("high-priority backlog items") — D11
+      2. Attribute-lookup ("which decisions did X make") — D10
+      3. Latest-on-entity ("what's the latest on X") — D7
+    Returns None if no pattern matched.
     """
+    # D11: structured-filter retrieval (priority/state/assignee/labels)
+    filter_spec = detect_filter_query(question)
+    if filter_spec:
+        results = retrieve_by_filters(filter_spec, index["docs"], k=k)
+        if results:
+            phrases = ", ".join(filter_spec.get("matched_phrases", []))
+            return results, f"structured-filter: {phrases}"
+
     # D10: attribute-lookup ("which decisions did X make")
     attr = detect_attribute_query(question)
     if attr:

@@ -10,6 +10,35 @@ references their work — a person they know, a customer they have, a project
 they're on, a decision they've made — query the vault FIRST, then answer
 based on what comes back.
 
+## When retrieval misses — log the gap
+
+If `memory_ask` returns no useful results (top scores are low, or the
+results aren't related to the question), this is a memory gap. Append it
+to `<vault>/.mvkit/memory-gaps.md` so the next capture session knows to
+fill it. Format:
+
+    - [ ] <user's original question>  — observed YYYY-MM-DD, source: <session context>
+
+This closes the loop — retrieval failures become authoring inputs.
+Without this step, the vault never learns what it should have known.
+
+## Anchor on mature entities first
+
+Before searching, peek at `<vault>/.mvkit/mature_entities.md` (also
+machine-readable JSON in the same dir). It lists the densely-linked
+"hub" + "mature" entities — the people / projects / customers / teams
+that anchor the most context.
+
+If the user's question mentions one of those entities verbatim or by
+alias, prefer entity-mediated retrieval (D7 short-circuit) over plain
+BM25 — the kit already does this internally, but the mature list tells
+*you* "this is a real anchor, expect rich context" vs "this is a stub,
+expect sparse context."
+
+For ambiguous questions ("what's happening with our team"), the mature
+list also tells you which team / project to pivot to. Always prefer the
+hub entity over a stub of the same name.
+
 ## How to use
 
 Call the `memoryvault.memory_ask` MCP tool with:

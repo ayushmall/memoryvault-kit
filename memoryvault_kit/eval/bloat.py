@@ -15,8 +15,11 @@ Four metrics, computed from the existing eval question set:
   1. tokens_per_query           — average tokens added to the context per question
   2. coverage_saturation_curve  — gold-hit-rate at k=1, 3, 5, 10, 20
   3. tail_tier_hit_rate         — at each rank position, what % was a gold memory?
-  4. bloat_ratio                — fraction of returned tokens that did NOT come from
-                                  a gold-memory item
+  4. non_gold_token_fraction    — fraction of returned tokens NOT from a gold
+                                  memory. NOT a "bloat" metric: non-gold
+                                  items often carry useful supporting context.
+                                  Treat this as raw data, not a quality
+                                  judgment.
 
 Optional 5th metric:
   5. judge_utility              — Claude-as-judge per item; "did this item help?"
@@ -322,7 +325,7 @@ def print_report(r: dict):
     print()
 
     print("  Coverage + bloat tradeoff at each k")
-    print(f"  {'k':>4} {'coverage':>10} {'Δ vs prev':>12} {'bloat%':>10} {'tok/query':>11}")
+    print(f"  {'k':>4} {'coverage':>10} {'Δ vs prev':>12} {'non-gold%':>10} {'tok/query':>11}")
     prev = 0.0
     for k in K_LADDER:
         c = r["coverage_at_k"][k]
@@ -345,7 +348,7 @@ def print_report(r: dict):
     print()
     print(f"  → suggested default k = {rec}   "
           f"(within-5pp knee; sane tradeoff for most users)")
-    print(f"  → bloat ratio at k={rec}: {r['bloat_ratio_at_k'][rec]*100:.1f}% "
+    print(f"  → non-gold token fraction at k={rec}: {r['bloat_ratio_at_k'][rec]*100:.1f}% "
           f"of returned tokens come from non-gold items")
     print()
 

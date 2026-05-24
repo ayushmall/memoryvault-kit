@@ -13,6 +13,38 @@ The full module is at `memoryvault_kit/ingest/code_repo.py`.
 
 ---
 
+## What this is — and what it's not
+
+> **The kit's code understanding ≠ Cursor's index.**
+>
+> Cursor indexes every line of source so it can write code. The kit is a
+> *memory*, not a code-gen tool. You don't need every function signature,
+> every implementation detail, every comment. You need to know:
+>
+> - **What products live in this repo** (structural understanding, captured once)
+> - **Who's working on what** (ongoing — captured from PRs)
+> - **What changed recently** (ongoing — captured from PRs)
+> - **What was the reasoning** (captured from PR descriptions, not the code itself)
+>
+> So this skill does two passes:
+>
+> 1. **Initial structural pass** — one-time, reads README + directory layout
+>    + product config to map the surface. This is "the codebase's shape."
+>
+> 2. **Ongoing PR pass** — captures merged PRs as memories. Title +
+>    description + files-changed-paths. **Never source contents.** This
+>    is "what's happening in the codebase."
+>
+> Together those give you an *engineer's memory* — context for "who's
+> working on the SDK area," "what's the latest on the auth subsystem," "why did
+> we ship that caching change" — without ever flowing source code through
+> an LLM.
+>
+> If you want the kit to write code, use Claude Code/Cursor. If you want
+> the kit to *remember* what's happening in the code, use this skill.
+
+---
+
 ## Safety check (read first, never skip)
 
 Before ingesting code, confirm you have authorization:

@@ -100,7 +100,7 @@ End with action items if any.
 
 For each entity name you'd write in a memory, follow this resolution order:
 
-1. **Exact match.** `[[Acme]]` — find `entities/companies/conocophillips.md` because
+1. **Exact match.** `[[Acme]]` — find `entities/companies/acme-corp.md` because
    `Acme` is in its `aliases:`. Use the canonical name in the wikilink: `[[Acme Corp]]`.
 2. **First-name match for people.** `[[Lisa]]` should match `Lisa Chen` if Lisa
    is an unambiguous first name. Use canonical: `[[Lisa Chen]]`. Run
