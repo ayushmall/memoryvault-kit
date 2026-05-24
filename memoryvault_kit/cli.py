@@ -454,6 +454,29 @@ def cmd_eval(args):
             print(f"already exists: {questions_path}")
             return 0
         eval_dir.mkdir(parents=True, exist_ok=True)
+
+        # New: generate from the user's actual vault instead of placeholders
+        if getattr(args, "from_vault", False):
+            from memoryvault_kit.eval.generate import generate_eval_set
+            n = getattr(args, "n", 30)
+            qs = generate_eval_set(n_total=n)
+            if not qs:
+                print(f"No memories found in vault at {vault}/memories/. "
+                      f"Add some memories first, then re-run.")
+                return 1
+            with questions_path.open("w") as f:
+                for q in qs:
+                    f.write(json.dumps(q) + "\n")
+            print(f"Generated {len(qs)} questions from your vault → {questions_path}")
+            from collections import Counter
+            c = Counter(q["bucket"] for q in qs)
+            for bucket, count in c.most_common():
+                print(f"  {bucket:<25} {count}")
+            print()
+            print(f"Run `mv eval run` to score them against your retriever.")
+            return 0
+
+        # Default: placeholder templates (legacy)
         seed = [
             {"id": "q001", "bucket": "needle-in-haystack",
              "question": "What did <person> request in <month>?",
@@ -471,8 +494,9 @@ def cmd_eval(args):
         with questions_path.open("w") as f:
             for q in seed:
                 f.write(json.dumps(q) + "\n")
-        print(f"Wrote starter eval set to {questions_path}")
-        print(f"Edit it to add real questions. See docs/eval_methodology.md.")
+        print(f"Wrote 3 starter templates to {questions_path}")
+        print(f"Edit them, or run `mv eval init --from-vault` to auto-generate "
+              f"real questions from your memories.")
         return 0
 
     if args.action == "run":
@@ -736,6 +760,12 @@ def main():
     s.add_argument("action", choices=["init", "run", "add", "pipeline"])
     s.add_argument("--retriever", choices=["bm25", "graph"], help="for `run`")
     s.add_argument("--log", action="store_true", help="for `run`: append to results_log.jsonl")
+    # init-specific
+    s.add_argument("--from-vault", action="store_true",
+                   help="(init) generate real questions from your actual vault "
+                        "instead of placeholder templates")
+    s.add_argument("--n", type=int, default=30,
+                   help="(init --from-vault) number of questions to generate")
     # pipeline-specific args
     s.add_argument("--captured", type=int, help="(pipeline) memories captured in time window")
     s.add_argument("--total-events", type=int, help="(pipeline) total real-world events in window")

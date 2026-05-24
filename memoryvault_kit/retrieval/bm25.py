@@ -70,8 +70,9 @@ def parse_memory(path: Path) -> dict:
     except ValueError:
         importance = 0.5
     title = fm.get("title", "").strip().strip('"').strip("'")
+    mem_id = fm.get("id", path.stem).strip().strip('"').strip("'")
     return {
-        "id": fm.get("id", path.stem),
+        "id": mem_id,
         "title": title,
         "entities": entities,
         "tags": tags,
