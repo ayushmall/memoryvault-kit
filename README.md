@@ -29,7 +29,7 @@ Three reasons to adopt this. Any one alone is sufficient.
 
 ### 1. Retrieval that's measurably better, faster, and reproducible
 
-- **Coverage@10 = 93.2%** on a 322-question hardened eval set (BM25 + entity
+- **Coverage@10 = 94.7%** on a 322-question hardened eval set (BM25 + entity
   graph + cross-encoder reranker + entity-mediated short-circuit).
 - BM25-only baseline: 91.3%. Naive grep: 58%. Modern dense embeddings
   (BGE-small): 70.6% — they actually *lose* to BM25 here, because this vault
@@ -41,7 +41,7 @@ Three reasons to adopt this. Any one alone is sufficient.
   regression. You can audit ranking decisions (each result shows the score
   breakdown).
 
-> **Honesty caveat:** the 93.2% is measured on the *training half* of the
+> **Honesty caveat:** the 94.7% is measured on the *training half* of the
 > author-annotated eval set. A 20% blind set is held out; the blind-set
 > number will be reported separately. Treat the train-set number as an
 > upper bound. See `memoryvault_kit/eval/` for the full pipeline.
@@ -231,8 +231,9 @@ below are train-set only.
 | Dense — `BGE-small-en-v1.5` | 41.1% | 66.1% | 70.6% | 69 ms |
 | Hybrid (BM25 + dense RRF) | 52.9% | 74.8% | 83.5% | ~70 ms |
 | **BM25 (kit core)** | 55.6% | 84.8% | 91.3% | <1 ms |
+| BM25 + D7 entity-lookup | 57.5% | 87.6% | 93.2% | <1 ms |
 | BM25 + reranker | 62.4% | 88.8% | 93.2% | ~3300 ms (CPU) / ~300 ms (MPS) |
-| **BM25 + D7 + reranker (full stack)** | **63.7%** | **89.4%** | **93.2%** | ~3300 ms |
+| **BM25 + D7 + reranker (full stack)** | **64.0%** | **91.0%** | **94.7%** | ~3300 ms |
 
 **Notable negative results:** modern dense retrievers (MiniLM, BGE) and hybrid
 RRF both **lose decisively** to BM25 alone on this vault. Reason: small,
@@ -240,11 +241,14 @@ name-dense corpora favor BM25's rare-token IDF over dense semantic similarity.
 Documented to avoid the "modern is better" trap.
 
 **Per-bucket lift** (BM25 vs full stack, Cov@5):
-- alias: 40.0% → 65.7% (+25.7pp) — entity-mediated short-circuit handles "latest on X" queries
+- alias: 40.0% → 65.7% (+25.7pp) — entity-mediated short-circuit handles attribute-lookup queries
 - needle: 71.4% → 81.6% (+10.2pp)
+- lateral: 66.7% → 75.8% (+9.1pp) — D10 attribute-lookup short-circuit
 - paraphrase: 86.1% → 94.4% (+8.3pp)
+- disambiguation: 94.7% → 100.0% (+5.3pp)
+- aggregate: 94.4% → 97.2% (+2.8pp)
+- temporal: 95.0% → 97.5% (+2.5pp)
 - multi-hop: 100% → 100%
-- temporal: 95.0% → 97.5%
 
 Reproduce on your own vault: `python3 -m memoryvault_kit.retrieval.combined --eval`.
 
