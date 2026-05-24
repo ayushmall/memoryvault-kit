@@ -29,13 +29,22 @@ Three reasons to adopt this. Any one alone is sufficient.
 
 ### 1. Retrieval that's measurably better, faster, and reproducible
 
-- R@5 = 0.87 on a 482-question hardened eval set, vs grep 0.58 and
-  sentence-transformers 0.57. The kit beats both with 95% CIs that don't overlap.
-- <100ms per query — single MCP call instead of multi-second LLM-mediated
-  grep loops.
+- **Coverage@10 = 93.2%** on a 322-question hardened eval set (BM25 + entity
+  graph + cross-encoder reranker + entity-mediated short-circuit).
+- BM25-only baseline: 91.3%. Naive grep: 58%. Modern dense embeddings
+  (BGE-small): 70.6% — they actually *lose* to BM25 here, because this vault
+  is small and name-dense (BM25's strength). Hybrid RRF also loses (-5pp).
+  Negative results are documented.
+- Latency: BM25-only <100ms p50. With reranker enabled: ~300ms on Apple
+  Silicon GPU, ~3s on CPU. Pick based on quality/latency need.
 - Deterministic: same input → same output. You can test it. You can detect
-  regression. You can audit ranking decisions (each result shows `bm25=...
-  graph=+...` score breakdown).
+  regression. You can audit ranking decisions (each result shows the score
+  breakdown).
+
+> **Honesty caveat:** the 93.2% is measured on the *training half* of the
+> author-annotated eval set. A 20% blind set is held out; the blind-set
+> number will be reported separately. Treat the train-set number as an
+> upper bound. See `memoryvault_kit/eval/` for the full pipeline.
 
 ### 2. Your memory becomes a service every AI tool can plug into
 
@@ -209,20 +218,35 @@ See `docs/retrieval_internals.md` for the full math + tuning notes.
 
 ## Benchmarks
 
-Measured on the maintainer's personal 470-memory vault against a 220-question
-eval set across 10 failure-mode buckets (needle, multi-hop, alias,
+Measured on the maintainer's personal 470-memory vault against a 322-question
+clean eval set across 10 failure-mode buckets (needle, multi-hop, alias,
 disambiguation, aggregate, lateral, paraphrase, temporal, negation-rejection,
-abstention).
+abstention). 95 additional questions are held out as a blind set; the numbers
+below are train-set only.
 
-| retriever | R@5 | R@10 | MRR | Entity@5 |
+| retriever | Cov@1 | Cov@5 | **Cov@10** | latency p50 |
 |---|---|---|---|---|
-| grep (baseline) | 0.660 | 0.779 | 0.646 | 0.618 |
-| BM25 (kit core) | 0.850 | 0.905 | 0.811 | 0.783 |
-| **graph_walk (kit full)** | **0.864** | **0.920** | **0.823** | **0.796** |
+| grep (baseline) | 30.2% | 51.2% | 58.0% | — |
+| Dense — `all-MiniLM-L6-v2` | 37.5% | 59.8% | 67.9% | 54 ms |
+| Dense — `BGE-small-en-v1.5` | 41.1% | 66.1% | 70.6% | 69 ms |
+| Hybrid (BM25 + dense RRF) | 52.9% | 74.8% | 83.5% | ~70 ms |
+| **BM25 (kit core)** | 55.6% | 84.8% | 91.3% | <1 ms |
+| BM25 + reranker | 62.4% | 88.8% | 93.2% | ~3300 ms (CPU) / ~300 ms (MPS) |
+| **BM25 + D7 + reranker (full stack)** | **63.7%** | **89.4%** | **93.2%** | ~3300 ms |
 
-**Per-question decomposition:** 23% of questions fail with naive grep but
-succeed with the kit. Multi-hop and alias buckets lift by **+0.37** and
-**+0.34** respectively. Reproduce on your own vault with `mv eval run`.
+**Notable negative results:** modern dense retrievers (MiniLM, BGE) and hybrid
+RRF both **lose decisively** to BM25 alone on this vault. Reason: small,
+name-dense corpora favor BM25's rare-token IDF over dense semantic similarity.
+Documented to avoid the "modern is better" trap.
+
+**Per-bucket lift** (BM25 vs full stack, Cov@5):
+- alias: 40.0% → 65.7% (+25.7pp) — entity-mediated short-circuit handles "latest on X" queries
+- needle: 71.4% → 81.6% (+10.2pp)
+- paraphrase: 86.1% → 94.4% (+8.3pp)
+- multi-hop: 100% → 100%
+- temporal: 95.0% → 97.5%
+
+Reproduce on your own vault: `python3 -m memoryvault_kit.retrieval.combined --eval`.
 
 ---
 
