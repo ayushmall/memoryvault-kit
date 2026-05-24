@@ -5,9 +5,35 @@ description: Ingest the last 24-48h of activity from the user's connected source
 
 # memory-refresh
 
-This is an agentic workflow. The full runbook is in `memoryvault_kit/ingest/agent_prompt.md`.
+This is a **living document.** It tracks both what to do AND what's already
+been set up. The agent reads it before acting; when steps complete, the agent
+edits this file to mark them done (checkbox + strikethrough + date). When the
+agent comes back later, it sees the marks and skips the done work.
 
-## High-level flow
+See [`docs/skill-conventions.md`](../../docs/skill-conventions.md) for the
+full markdown signal vocabulary this skill uses.
+
+The full runbook is at `memoryvault_kit/ingest/agent_prompt.md`.
+
+---
+
+## One-time setup
+
+Run these once per machine. Mark each done as you complete it.
+
+- [ ] Verify `MEMORYVAULT_ROOT` is set: `echo $MEMORYVAULT_ROOT` — should print the vault path
+- [ ] Verify the kit is installed: `mv --version`
+- [ ] Confirm at least one ingest MCP is connected (Granola, Slack, Gmail, etc.)
+- [ ] Run `mv daily --dry-run` once to verify the lint+heal+audit pipeline works
+- [ ] Schedule recurring refresh: `mv schedule --daily 6am`
+
+When all five are checked, the agent skips this section on future runs.
+
+---
+
+## Daily / on-demand routine
+
+This is the recurring flow. Don't strike these out — they run every time.
 
 1. **Orient**: get today's date, confirm vault location via `$MEMORYVAULT_ROOT`
 2. **Pull from each connected MCP** (Granola, Slack, Calendar, Notion, GDrive, Gmail, Linear):
@@ -17,6 +43,8 @@ This is an agentic workflow. The full runbook is in `memoryvault_kit/ingest/agen
 3. **Write memories** using `memory-save` for each item, with proper entity wikilinks
 4. **Run `mv daily`** to lint, heal, audit, regenerate INDEX.md, rebuild dashboard
 5. **Report** a concise summary: N memories written, M new entities, health status
+
+---
 
 ## Selectivity rules
 
@@ -29,11 +57,15 @@ This is an agentic workflow. The full runbook is in `memoryvault_kit/ingest/agen
 | Notion | pages USER updated | shared workspaces user doesn't edit |
 | Gmail | starred + labeled `MV-ingest` only | inbox firehose |
 
+---
+
 ## Stop conditions
 
 - Empty inbox across all sources → skip ingestion, just run `mv daily`
 - Any source returns >200 items → abort that source, warn (probably a re-sync)
 - MCP unreachable → skip + log, don't fail the whole run
+
+---
 
 ## Report format
 
@@ -48,3 +80,15 @@ This is an agentic workflow. The full runbook is in `memoryvault_kit/ingest/agen
   2. ...
 • Needs human triage: <flagged items, if any>
 ```
+
+---
+
+## Archive — superseded instructions
+
+Old guidance the agent should NOT follow. Kept for history; never re-enable
+without explicit user direction.
+
+- ~~Use `grep_baseline` to search before BM25~~
+  <!-- struck 2026-05-24: BM25 + reranker is now the default and 30pp better -->
+- ~~Refresh every 4 hours~~
+  <!-- struck 2026-05-24: daily is plenty for solo users; 4h burns connector quota -->
