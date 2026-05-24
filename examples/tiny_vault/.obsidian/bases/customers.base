@@ -1,7 +1,6 @@
 filters:
   and:
     - file.path.startsWith("entities/companies/")
-    - parent != "entity:wisdomai"
 formulas:
   backlink_count: file.inlinks.size
 properties:

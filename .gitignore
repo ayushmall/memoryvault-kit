@@ -36,3 +36,8 @@ _run_*.jsonl
 
 # Drafts — not shipped in v0.1; will publish a deliberate version later
 posts/
+
+
+# Private working docs — never committed
+SECURITY_REVIEW.md
+EVAL_IMPROVEMENT_PLAN.md

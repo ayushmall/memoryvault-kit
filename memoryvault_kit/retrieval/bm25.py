@@ -19,7 +19,13 @@ from collections import Counter
 VAULT = Path(__import__("os").environ.get("MEMORYVAULT_ROOT") or next((p for p in [Path(__file__).resolve(), *Path(__file__).resolve().parents] if (p / "memories").is_dir() and (p / "entities").is_dir()), (Path.home() / "MemoryVault")))
 MEM_DIR = VAULT / "memories" / "2026"
 QUESTIONS = VAULT / "evals" / "retrieval" / "questions.jsonl"
-ALIAS_MAP_PATH = Path("/tmp/alias_map.json")
+# Alias map lives in the vault (was /tmp, which is volatile and wipes on reboot —
+# we discovered the kit had been running with an empty alias map for a long time).
+# Falls back to /tmp only for backward compat with existing installs.
+ALIAS_MAP_PATH = next(
+    (p for p in [VAULT / ".alias_map.json", Path("/tmp/alias_map.json")] if p.exists()),
+    VAULT / ".alias_map.json",
+)
 
 ALIAS_BLOCKLIST = {
     "customer", "vendor", "founder", "ceo", "cto", "tech lead", "eng lead",
@@ -105,16 +111,52 @@ def build_index(mems: list) -> dict:
 
 
 _ALIAS_IDX = None
+_ALIAS_DF = None  # document frequency for each alias phrase — used to skip noise expansions
+_ALIAS_DF_THRESHOLD = 0.20  # phrase appearing in >20% of memories is too common to expand
+_CURRENT_DOCS = None  # set by retrieve() to make DF computation possible
+
+
+def _build_alias_df(docs):
+    """Count how many memories contain each alias phrase in their haystack."""
+    if _ALIAS_IDX is None:
+        return {}
+    df = {}
+    for phrase in _ALIAS_IDX:
+        c = sum(1 for d in docs if phrase in d["haystack_low"])
+        df[phrase] = c
+    return df
 
 
 def load_alias_index():
+    """Build alias-phrase clusters from the alias map.
+
+    Returns: dict[lowercased_surface_form → set of related surface forms].
+
+    Supports two on-disk schemas:
+      - new nested: {"canonical_to_aliases": {canonical: [aliases]}, ...}
+      - legacy flat: {canonical: [aliases]}
+
+    Length filter: ≥3 chars (was ≥4 — that killed common 3-char acronyms,
+    which are exactly the high-value aliases we built this map to handle).
+    """
     if not ALIAS_MAP_PATH.exists():
         return {}
     raw = json.loads(ALIAS_MAP_PATH.read_text())
+    # New nested schema?
+    if isinstance(raw, dict) and "canonical_to_aliases" in raw:
+        clusters = raw["canonical_to_aliases"]
+    else:
+        clusters = raw  # legacy flat schema
     idx = {}
-    for canonical, aliases in raw.items():
+    for canonical, aliases in clusters.items():
         all_low = [p.lower() for p in [canonical] + list(aliases)]
-        keep = [p for p in all_low if p not in ALIAS_BLOCKLIST and "@" not in p and len(p) >= 4]
+        # Note: we used to strip "@"-containing forms here, but that killed the
+        # entire class of email-handle queries ("what's the latest on x@y.com").
+        # Emails are LEGITIMATE aliases for people and we want them indexed.
+        keep = [
+            p for p in all_low
+            if p not in ALIAS_BLOCKLIST and len(p) >= 3
+        ]
         if len(keep) < 2:
             continue
         for p in keep:
@@ -122,17 +164,31 @@ def load_alias_index():
     return idx
 
 
-def query_alias_phrases(question: str) -> list[str]:
-    global _ALIAS_IDX
+def query_alias_phrases(question: str, docs=None) -> list[str]:
+    """Return alias phrases to use for query-side expansion.
+
+    Filters out alias phrases that appear in >20% of memories — these add no
+    discriminative signal and inflate the bonus for every doc symmetrically
+    (i.e., the company-name problem in a company-internal vault).
+    """
+    global _ALIAS_IDX, _ALIAS_DF
     if _ALIAS_IDX is None:
         _ALIAS_IDX = load_alias_index()
+    if _ALIAS_DF is None and docs is not None:
+        n = len(docs)
+        if n > 0:
+            _ALIAS_DF = {ph: cnt / n for ph, cnt in _build_alias_df(docs).items()}
     qlow = question.lower()
     extras = set()
     for phrase, group in _ALIAS_IDX.items():
         if phrase in qlow:
             for alt in group:
-                if alt != phrase and alt not in qlow:
-                    extras.add(alt)
+                if alt == phrase or alt in qlow:
+                    continue
+                # Skip alts that are too common — they boost everything equally
+                if _ALIAS_DF and _ALIAS_DF.get(alt, 0) > _ALIAS_DF_THRESHOLD:
+                    continue
+                extras.add(alt)
     return list(extras)
 
 
@@ -157,11 +213,12 @@ def score(question: str, doc: dict, idf: dict, avgdl: float) -> float:
     if not qtoks:
         return 0.0
     base = bm25_score(qtoks, doc, idf, avgdl)
-    # Alias phrase bonus: each matched alias phrase adds half an "average" BM25 hit
+    # Alias phrase bonus: each matched alias phrase adds a meaningful BM25 hit.
+    # Phrases too common (>20% DF) are filtered out by query_alias_phrases.
     phrase_bonus = 0.0
-    for ph in query_alias_phrases(question):
+    for ph in query_alias_phrases(question, _CURRENT_DOCS):
         if ph in doc["haystack_low"]:
-            phrase_bonus += 1.5
+            phrase_bonus += 2.5  # bumped from 1.5 — rare aliases are strong signal
     if base == 0 and phrase_bonus == 0:
         return 0.0
     # Importance multiplier: keep modest. Prevents importance from dominating.
@@ -170,6 +227,8 @@ def score(question: str, doc: dict, idf: dict, avgdl: float) -> float:
 
 
 def retrieve(question: str, index: dict, k: int = 10) -> list[dict]:
+    global _CURRENT_DOCS
+    _CURRENT_DOCS = index["docs"]
     scored = []
     for doc in index["docs"]:
         s = score(question, doc, index["idf"], index["avgdl"])
