@@ -77,6 +77,25 @@ If org name was given, also write `.mvkit/org.json` (copy + edit the example tem
 ### Step 6 — Vault-owner entity
 Write `entities/people/<owner-slug>.md` with `vault_owner: true` + first-name alias.
 
+### Step 7a — Auto-detect Claude Code memory (no MCP needed)
+
+Before probing MCPs, check the obvious filesystem path:
+
+```bash
+ls ~/.claude/projects/*/memory/*.md 2>/dev/null | head
+```
+
+If anything's there, the user has Claude Code memory accumulated.
+Auto-enable the `claude_code_memory` source in their
+`connected_sources.json` — no MCP install required, just filesystem
+access. This is some of the highest-signal source data in the kit's
+reach because Claude has been distilling these facts across every
+prior session.
+
+Tell the user: "I found N Claude Code memory files in your projects.
+Auto-enabling claude_code_memory as a source — these will be among
+the first memories ingested in Step 12."
+
 ### Step 7 — PROBE installed MCPs
 Best-effort detection (don't depend on it):
 

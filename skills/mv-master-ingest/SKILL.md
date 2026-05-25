@@ -103,6 +103,26 @@ fails again, leave `skip_reason` updated.
 
 ## Per-source ingest commands (look up in the config's `mcp` field)
 
+### `claude_code_memory` (filesystem, no MCP)
+**INGEST**: Claude Code accumulates memory across sessions at
+`~/.claude/projects/*/memory/*.md`. Some of the highest-signal source
+data in the kit's reach — Claude has been distilling what matters
+about the user.
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.ingest.claude_memory --apply
+```
+
+The module dedupes by canonical `name` field across projects, maps
+Claude's `metadata.type` (user/reference/feedback/project) to the
+kit's memory types (user_fact/reference/feedback/reference), and
+preserves the original `[[wikilinks]]` from the body.
+
+**DISCOVER**: not applicable. No catalog of targets — just one
+filesystem path. If the user has multiple Claude Code projects, all
+of their `memory/` directories get walked automatically.
+
 ### `google-calendar` MCP
 **INGEST**: Use the Google Calendar MCP tools to fetch events from
 each `config.calendars` calendar id since
