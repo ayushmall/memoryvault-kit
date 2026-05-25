@@ -1,183 +1,228 @@
 ---
 name: mv-master-ingest
 tier: full
-description: The wide-net source scourer — wakes up daily, iterates every source the user has connected, invokes the right per-source ingest, and reports per-source status. THE most important Layer-1 agent in the kit's architecture. Use when scheduled (typically 6:something AM daily via mv-schedule) OR when the user says "ingest everything" / "pull fresh data" / "what's new". The kit's quality compounds with use, but only if data keeps flowing in — this is the agent that keeps the flow going.
+description: The wide-net source scourer — wakes up daily, iterates EVERY source the user has connected (defined in `<vault>/.mvkit/connected_sources.json`), invokes the right ingest, reports per-source status. THE most important Layer-1 agent. The source list is data-driven — different users have different sources connected, so this skill reads the config at runtime instead of hardcoding which MCPs to call. Use when scheduled (via `mv-schedule` after `mv-setup`) OR when the user says "ingest everything" / "pull fresh data" / "what's new".
 ---
 
-# mv-master-ingest — keep the vault up to date
+# mv-master-ingest — pull from whatever sources the user has connected
 
-This is the kit's most-important Layer-1 agent. Everything downstream
-(heal, coverage, queue router, eval) operates on whatever's in the
-vault. If new data stops flowing in, the kit's quality plateaus.
+This is the kit's most-important Layer-1 agent. **It is data-driven**:
+each user has different MCPs installed (some use Linear, some Jira,
+some have no calendar at all). The user's choices live in
+`<vault>/.mvkit/connected_sources.json` — read it; do what it says.
 
-Your job: **wake up, check every connected source, pull what's new,
-hand to the right per-source ingest, report what you did**.
+## Read the source config first
 
-## The flow (cast a wide net, be diligent)
-
-Iterate this checklist every run. **Don't skip silently** — for each
-source, either ingest it OR explicitly report why you skipped (auth
-missing, MCP not installed, recently-ingested, etc.).
-
-### 1. Read state
-
-Check `~/MemoryVault/.mvkit/master_ingest_state.json` (create if
-missing). It tracks `last_ingest_per_source: {source: ISO_timestamp}`.
-
-Decide for each source: pull if `now - last_ingest > min_cadence`.
-Default cadences:
-- calendar, gmail, slack: 4 hours (active sources)
-- granola, linear, github, notion, gdrive: 24 hours
-
-### 2. Per-source pulls
-
-For each source eligible to pull (in this order — lightest first):
-
-#### Calendar
-```
-Authoring agent: read recent events via Google Calendar MCP.
-For each new event (since last_ingest):
-  - Synthesize title (don't copy the raw calendar title if vague)
-  - type:event with event_date = event start time
-  - entities: [organizer, attendees, subject project/customer]
-  - parent_surface: matching granola-series if recurring
-  - source_surface: null
-  - Call memory_save
-Skip-rule: events with no description AND no attendees AND no
-recurring pattern.
-```
-
-#### Gmail
-```
-Authoring agent: read threads with new messages via Gmail MCP.
-Skip rules: no-reply senders, marketing, notifications, calendar invites.
-For each substantive thread:
-  - Synthesize fact-carrying title (NOT the email subject line)
-  - type: event (meeting-thread) | decision (commitment thread) | relationship (org change)
-  - source_ref: gmail://thread/<id>
-  - Quote decisions verbatim per preservation rules
-```
-
-#### Slack
-```
-For each connected slack-channel surface entity:
-  Invoke skill mv-slack-channel-digest on that channel.
-  (The skill handles dedup on source_ref, classification per thread.)
-```
-
-#### Linear
 ```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.ingest.linear --teams <user's-teams> --apply
+cat $HOME/MemoryVault/.mvkit/connected_sources.json
 ```
-Delta state is in `.mvkit/linear_state.json`. Re-running picks up issues
-updated since last_issue_updatedAt.
 
-#### GitHub PRs
+If the file doesn't exist:
+- The user hasn't completed `mv-setup` yet
+- Report: "No connected_sources.json found — run /mv-setup to configure"
+- Don't try to ingest anything; stop here
+
+For each entry in `sources`, you'll see:
+```json
+{
+  "enabled": true | false,
+  "mcp": "google-calendar" | "gmail" | "slack" | "linear" | ...,
+  "cadence_hours": 4 | 24,
+  "skip_reason": null | "<reason>",
+  "discovery": "auto" | "manual",
+  "config": {
+    "<targets_list>": ["..."],
+    "discovery_exclude": ["regex", "regex"]
+  }
+}
+```
+
+## The two passes per source: INGEST + DISCOVER
+
+Each run does up to two things per source:
+
+**Pass 1 (every run): INGEST** — pull fresh data from the targets already in `config.<targets>` (channels / teams / repos / folders / projects / accounts / etc.). This is the normal "what's new" pass.
+
+**Pass 2 (when due): DISCOVER** — if `discovery: "auto"` (the default) AND `last_discovery_per_source[<source>]` is older than 24h, ALSO list the source's full target catalog from the MCP. For each target NOT in `config.<targets>` and NOT matching any `discovery_exclude` regex, write a `mem_DISCOVERY_<source>_<slug>.md` of type:reference, tagged `coverage-gap discovery`. The queue-router surfaces these in its report so the user can confirm before they get promoted into `config.<targets>`.
+
+Discovery cadence defaults to once/day even if ingest cadence is shorter — listing catalogs can be expensive and they change slowly. Update `last_discovery_per_source[<source>]` after each scan.
+
+If `discovery: "manual"`, skip pass 2 entirely — strict opt-in.
+
+## Decide which sources to pull this run
+
+For each source where `enabled: true` AND `skip_reason: null`:
+1. Look at `last_ingest_per_source[<source>]` (under the same JSON's
+   runtime_state) — if `now - last_ingest < cadence_hours`, skip
+   (not time yet)
+2. Otherwise, queue for ingest
+
+Sources where `enabled: false` are explicitly opted-out by the user —
+don't even mention them in the report.
+
+Sources where `enabled: true` BUT `skip_reason` is set (e.g. "auth
+failed last run", "MCP not responding") — try once per day max; if it
+fails again, leave `skip_reason` updated.
+
+## Per-source ingest commands (look up in the config's `mcp` field)
+
+### `google-calendar` MCP
+**INGEST**: Use the Google Calendar MCP tools to fetch events from
+each `config.calendars` calendar id since
+`last_ingest_per_source.calendar`. For each non-trivial event (has
+description OR ≥2 attendees), call `memory_save` with: `type: event`,
+`event_date = event start`, entities from organizer + attendees,
+parent_surface to a granola-series if the title matches a recurring
+pattern.
+
+**DISCOVER**: call `list_calendars`. For each calendar id not in
+`config.calendars` (and not the user's primary), write
+`mem_DISCOVERY_calendar_<id>.md` with summary, primary owner, color,
+access role. Shared team/project calendars show up here when someone
+adds you.
+
+### `gmail` MCP
+Read recent threads. Apply skip-filters from `config.skip_senders` and
+`config.skip_labels`. For substantive threads, synthesize a
+fact-carrying title (NOT the email subject — read the body to find
+the actual fact). Save as `type: event` / `decision` / `relationship`
+per the type playbooks.
+
+### `slack` MCP
+**INGEST**: For each channel slug in `config.channels`, invoke the
+`mv-slack-channel-digest` skill. It handles classification +
+`source_surface:` link to the surface entity.
+
+**DISCOVER** (if `discovery: "auto"` and due): call
+`slack_search_channels` (or `slack_search_public_and_private`) listing
+all channels the integration can see. For each channel slug NOT in
+`config.channels` AND NOT matching any `config.discovery_exclude`
+regex, write a `mem_DISCOVERY_slack_<slug>.md` capturing channel name,
+purpose, member count, last activity. The user accepts it (moves into
+`config.channels`) via the next queue-router pass.
+
+### `linear` MCP / module
+**INGEST**:
 ```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.ingest.linear --teams <config.teams as space-list> --apply
 ```
-Delta state in `.mvkit/code_state/<repo>.json`.
+The module handles delta via `.mvkit/linear_state.json`.
 
-#### Notion
+**DISCOVER**: call Linear MCP `list_teams` (or
+`mcp__288705fc-...__list_teams`). For each team key NOT in `config.teams`
+and not matching `discovery_exclude`, write `mem_DISCOVERY_linear_<key>.md`
+with team name, description, member count, issue count, recent activity.
+
+### `gh-cli` / `github_prs`
+**INGEST**: For each `<owner>/<repo>` in `config.repos`:
 ```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.ingest.notion --search "<active-topics>" --apply
-```
-For broader nightly sweeps, iterate the user's pinned topics.
-
-#### Granola
-```
-Authoring agent: read recent meetings via Granola MCP.
-For each new meeting:
-  - Synthesize title (NOT "Untitled meeting")
-  - type: event with event_date = meeting start
-  - source_surface: matching granola-series surface entity if recurring (create if 3+ meetings cluster)
-  - Spin off type:decision memories for any commitments
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply
 ```
 
-#### Google Drive
-```
-Authoring agent: read recently-modified docs in pinned folders via Google Drive MCP.
-For each doc:
-  - Synthesize title (don't copy "Draft v2")
-  - type: reference (stateful) | decision (commitment moment) | event (meeting notes)
-  - parent_surface: gdrive-folder surface entity
-```
+**DISCOVER**: for each org in `config.discovery_orgs`, run
+`gh repo list <org> --limit 200 --json name,description,updatedAt,isArchived`.
+For each repo not in `config.repos`, not archived, with recent activity
+(updatedAt within 90 days), and not matching `discovery_exclude`, write
+`mem_DISCOVERY_github_<owner>_<repo>.md`. Skip the org scan entirely if
+`discovery_orgs` is empty.
 
-### 3. Update state
-
-For each source you successfully ingested, update its `last_ingest_per_source`
-timestamp in `master_ingest_state.json`. For sources you skipped, record
-WHY (`"calendar": {"skipped_reason": "no Google Calendar MCP installed",
-"last_attempted": "<ISO>"}`).
-
-### 4. Report
-
-One-line summary per source, then a total. Example:
-
-```
-mv-master-ingest report — 2026-05-26 06:00
-  calendar     : 12 events ingested (since 2026-05-25)
-  gmail        : 3 threads (16 skipped as noise)
-  slack        : 4 channels digested (8 memories written)
-  linear       : 7 issues updated
-  github-prs   : 14 PRs ingested
-  granola      : 2 meeting recaps (1 spawned 1 decision memory)
-  notion       : skipped (no recent changes)
-  gdrive       : skipped (no MCP configured)
-  ────────────────────────────────────────────
-  Total: 44 new memories · 8 sources checked
-  Next run: 24h from now
+### `notion` MCP / module
+**INGEST**: For each search query in `config.topics`:
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.ingest.notion --search "<topic>" --apply
 ```
 
-### 5. If errors happen
+**DISCOVER**: call `notion-search` with an empty filter (or
+`notion-get-teams` for workspace scope) to enumerate top-level pages
+and databases accessible to the integration. For each page/db not
+already covered by an existing `config.topics` query and not matching
+`discovery_exclude`, write `mem_DISCOVERY_notion_<slug>.md`. Heuristic
+for "already covered": any existing topic substring-matches the page
+title.
 
-- **Auth missing on an MCP** → report once, mark `skipped_reason` so
-  future runs don't retry until the user fixes it
-- **Rate limit** → record `next_retry_at`, defer that source to a later run
-- **MCP server crashed** → don't take down the whole ingest. Move to
-  next source. Report the failure.
-- **Python module crash on a native ingest** → report stderr, continue
-  with other sources
+### `granola` MCP
+**INGEST**: Read recent meetings. For each one not already in the
+vault (dedup by `source_ref: granola://meeting/<id>`), synthesize a
+meeting recap memory. Cluster matching titles into a `granola-series`
+surface entity if 3+ exist.
 
-## The principle
+**DISCOVER**: call `list_meeting_folders`. For each folder ID not in
+`config.folders` (when configured) and not matching `discovery_exclude`,
+write `mem_DISCOVERY_granola_<folder_id>.md`. If `config.folders` is
+empty, discovery is no-op (default: scan everything, nothing to
+discover above that).
 
-This agent's job is **breadth + reliability over depth**. It should
-*always* finish in <5 minutes with a report card across all sources,
-even if each source's ingest is minimal. Daily reliability beats
-weekly thoroughness — the user trusts the kit because it shows up
-every morning with fresh data, not because it does brilliant work
-once a month.
+### `google-drive` MCP
+For each folder id in `config.folders`, list recently-modified docs.
+Synthesize a fact-carrying title (NOT "Draft v2"). Save as
+`type: reference` (stateful) with `parent_surface: "[[<folder name>]]"`.
+
+### Other sources (jira, pylon, etc.)
+Same pattern — look at `mcp` field, invoke the matching MCP, save
+memories with the right type + entities + parent_surface.
+
+## Update state at the end
+
+For every source you tried:
+- Success → update `last_ingest_per_source[<source>] = <now ISO>`,
+  clear any old `skip_reason`
+- Failure (rate limit, auth, etc.) → set `skip_reason` with a
+  one-line description; record `next_retry_at` if appropriate
+
+Write the updated JSON back to `connected_sources.json`.
+
+## Report (one line per source attempted, then a total)
+
+Report TWO numbers per source — ingest count + discovery count:
+
+```
+mv-master-ingest report — 2026-05-26 06:21
+  calendar  : 12 events ingested · discovery: 1 new shared calendar found
+  gmail     : 3 substantive threads (16 filtered as noise)
+  slack     : 4 channels digested (8 memories) · discovery: 2 new channels proposed
+  linear    : 7 issues updated · discovery: clean
+  github_prs: 14 PRs across 2 repos · discovery: 3 new repos in acme/ org
+  granola   : 2 meeting recaps · discovery: 1 new folder
+  notion    : skipped (no changes in pinned topics) · discovery: clean
+  gdrive    : skipped — skip_reason: "no MCP installed"
+  ──────────────────────────────────────────────────────────────────
+  Total: 44 new memories · 6 sources active · 2 skipped
+         7 discovery memories pending — see queue-router report
+```
+
+Discovery memories surface in the next queue-router run; the user
+either accepts them (which adds the target to `config.<targets>`) or
+adds the slug to `discovery_exclude` so it stops showing up.
+
+Don't silently drop a source from the report — if a source is in the
+config (even disabled), show its line. Transparency over brevity.
+
+## When a source's MCP isn't installed
+
+- First failure → set `skip_reason: "MCP <name> not responding (first-failure timestamp)"`
+- Stays skipped on subsequent runs — don't keep retrying
+- Surface in the report so the user can fix
+- If the user later installs the MCP, they (or `/mv-setup --reconfigure`)
+  clear `skip_reason` to re-enable
+
+## Why this matters
+
+Same skill works for every user — the kit doesn't ship 100 source-
+specific ingests, it ships ONE master agent that reads the user's
+config. New connectors don't require code changes; users add them to
+`connected_sources.json` and the master ingest picks them up.
 
 ## When to call this skill
 
-- **Scheduled**: daily 6:something AM via `mv-schedule` (set up by `mv-setup`)
-- **On-demand**: user says "ingest everything", "pull fresh data",
-  "what's new"
-- **After a connector change**: user just installed a new MCP server,
-  manually invoke to backfill
+- **Scheduled** — daily 6:?? AM via `mv-schedule` (auto-set-up by `mv-setup`)
+- **On-demand** — user asks "ingest everything" / "pull fresh data" / "what's new"
+- **After config change** — user just enabled a new source
 
-## When NOT to call
+## What this skill is NOT for
 
-- For a SINGLE source ("just pull my Slack today") — invoke that source's
-  per-source ingest skill directly
-- For a backfill of historical data — use per-source ingest with explicit
-  date range, not this skill's incremental flow
-- When the user is mid-conversation about something — don't background
-  this; it generates notifications
-
-## The full schedule that should be set up
-
-After `mv-setup` finishes, the user should have FIVE durable scheduled
-tasks running (via `mv-schedule`):
-
-```
-06:?? daily  mv-master-ingest    ← THE BIG ONE (this skill)
-01:21 daily  mv-heal-nightly      
-02:12 daily  mv-coverage-nightly  
-02:31 daily  mv-queue-router-nightly
-Mon 02:58    mv-eval-weekly       
-```
-
-If `mv-master-ingest` isn't scheduled, the rest are essentially
-maintaining a stale vault. **Setting up this agent's routine is
-non-negotiable** for users who want hands-off operation.
+- A single source pull — call that source's ingest directly
+- Historical backfill — use per-source ingest with explicit date range
+- An attempt to ingest from MCPs the user hasn't enabled in the config
