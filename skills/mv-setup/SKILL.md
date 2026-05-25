@@ -1,240 +1,239 @@
 ---
 name: mv-setup
 tier: any
-description: Conversational first-run setup for the MemoryVault kit. Use when the user says "set up memoryvault", "install memoryvault", "get the kit working", "initialize my vault", "I want to try memoryvault" — or after they clone the repo and ask "what's next?". Walks them through tier choice (Lean vs Full), org config, vault scaffolding, the first source connection, and offers to set up a nightly routine via mv-schedule. Beats running `python3 -m memoryvault_kit.setup` directly because it answers questions, validates each step, and adapts to what they already have.
+description: Conversational first-run setup. Triggers on "set up memoryvault", "install memoryvault", "initialize my vault", "I want to try memoryvault", or after a clone with "what's next?". Probes the user's environment for installed MCPs, asks which sources they want to ingest, gathers per-source config (Linear teams, repo names, Notion topics, Slack channels, etc.), writes `.mvkit/connected_sources.json`, generates the per-user scheduled tasks, walks through first ingest + first eval, and writes a `mem_BOOTSTRAP_*` audit memory. Every step gathers the info the kit needs so subsequent runs are automatic.
 ---
 
-# mv-setup — guided install through conversation
+# mv-setup — gather info + wire everything up
 
-You are the user's setup wizard for the memoryvault-kit. The user has
-cloned the repo and wants the kit working. Your job: walk them from
-"empty vault" to "running with their data" without them touching the
-CLI.
+You are the setup wizard. The user just cloned the kit and wants it
+working with their data. Your job: ask the right questions, gather the
+right info, write the right config files, generate the right scheduled
+tasks, run the first cycle. **Everything subsequent runs need has to
+be collected during this skill** — don't assume they'll come back to
+fill in gaps.
 
-## The bootstrap checklist (track every item; don't move on until done)
-
-This is a one-time skill. The user clones the repo and you walk them
-through everything until the vault is producing value on its own.
-**Maintain an explicit TODO list and tick items as you complete them.**
-Do not declare done until every item is checked.
+## The bootstrap checklist (track + tick every item)
 
 ```
 [ ] 1. Python 3.10+ available
 [ ] 2. Kit cloned + importable (memoryvault_kit/setup.py present)
 [ ] 3. Tier picked (Lean / Full)
-[ ] 4. Vault scaffolded (memories/, entities/, .mvkit/, profile.json)
-[ ] 5. Org config set (or explicitly skipped → org-agnostic mode)
-[ ] 6. Vault-owner entity created (entities/people/<owner-slug>.md
-        with vault_owner: true)
-[ ] 7. At least ONE source connected via the right MCP
-[ ] 8. First ingest run (at least 3-5 memories visible in vault)
-[ ] 9. Heal chain run (`mv migrate --apply --quick`) → no errors
-[ ] 10. Baseline eval reported (fill_quality + pollution + consistency)
-[ ] 11. All 5 routines scheduled (mv-master-ingest-daily,
-         mv-heal-nightly, mv-coverage-nightly, mv-queue-router-nightly,
-         mv-eval-weekly)
-[ ] 12. MCP server registered with their AI client (Claude Code:
-         `claude mcp add memoryvault` — or paste config)
-[ ] 13. First memory_ask round-trip works
+[ ] 4. Org name + vault-owner-name gathered (or org-agnostic explicitly)
+[ ] 5. Vault scaffolded (memories/, entities/, .mvkit/, profile.json)
+[ ] 6. Vault-owner entity created (vault_owner: true)
+[ ] 7. PROBE: which MCPs do they have installed?
+[ ] 8. ASK: which sources do they want included in master-ingest?
+[ ] 9. ASK per-source: Linear teams, GitHub repos, Notion topics,
+       Slack channels, Calendar IDs, etc.
+[ ] 10. Write `.mvkit/connected_sources.json` with their answers
+[ ] 11. Run first per-source ingest (test that each works)
+[ ] 12. Run heal chain (`mv migrate --apply --quick`)
+[ ] 13. Run baseline eval (report fill_quality + pollution + consistency)
+[ ] 14. Generate 5 scheduled tasks via mcp__scheduled-tasks__create_scheduled_task:
+       - mv-master-ingest-daily (PARAMETERIZED with their source list)
+       - mv-heal-nightly · mv-coverage-nightly · mv-queue-router-nightly
+       - mv-eval-weekly
+[ ] 15. Register the kit's MCP with their AI client (`claude mcp add memoryvault`
+       or equivalent)
+[ ] 16. Verify memory_ask round-trip works
+[ ] 17. Write mem_BOOTSTRAP_<date>.md audit memory
 ```
 
-After every step, confirm with the user before moving on. Show them
-which checkboxes are still open.
+After every step, show the user which boxes are ticked. **Do not declare
+done until item 17 is complete.**
 
-## The flow in detail
+## Step-by-step
 
-### Step 1 — Confirm they have the repo + Python
-
-Run:
+### Steps 1-2 — Environment check
 ```bash
 which python3 && python3 --version
 ls memoryvault_kit/setup.py
 ```
+If either fails, stop and tell them what to fix.
 
-If either fails, stop and explain. They need:
-- Python 3.10+ (the kit uses 3.10+ syntax)
-- The repo cloned at `~/memoryvault-kit` (or wherever they ran `git clone`)
+### Step 3 — Tier
+Lean (k=3, BM25 only, ~200 tok/memory) vs Full (k=5, +reranker, ~1.5-2k tok/memory, default).
+Pick Full unless user explicitly wants cheap.
 
-### Step 2 — Ask: tier (Lean vs Full)
+### Step 4 — Org config
+Ask:
+- Your org's display name (e.g. 'Acme Corp') — or say "skip" for personal/org-agnostic
+- Your full name (used as vault owner)
 
-Explain in one paragraph:
-
-> **Lean**: BM25-only retrieval at k=3, no reranker, shallow ingest
-> (~200 tokens per memory). Fast, cheap, narrow. Good for the first
-> month while your vault is small.
->
-> **Full**: BM25 + entity short-circuit + reranker, k=5, deep ingest
-> (~1.5–2k tokens per memory). Sharper retrieval, slower ingest,
-> better once you have 100+ memories. Default.
-
-Ask: "Which one?" Default to Full if they don't have an opinion.
-
-### Step 3 — Ask: org name (or skip)
-
-Explain:
-
-> The kit can run **org-agnostic** (no org config — works for personal
-> notes, side projects, anyone whose work isn't centered on a single
-> company). Or you can set an org name so the kit knows your
-> organization (e.g. "Acme Corp") is the structural center — it shapes which
-> entities get marked always-structural, what the G3 customer-champion
-> heuristic looks for, and a few other small things.
-
-Ask: "Your org name? (or 'skip' to run org-agnostic)"
-
-If they give a name, also ask:
-- Slug (short lowercase, default: first word lowercased)
-- Vault owner's full name (you, the user — used for `vault_owner: true`)
-
-### Step 4 — Run the scaffolding
-
+### Step 5 — Scaffold
 ```bash
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.setup --tier <chosen> --non-interactive
 ```
+If org name was given, also write `.mvkit/org.json` (copy + edit the example template).
 
-This creates the dirs + writes `profile.json` + drops the org template.
+### Step 6 — Vault-owner entity
+Write `entities/people/<owner-slug>.md` with `vault_owner: true` + first-name alias.
 
-If the user gave org details in Step 3, ALSO run:
+### Step 7 — PROBE installed MCPs
+Best-effort detection (don't depend on it):
+
 ```bash
-cat > $HOME/MemoryVault/.mvkit/org.json <<JSON
-{
-  "org_slug": "<slug>",
-  "org_name": "<Name>",
-  "org_entity": "<Name>",
-  "vault_owner_entity": "<Owner Full Name>",
-  "always_structural": ["<Name>", "GitHub", "Engineering Team"],
-  "substrates_and_competitors": [],
-  "champion_role_keywords": ["champion", "primary contact", "account lead", "ae for", "csm for"]
-}
-JSON
+# Try to list configured MCP servers in Claude Code
+ls ~/.claude/mcp* 2>/dev/null
+cat ~/.claude/mcp.json 2>/dev/null
+claude mcp list 2>/dev/null
 ```
 
-Also create the vault-owner person entity:
-```bash
-cat > $HOME/MemoryVault/entities/people/<owner-slug>.md <<MD
----
-id: "entity:<owner-slug>"
-name: "<Owner Full Name>"
-type: person
-vault_owner: true
-aliases: ["<first name>"]
----
-The vault owner.
-MD
-```
+Read whatever you can find. Don't fail if none of these work — you'll
+fall back to asking.
 
-### Step 5 — Connect a source
+### Step 8 — ASK which sources
 
-Ask which source they want to start with. Recommend Calendar (lowest
-friction, immediate value). Show the table:
+Use `AskUserQuestion` to ask, with multi-select:
 
-| source | what you need | first command |
-|---|---|---|
-| Calendar | Google Calendar MCP installed | "Ingest my calendar events from last week" (authoring agent) |
-| Linear | Linear MCP installed | `python3 -m memoryvault_kit.ingest.linear --teams <TEAM> --apply` |
-| Notion | Notion MCP installed | `python3 -m memoryvault_kit.ingest.notion --search "<topic>" --apply` |
-| GitHub PRs | `gh` CLI authed | `python3 -m memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply` |
-| Granola | Granola MCP | "Ingest my recent Granola meetings" (authoring agent) |
-| Slack | Slack MCP | "Run slack-channel-digest on <channel>" (calls the skill) |
+> Which of these sources do you want the kit to ingest from?
+> (You can add more later by editing `.mvkit/connected_sources.json`.)
+>
+> [x] Calendar (Google Calendar MCP)
+> [x] Gmail
+> [ ] Slack
+> [ ] Linear (or Jira / Shortcut / similar)
+> [ ] GitHub PRs (you'll need `gh` CLI + repo paths)
+> [ ] Notion
+> [ ] Granola
+> [ ] Google Drive
+> [ ] Pylon (customer support)
+> [ ] Other (you'll add it manually to the config)
 
-If they don't have any source ready, suggest they hand-write 3-5
-example memories using `docs/memory-playbooks/event.md` as a template
-so they can at least run a `memory_ask` round-trip.
+Default-recommend the lowest-friction ones (calendar, gmail) for the
+quickstart. Make it clear they can opt OUT of any.
 
-### Step 6 — Run the heal chain + measure
+### Step 9 — Per-source config
 
-After their first ingest (any source):
+For EACH source they selected, ask the source-specific config:
 
+- **Calendar**: which calendar IDs? (default: "primary")
+- **Gmail**: any senders/labels to skip? (default skips no-reply, noreply)
+- **Slack**: which channels (comma-separated, without #)?
+- **Linear**: which team key(s)? (e.g. "ENG", "PROD")
+- **GitHub PRs**: which repo(s)? (e.g. "acme/api")
+- **Notion**: what topics/pages to search? (e.g. "Strategy", "Roadmap")
+- **Granola**: any folder IDs to scope? (default: all)
+- **GDrive**: which folder IDs?
+- **Pylon**: which customer accounts to track?
+
+Don't gather everything — gather only what's needed for the per-source
+ingest. Skip sources they didn't select.
+
+### Step 10 — Write `.mvkit/connected_sources.json`
+
+Copy `.mvkit/connected_sources.example.json` to `connected_sources.json`,
+then update each source's `enabled` + `config` based on user answers.
+
+Verify the file is valid JSON.
+
+### Step 11 — First per-source ingest
+
+For each enabled source, run ONE pass to verify it works:
+- Linear: `python3 -m memoryvault_kit.ingest.linear --teams <X> --apply` (limit to 10 issues)
+- Notion: `python3 -m memoryvault_kit.ingest.notion --search "<topic>" --apply` (limit to 5 pages)
+- GitHub: `python3 -m memoryvault_kit.ingest.code_repo --repo <X> --prs --apply --max 20`
+- Authoring-agent sources (calendar/gmail/slack/granola/gdrive): walk them
+  through one example save via `memory_save`
+
+If a source fails (auth, MCP missing, etc.), set its `enabled: false` +
+`skip_reason: "<what failed>"` in `connected_sources.json` and move on.
+Surface to user — don't silently disable.
+
+### Step 12 — Heal chain
 ```bash
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.migrate --apply --quick
+```
+
+### Step 13 — Baseline eval
+```bash
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval
-MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.doctor --quick
+```
+Report all 3 numbers + their grades. Tell the user what each means in one sentence.
+
+### Step 14 — Schedule the routines
+
+**This is the non-negotiable step.** Don't ask "do you want this" — explain it's the loop.
+
+Call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
+
+1. `mv-master-ingest-daily` at 6:?? AM — prompt should reference
+   `connected_sources.json` (so it iterates only what the user enabled).
+   The prompt is NOT a hardcoded source list — it tells the runtime
+   to read the file.
+2. `mv-heal-nightly` at 1:?? AM — `mv migrate --apply --quick`
+3. `mv-coverage-nightly` at 2:?? AM — coverage_gaps + enrich_gaps
+4. `mv-queue-router-nightly` at 2:?? AM — authoring_cycle --apply
+5. `mv-eval-weekly` at Mon 2:?? AM — eval suite + history archive
+
+Use off-minute times (NOT :00 or :30). Confirm all 5 are listed via
+`mcp__scheduled-tasks__list_scheduled_tasks`.
+
+### Step 15 — Register the MCP server
+
+For Claude Code users:
+```bash
+claude mcp add memoryvault python3 -m memoryvault_kit.mcp_server
 ```
 
-Show them their first numbers. Explain what each means in one
-sentence:
-- `fill_quality`: how well-shaped your memories are (target ≥ 0.85)
-- `pollution_rate`: how many retrievals would surface peripheral
-  matches as if they were primary (target < 5%)
-- `Lean⊆Full invariant`: whether the kit's retrieval is consistent
-  across tiers (must be 0 violations)
+For Cursor / Continue / Cline / OpenAI Agents SDK / Gemini — paste the
+appropriate config snippet from the README's "Using with other AI
+clients" section.
 
-### Step 7 — Set up the routines (NOT optional — this is the loop)
+### Step 16 — Verify round-trip
 
-**Don't ask "do you want this?"** — explain why it's non-negotiable
-and just do it. The kit's quality compounds with use, but only if the
-routines run. Skipping this is the #1 way users end up with a stale
-vault and lose faith in the kit.
-
-Invoke `mv-schedule` skill OR directly call
-`mcp__scheduled-tasks__create_scheduled_task` 5 times to register:
-
-1. **`mv-master-ingest-daily`** at 6:?? AM — wide-net source scour
-   (the most important — pulls fresh data from every connected MCP)
-2. `mv-heal-nightly` at 1:?? AM — heal chain
-3. `mv-coverage-nightly` at 2:?? AM — coverage gap detection
-4. `mv-queue-router-nightly` at 2:30:?? AM — drain authoring queue
-5. `mv-eval-weekly` at 2:?? AM Monday — eval suite + drift tracking
-
-Confirm all 5 are visible via `mcp__scheduled-tasks__list_scheduled_tasks`.
-Tell the user: "I've set up 5 routines. They survive across sessions,
-run on Claude Code launch if missed, and will keep your vault fresh
-automatically."
-
-If they explicitly object, leave them with a clear "you can set this up
-later with `/mv-schedule`" — but log it as a concern.
-
-### Step 8 — Verify the round-trip
-
-```
-memory_ask("show me anything from yesterday")
+```bash
+# Via the kit's CLI or via the MCP from a fresh session:
+mv ask "what did I do yesterday"
+# Or memory_ask("...") if invoking via MCP
 ```
 
-Confirm at least one result returns. If empty: the ingest failed
-silently or the MCP isn't passing through. Surface for the user.
+At least one result should return. If empty: the master-ingest hasn't
+run yet (it's scheduled for tomorrow morning). Tell the user this is
+expected; they'll see their first real retrievals tomorrow.
 
-### Step 9 — Mark the bootstrap complete
+### Step 17 — Write bootstrap memory
 
-Write a `mem_BOOTSTRAP_<date>.md` memory of `type: event` with the
-final state:
-- Tier chosen
-- Org configured (yes/no)
-- Sources connected (list)
-- Routines scheduled (list)
-- First-ingest count + first-eval baseline numbers
+Save a `mem_BOOTSTRAP_<date>.md` of `type: event` with:
+- title: "Bootstrapped memoryvault-kit (tier=X, sources=[A, B, C])"
+- entities: vault-owner + any org entity
+- body: tier, org config, sources enabled with their key configs,
+  routines scheduled (list), baseline eval numbers
+- importance: 0.9 (vault-defining moment)
 
-This memory is the audit trail that bootstrap finished. Future runs
-of `mv-doctor` will surface it as the "started using the kit on X"
-reference point.
+This is the audit trail. `mv-doctor` will reference it later.
 
-## Tone
+## Tone + behavior rules
 
-Confident but not pushy. Don't make them feel like they need to
-understand everything — the kit's job is to make the journey feel
-short. If they ask a question mid-flow, answer it briefly and return
-to the step.
+- **Confident, not pushy.** Default to the recommended choice; let
+  user override.
+- **Show your work.** Print the checklist + tick boxes as you go.
+- **Don't silently retry on errors.** If a step fails, surface it
+  and offer a fix.
+- **Never run something destructive** without confirmation (no
+  `mv profile set lean` if they're already on Full, etc.).
+- **Bootstrap memory at the end is mandatory.** It marks Day 0 +
+  enables `mv-doctor` to compute "you've been using this for X days."
 
-If anything errors, **show them the actual error** and offer a
-specific fix. Never silently retry; never claim something worked when
-it didn't.
+## After mv-setup completes
 
-## Confirmation checkpoints
+Tell the user:
 
-After Step 4: "Vault scaffold created at ~/MemoryVault. Ready to
-connect a source?"
+> Your vault is live. The kit will:
+> - **Tomorrow morning 6:?? AM**: master-ingest pulls fresh data from
+>   your N connected sources
+> - **Tomorrow 1:??-2:?? AM**: heal + coverage + queue-router process it
+> - **Next Monday 2:?? AM**: weekly eval (you'll see trend tracking)
+>
+> Run `mv-doctor` anytime to check health. Run any per-source ingest
+> manually if you don't want to wait until 6 AM.
 
-After Step 6: "First eval: fill_quality=X.XX, pollution=Y.Y%. Looks
-healthy / has these issues. Want the nightly routine?"
+## Anti-patterns
 
-After Step 7: "All set. Run `python3 -m memoryvault_kit.doctor` any
-time to check vault health. Run `python3 -m memoryvault_kit.eval` for
-the full eval suite."
-
-## What NOT to do
-
-- Don't run the full ingest unattended — always confirm which source first
-- Don't skip the org question — it's quick and shapes the gap detection
-- Don't run `mv migrate --apply` until they've ingested SOMETHING; on an
-  empty vault it's a no-op but feels like a stuck command
-- Don't recommend running tests in the kit repo unless they're
-  contributing back; users don't need those
+- ❌ Hardcoding which sources to set up — read `connected_sources.json`
+- ❌ Asking "do you want the routine" — it's the loop; just do it
+- ❌ Treating a failed source as fatal — disable that one, continue
+- ❌ Skipping the bootstrap memory — it's the audit trail
+- ❌ Generating a master-ingest task with hardcoded source names — the
+  prompt should reference the config so future sources auto-pick-up

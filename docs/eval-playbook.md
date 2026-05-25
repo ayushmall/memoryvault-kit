@@ -212,6 +212,37 @@ patterns rather than tuning the retriever around them.
 
 ---
 
+## Step 4b — Over-consumption (the other failure mode)
+
+Under-consumption shows up as "I never wrote down that conversation." Over-consumption shows up as "retrieval got slower, R@5 dropped, and the right memory is buried under twenty similar ones." Discovery makes it easy to over-consume — every accepted target adds a new firehose.
+
+Run `mv doctor --signal-quality` weekly. It reports per-source ingest volume vs retrieval-hit rate from the query log:
+
+```
+source           ingested  retrieved    ratio  suggestion
+github-pr             500          0        ∞  noisy
+linear                341          0        ∞  noisy
+notion                 87          0        ∞  noisy
+```
+
+What to do when a source is flagged "noisy":
+
+1. **First diagnose**: is the source actually low-signal, or is the query log empty because retrieval hasn't been used? If `retrieved` is 0 across all sources, the kit isn't being queried — the ratio is meaningless yet. Use the kit for a week, then re-run.
+
+2. **If genuinely noisy** (ratio > 5 with non-zero retrieved count):
+   - Lower `max_memories_per_run` on that source — caps per-run volume
+   - Tighten `signal_thresholds` — discovery only proposes active targets
+   - For GitHub: enable `per_pr_quality.skip_drafts`, raise `min_files_changed`, add bot authors to `skip_bot_authors`
+   - For Linear: add `Backlog` / `Triage` to `per_issue_quality.skip_states`, raise `min_priority`
+   - For Slack: tighten `per_channel_quality.min_thread_length` from 3 to 5
+   - For Notion: raise `signal_thresholds.min_word_count` from 100 to 250
+
+3. **Last resort — prune**: a source that's been over-ingesting for months has a lot of dead weight already in the vault. Plan: a `mv prune --source <name> --max-age 90 --min-retrievals 0` that archives source-X memories older than 90 days never retrieved. (Not shipped yet — manual cleanup for now: `rg -l "^source: <name>" memories/2026/ | xargs ls -t | tail -N | xargs rm`.)
+
+## When discovery proposes too much
+
+The global cap `_global_caps.max_discovery_proposals_per_run` (default 10) keeps any single run from flooding the queue-router with 50 channels to triage. If you see >10 `mem_DISCOVERY_*` memories pending and still feel underwhelmed by what's surfacing, the per-source signal_thresholds are too loose. Tighten them rather than raising the cap.
+
 ## Step 5 — What's worth shipping vs not
 
 When the playbook above doesn't recover the numbers, consider these

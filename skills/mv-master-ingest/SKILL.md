@@ -37,6 +37,36 @@ For each entry in `sources`, you'll see:
 }
 ```
 
+## The balance: don't over-consume, don't under-consume
+
+Discovery makes the kit cast a wide net. Without guardrails, that net catches
+every dead Slack channel, archived repo, and abandoned Notion page — bloating
+the graph and dropping retrieval quality (vault size sensitivity is real:
+2.8× growth → -10pp R@5 in past evals).
+
+Every source config has two budget controls. **Enforce them strictly:**
+
+1. **`signal_thresholds`** — minimum activity bars BEFORE discovery proposes
+   a target. Dead channel / archived repo / cold customer = skip. Read these
+   from `config.signal_thresholds` per source.
+
+2. **`max_memories_per_run`** — per-source cap on ingest output. Even on
+   configured targets, stop after N memories and report truncation. Prevents
+   a single firehose source from drowning the others.
+
+3. **Global cap** — `_global_caps.max_memories_per_run_total` (default 200)
+   across all sources combined. If hit mid-run, stop and report. Steady-state
+   should be well under; hitting it = backfill or runaway source.
+
+4. **Global discovery cap** — `_global_caps.max_discovery_proposals_per_run`
+   (default 10) across all sources. Don't flood the queue-router with 50
+   proposals in one run.
+
+When a `mem_DISCOVERY_*` memory is written, its body MUST include the signal
+data that justified the proposal (message count, last activity, attendee
+count, member count, etc.). This is what lets the user make a real decision
+when accepting/rejecting.
+
 ## The two passes per source: INGEST + DISCOVER
 
 Each run does up to two things per source:

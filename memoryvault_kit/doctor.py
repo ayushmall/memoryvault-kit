@@ -18,6 +18,7 @@ Usage:
     mv doctor --json             # machine-readable
     mv doctor --quick            # skip eval (just inventory + recency)
     mv doctor --eval-recovery    # run the eval-playbook diagnostic checks
+    mv doctor --signal-quality   # flag noisy sources (high ingest, low retrieval-hit)
 """
 from __future__ import annotations
 
@@ -150,6 +151,84 @@ def eval_recovery_checks() -> dict:
             pass
 
     return {"checks": checks, "trend": trend}
+
+
+def signal_quality_report() -> dict:
+    """Per-source: ingest volume vs retrieval hit rate.
+
+    Reads memories' source field + the query log (if present). Computes
+    ingested_30d vs retrieved_30d per source. High ratio (lots ingested,
+    rarely retrieved) = noisy source — suggest lowering max_memories_per_run
+    or raising signal_thresholds.
+    """
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
+    mem_dir = vault / "memories" / "2026"
+    query_log = vault / ".mvkit" / "query_log"
+    cutoff = (datetime.now(timezone.utc).timestamp() - 30 * 86400)
+
+    # Count ingested-in-last-30d per source (use file mtime as proxy for ingest time)
+    ingested = Counter()
+    if mem_dir.is_dir():
+        for p in mem_dir.glob("mem_*.md"):
+            if p.stat().st_mtime < cutoff:
+                continue
+            text = p.read_text()
+            src_m = re.search(r"^source(?:_host)?:\s*\"?([^\"\n]+)\"?", text, re.M)
+            src = src_m.group(1).strip() if src_m else _infer_source_from_id(p.stem)
+            ingested[src] += 1
+
+    # Count retrieved-in-last-30d per source from the query log
+    retrieved = Counter()
+    if query_log.is_dir():
+        for ql_file in query_log.glob("*.jsonl"):
+            if ql_file.stat().st_mtime < cutoff:
+                continue
+            try:
+                for line in ql_file.read_text().splitlines():
+                    if not line.strip():
+                        continue
+                    rec = json.loads(line)
+                    for mid in rec.get("retrieved", [])[:5]:
+                        src = _infer_source_from_id(mid)
+                        retrieved[src] += 1
+            except Exception:
+                continue
+
+    rows = []
+    for src in sorted(set(ingested) | set(retrieved)):
+        ing = ingested.get(src, 0)
+        ret = retrieved.get(src, 0)
+        # Ratio: ingest per retrieval. >5 means lots in, rarely out — likely noisy.
+        ratio = (ing / ret) if ret else (float("inf") if ing else 0)
+        rows.append({
+            "source": src,
+            "ingested_30d": ing,
+            "retrieved_30d": ret,
+            "ratio": round(ratio, 2) if ratio != float("inf") else "∞",
+            "suggestion": (
+                "noisy — lower max_memories_per_run or raise signal_thresholds"
+                if isinstance(ratio, float) and ratio > 5 and ing >= 10
+                else "never retrieved — investigate if this source is useful at all"
+                if ret == 0 and ing >= 10
+                else None
+            ),
+        })
+
+    return {"per_source": rows, "window_days": 30}
+
+
+def _infer_source_from_id(mem_stem: str) -> str:
+    """Pull a source name from mem_INGEST_SLACK_xxx → 'slack', etc."""
+    s = mem_stem.removeprefix("mem_")
+    if s.startswith("INGEST_"):
+        return s.split("_", 2)[1].lower() if "_" in s[7:] else s[7:].lower()
+    if s.startswith("PR_"):
+        return "github"
+    if s.startswith("LINEAR_"):
+        return "linear"
+    if s.startswith("GAP_") or s.startswith("DISCOVERY_") or s.startswith("ANNOT_"):
+        return s.split("_", 1)[0].lower()
+    return "other"
 
 
 def diagnose() -> dict:
@@ -334,7 +413,35 @@ def main():
     ap.add_argument("--eval-recovery", action="store_true",
                     help="Run docs/eval-playbook.md structural checks "
                          "(alias_map freshness, graph_walk wiring, vault growth, etc.)")
+    ap.add_argument("--signal-quality", action="store_true",
+                    help="Per-source ingest volume vs retrieval-hit ratio. "
+                         "Flags noisy sources for tuning max_memories_per_run / "
+                         "signal_thresholds.")
     args = ap.parse_args()
+
+    if args.signal_quality:
+        sq = signal_quality_report()
+        if args.json:
+            print(json.dumps(sq, indent=2))
+            return
+        print("=" * 70)
+        print(f"  mv doctor --signal-quality  (last {sq['window_days']} days)")
+        print("=" * 70)
+        print(f"  {'source':<14} {'ingested':>10} {'retrieved':>10} {'ratio':>8}  suggestion")
+        print(f"  {'-'*14:<14} {'-'*10:>10} {'-'*10:>10} {'-'*8:>8}  {'-'*40}")
+        any_flag = False
+        for r in sq["per_source"]:
+            sug = r["suggestion"] or "ok"
+            if r["suggestion"]:
+                any_flag = True
+            print(f"  {r['source']:<14} {r['ingested_30d']:>10} {r['retrieved_30d']:>10} {str(r['ratio']):>8}  {sug}")
+        print("=" * 70)
+        print("  ratio = ingested ÷ retrieved (top-5). >5 = noisy. Source not in")
+        print("  query log = no recent queries hit it. Tune the source's config:")
+        print("    - lower max_memories_per_run (cap per-run output)")
+        print("    - raise signal_thresholds (only discover/ingest active targets)")
+        print("    - add patterns to discovery_exclude / skip_states / skip_drafts")
+        sys.exit(1 if any_flag else 0)
 
     if args.eval_recovery:
         rec = eval_recovery_checks()
