@@ -1,0 +1,37 @@
+{
+  "_comment": "Recommended permission allowlist for the kit. mv-setup offers to merge these into the user's ~/.claude/settings.json so /mv-refresh and the scheduled tasks (if used) don't prompt for permissions on every run. Only includes kit-owned MCPs and specific kit CLI invocations — no arbitrary Bash, no third-party MCPs. Those stay user-grant per session for security.",
+  "permissions": {
+    "allow": [
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_ask",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_save",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_get",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_update",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_annotate",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_recent",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_health",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_search_entity",
+      "mcp__plugin_memoryvault-kit_memoryvault__memory_tree_walk",
+
+      "Bash(python3 -m memoryvault_kit.migrate *)",
+      "Bash(python3 -m memoryvault_kit.doctor *)",
+      "Bash(python3 -m memoryvault_kit.eval *)",
+      "Bash(python3 -m memoryvault_kit.ingest.claude_memory *)",
+      "Bash(python3 -m memoryvault_kit.ingest.linear *)",
+      "Bash(python3 -m memoryvault_kit.ingest.notion *)",
+      "Bash(python3 -m memoryvault_kit.ingest.code_repo *)",
+      "Bash(python3 -m memoryvault_kit.retrieval.build_alias_map *)",
+      "Bash(python3 -m memoryvault_kit.graph.connect_entities *)",
+      "Bash(python3 -m memoryvault_kit.graph.split_mentions *)",
+      "Bash(python3 -m memoryvault_kit.graph.in_degree *)",
+      "Bash(python3 -m memoryvault_kit.graph.discover_surfaces *)",
+      "Bash(python3 -m memoryvault_kit.graph.coverage_gaps *)",
+      "Bash(python3 -m memoryvault_kit.graph.enrich_gaps *)",
+
+      "Bash(mv ask *)",
+      "Bash(mv doctor *)",
+      "Bash(mv eval *)",
+      "Bash(mv migrate *)",
+      "Bash(mv refresh *)"
+    ]
+  }
+}

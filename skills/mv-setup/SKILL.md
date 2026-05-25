@@ -444,11 +444,55 @@ MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval
 ```
 Report all 3 numbers + their grades. Tell the user what each means in one sentence.
 
-### Step 14 — Schedule the routines
+### Step 14a — Add recommended permissions (one-time, so /mv-refresh never prompts)
 
-**This is the non-negotiable step.** Don't ask "do you want this" — explain it's the loop.
+The kit ships a recommended permissions allowlist at
+`.claude-plugin/recommended-settings.json` containing ONLY:
+- The kit's own MCP tools (memory_ask, memory_save, etc.)
+- Specific kit CLI invocations (`python3 -m memoryvault_kit.*`, `mv *`)
 
-Call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
+It does NOT include third-party MCPs (Slack, Linear, Notion, etc.)
+or arbitrary Bash. Those stay user-grant per session.
+
+Ask the user via `AskUserQuestion`:
+
+> Add the kit's recommended permissions to ~/.claude/settings.json?
+> This means /mv-refresh and any kit operations won't prompt for
+> approval on every run. Only the kit's own tools are pre-allowed,
+> not your source MCPs.
+>
+> [1] Yes (Recommended)  — adds permissions, fewer prompts later
+> [2] No                 — kit will prompt on every operation
+> [3] Show me first      — print the allowlist for review
+
+If yes (or after they review and approve), merge the contents of
+`.claude-plugin/recommended-settings.json`'s `permissions.allow`
+array into `~/.claude/settings.json`'s `permissions.allow`. Don't
+overwrite existing entries — append + dedupe.
+
+### Step 14 — Scheduling (now optional, manual is the default)
+
+**Default is /mv-refresh manual.** Setting up scheduled tasks is
+opt-in. Ask via `AskUserQuestion`:
+
+> How do you want to keep your vault fresh?
+>
+> [1] Manual via /mv-refresh (Recommended)
+>     Press a button when you want fresh data. No permission
+>     prompts (Step 14a already handled that). You see what runs.
+> [2] Scheduled auto-runs
+>     Five scheduled tasks: master-ingest 6 AM, heal 1 AM,
+>     coverage 2 AM, queue-router 2:30 AM, eval Monday 3 AM.
+>     If you pick this, I'll run each task once now so its
+>     permissions warm up before the first scheduled fire.
+> [3] Both
+>     Scheduled for hands-off automation, manual /mv-refresh
+>     anytime in between.
+
+If [1] (default): skip task creation, tell the user
+"come back anytime with /mv-refresh". Continue to Step 16.
+
+If [2] or [3]: call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
 
 1. `mv-master-ingest-daily` at 6:?? AM — prompt should reference
    `connected_sources.json` (so it iterates only what the user enabled).
@@ -461,6 +505,17 @@ Call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
 
 Use off-minute times (NOT :00 or :30). Confirm all 5 are listed via
 `mcp__scheduled-tasks__list_scheduled_tasks`.
+
+**Pre-warm each task's permissions immediately.** Right after
+creating, call `mcp__scheduled-tasks__run_now` on each task in
+sequence (or invoke the equivalent "Run now" action). The user is
+right here, paying attention — they grant the permission prompts
+once during setup so future scheduled fires never block on auth.
+
+This is the entire reason we offer auto-scheduling alongside the
+permissions step (14a): together they make scheduled tasks actually
+work at 6 AM tomorrow. Skip the pre-warm and the first scheduled
+fire will block on permission prompts with no human to approve.
 
 ### Step 15 — Register the MCP server (vault-aware)
 
