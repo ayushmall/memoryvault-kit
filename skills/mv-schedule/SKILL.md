@@ -69,18 +69,28 @@ for trend detection.
 
 ## How to set them up
 
-### Option A — Claude Code routine (recommended for Claude Code users)
+### Option A — Claude Code scheduled tasks (recommended)
 
-If the user is in Claude Code, invoke the existing `schedule` skill
-which uses Anthropic's Routines infrastructure (cloud-based, survives
-session close). For each routine:
+Use the `mcp__scheduled-tasks__create_scheduled_task` MCP tool. Tasks
+are stored at `~/.claude/scheduled-tasks/<taskId>/SKILL.md` — they
+**persist across sessions**, run while Claude Code is open, and run on
+next launch if the app was closed when the task was due. Tool approvals
+granted during the first run carry forward.
 
-```
-schedule(cron="0 2 * * *", prompt="cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.migrate --apply --quick")
-```
+**Do NOT use `CronCreate`** — that's session-only and dies when this
+Claude exits.
 
-This guarantees the routine fires even when the user isn't in Claude
-Code. The routine appears in their Anthropic Routines dashboard.
+For each routine, call `mcp__scheduled-tasks__create_scheduled_task`
+with:
+- `taskId`: kebab-case (e.g. `mv-heal-nightly`)
+- `description`: one-line summary
+- `cronExpression`: standard 5-field, **local time**, off-minute (avoid :00/:30 — see CronCreate's guidance about fleet load)
+- `prompt`: the FULL instructions. The task is run by a fresh Claude
+  with no memory of this session, so the prompt must be self-contained:
+  exact commands to run, what to report, error-handling.
+- `notifyOnCompletion: true` so the user sees results in their session
+
+Verify with `mcp__scheduled-tasks__list_scheduled_tasks` after creating.
 
 ### Option B — Local cron (for users not on Claude Code)
 
