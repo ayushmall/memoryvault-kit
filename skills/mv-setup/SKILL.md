@@ -47,10 +47,110 @@ fill in gaps.
        baseline so trend-tracking starts here
 ```
 
-After every step, show the user which boxes are ticked. **Do not declare
-done until item 18 is complete.**
+After every step, show the user which boxes are ticked AND append the
+update to `<vault>/.mvkit/bootstrap_state.md` so a future session can
+resume if this one's interrupted. **Do not declare done until item 18
+is complete.** If a step fails partway, leave its box unchecked — that
+way the next invocation knows where to pick up.
 
 ## Step-by-step
+
+### Step 0 — Detect partial setup, ask the user (NEVER silently resume or wipe)
+
+Before doing anything, check for artifacts from a prior run. Don't assume.
+
+```bash
+ls -la "$MEMORYVAULT_ROOT"/.mvkit/bootstrap_state.md 2>/dev/null
+ls -la "$MEMORYVAULT_ROOT"/.mvkit/connected_sources.json 2>/dev/null
+ls -la "$MEMORYVAULT_ROOT"/memories/2026/mem_BOOTSTRAP_*.md 2>/dev/null
+claude plugin marketplace list 2>/dev/null | grep memoryvault
+mcp__scheduled-tasks__list_scheduled_tasks  # are kit routines already scheduled?
+```
+
+**State file**: `<vault>/.mvkit/bootstrap_state.md` is the source of truth.
+It's a human-readable checklist that this skill maintains across runs.
+If it exists, parse the `[x]` / `[ ]` boxes to figure out what's done.
+
+Decide what state we're in:
+
+| Vault state | Inferred meaning |
+|---|---|
+| No vault dir at all | First run — start fresh, skip to Step 1 |
+| Vault dir + 0-3 boxes ticked | Aborted very early (probably tier/org questions) |
+| Vault dir + 4-10 boxes ticked | Mid-setup — config exists but ingest not done |
+| Vault dir + 11-17 boxes ticked | Late-setup — ingest may or may not be complete |
+| All 18 boxes ticked + bootstrap memory present | Fully set up — user wants to reconfigure or restart |
+
+Then ask via `AskUserQuestion`:
+
+> I found an existing setup at `<vault path>`:
+>
+> - Tier: <tier from profile.json>
+> - Sources: <list from connected_sources.json>
+> - Bootstrap progress: N/18 steps completed
+> - Last touched: <mtime of bootstrap_state.md>
+>
+> What do you want to do?
+>
+> 1. **Resume from step N+1** (Recommended if N < 18) — pick up where we
+>    left off. Existing config preserved, scheduled tasks not touched.
+> 2. **Reconfigure** (if N = 18 already) — keep the vault + memories,
+>    but re-run a specific step: re-pick tier, add/remove a source,
+>    re-generate the eval set, etc.
+> 3. **Restart fresh** — archive everything (rename vault dir to
+>    `<name>-superseded-<date>`, deregister scheduled tasks, remove
+>    MCP server). Then start at Step 1 with an empty vault.
+> 4. **Quit** — don't touch anything.
+
+**Important rules**:
+
+- NEVER silently re-run a step that has side effects (creating
+  scheduled tasks, registering MCP servers, ingesting data). If
+  the user picked "resume" but step N+1 has external side effects,
+  show what's about to happen and confirm before doing it.
+
+- NEVER wipe without explicit confirmation. "Restart fresh" archives
+  rather than deletes — the user can always restore from
+  `<name>-superseded-<date>` if they regret it. Use:
+
+  ```bash
+  STAMP=$(date +%Y%m%d-%H%M%S)
+  mv "$MEMORYVAULT_ROOT" "${MEMORYVAULT_ROOT}-superseded-${STAMP}"
+  # Then deregister scheduled tasks via list + delete each
+  # Then `claude plugin uninstall memoryvault-kit@memoryvault-kit`
+  # Then start clean at Step 1
+  ```
+
+- If `bootstrap_state.md` doesn't exist but other artifacts do (vault
+  dir, scheduled tasks), the user has a vault from a much older kit
+  version. Treat this as "Reconfigure" mode by default — preserve
+  their content, just modernize the missing pieces.
+
+### Step 0a — State-file maintenance
+
+After each step completes, append/update the corresponding line in
+`<vault>/.mvkit/bootstrap_state.md`. Format:
+
+```markdown
+# memoryvault-kit bootstrap state
+
+Vault: /Users/ayushmall/MemoryVault
+Started: 2026-05-25T17:13:00Z
+Last touched: 2026-05-25T17:34:12Z
+
+- [x] 1. Python 3.10+ available
+- [x] 2. Kit installed + importable
+- [x] 3. Tier: Full
+- [x] 4. Org: WisdomAI · Owner: Ayush Mall
+- [x] 5. Vault scaffolded
+- [ ] 6. ...
+```
+
+The user (or a future Claude session) can read this file at any time
+to see where the vault is in its life. Pair with the bootstrap
+memory: state.md is the in-progress checklist, mem_BOOTSTRAP_*.md is
+the completion audit. Both stay around forever; state.md gets a final
+"[x] all complete" header when step 18 finishes.
 
 ### Steps 1-2 — Environment check
 ```bash
