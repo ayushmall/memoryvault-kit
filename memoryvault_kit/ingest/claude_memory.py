@@ -125,10 +125,72 @@ def title_from_memory(m: dict) -> str:
     return first_sentence or m["claude_name"].replace("-", " ").title()
 
 
+def slug_to_title(slug: str) -> str:
+    """Convert a kebab-case slug to Title Case. Preserves common acronyms."""
+    parts = slug.split("-")
+    # Preserve uppercase acronyms (MCP, AI, GTM, etc.)
+    out = []
+    for p in parts:
+        if p.upper() in {"MCP", "AI", "GTM", "PR", "PRD", "API", "SDK", "UI", "UX", "QA", "CRM"}:
+            out.append(p.upper())
+        else:
+            out.append(p.capitalize())
+    return " ".join(out)
+
+
+def derive_canonical_entity(m: dict) -> tuple[str | None, str | None]:
+    """For type:project memories, derive (canonical_name, entity_subdir).
+    Returns (None, None) if no canonical entity should be created.
+    """
+    name = m["claude_name"]
+    if name.startswith("project-"):
+        slug = name[len("project-"):]
+        return slug_to_title(slug), "projects"
+    # feedback-* and wisdom-* are stateful but more topic-like than project-like
+    # Leave them as-is; the body wikilinks already cover them
+    return None, None
+
+
+def ensure_entity_file(canonical: str, subdir: str, description: str = ""):
+    """Create entities/<subdir>/<slug>.md if it doesn't exist. Idempotent."""
+    slug = re.sub(r"[^a-z0-9]+", "-", canonical.lower()).strip("-")
+    entity_path = VAULT / "entities" / subdir / f"{slug}.md"
+    if entity_path.exists():
+        return canonical
+    entity_path.parent.mkdir(parents=True, exist_ok=True)
+    fm = [
+        "---",
+        f'name: "{canonical}"',
+        f"type: {subdir.rstrip('s')}",  # projects → project
+        f'aliases: ["{slug}"]',
+        f"tags: [claude-memory-derived]",
+        f"created: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        f"status: active",
+        "---",
+        "",
+        description or f"{canonical} — entity auto-created from Claude Code memory.",
+        "",
+    ]
+    entity_path.write_text("\n".join(fm))
+    return canonical
+
+
 def extract_entities(m: dict) -> list[str]:
-    """Pull [[wikilinks]] from body, plus org-aware default linking to vault owner."""
+    """Pull [[wikilinks]] from body, add canonical entity (if applicable),
+    plus org-aware default linking to vault owner.
+    """
     wikilinks = re.findall(r"\[\[([^\]]+)\]\]", m["body"])
     entities = [f"[[{w}]]" for w in wikilinks]
+
+    # If this memory has a canonical entity (type:project today; could expand),
+    # create + link to it. Idempotent.
+    canonical, subdir = derive_canonical_entity(m)
+    if canonical and subdir:
+        ensure_entity_file(canonical, subdir, m.get("description", ""))
+        link = f"[[{canonical}]]"
+        if link not in entities:
+            entities.insert(0, link)  # lead with the canonical entity
+
     # Default-link to vault owner if the memory is type:user
     if m["claude_type"] == "user":
         try:
