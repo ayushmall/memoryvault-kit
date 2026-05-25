@@ -169,6 +169,14 @@ def tool_memory_get(memory_id: str) -> dict:
             "If the heuristic over-fired, set `status: superseded` and add "
             "`heuristic-over-fired` tag."
         )
+        # Enqueue so the wake-up cycle picks it up if this session doesn't enrich it
+        try:
+            from memoryvault_kit.authoring_queue import enqueue
+            enqueue("stub-gap-touched",
+                    context={"gap_id": memory_id},
+                    priority=0.6)
+        except Exception:
+            pass
     return result
 
 
@@ -260,6 +268,19 @@ def tool_memory_ask(question: str, k: int = 5) -> dict:
         log_query(question, out, gap_logged=gap_logged)
     except Exception:
         pass
+
+    # If thin, also enqueue for the wake-up authoring cycle to process in batch.
+    if gap_logged:
+        try:
+            from memoryvault_kit.authoring_queue import enqueue
+            top_score = max((r.get("score") or r.get("bm25") or 0) for r in out) if out else 0
+            enqueue("thin-retrieval",
+                    context={"query": question, "top_score": top_score,
+                             "n_results": len(out), "gap_logged": gap_logged,
+                             "result_ids": [r["id"] for r in out[:5]]},
+                    priority=0.7 if top_score < 2 else 0.5)
+        except Exception:
+            pass
 
     response = {"question": question, "k": k, "results": out}
     if gap_logged:

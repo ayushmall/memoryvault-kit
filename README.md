@@ -1,50 +1,54 @@
 # memoryvault-kit
 
-**A personal memory layer for your AI tools.** Your context — meetings,
-decisions, customers, projects, code, whatever you want the kit to track —
-lives in plain markdown files you own. Any AI tool that speaks
-[MCP](https://modelcontextprotocol.io) can query it. **Two things make this
-different from a notes app or a RAG layer**:
+> **Your professional context, made retrievable.** A personal memory layer
+> for your AI tools that gets sharper every time you use it.
 
-### Authoring is intelligent
+```
+                                                                      
+   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+   │   AUTHORING     │───▶│   STRUCTURED    │───▶│   RETRIEVAL     │
+   │  is intelligent │    │     VAULT       │    │  is fast +      │
+   │                 │    │ (markdown files │    │  measurable     │
+   │  gaps surface   │    │   you own)      │    │                 │
+   │  agents enrich  │    │                 │    │  94.9% Cov@10   │
+   │  sessions feed  │    │  entities ──┐   │    │  <1ms p50       │
+   │  back synthesis │    │  memories   │   │    │  deterministic  │
+   └─────────────────┘    │  surfaces   │   │    └─────────────────┘
+            ▲             │  tree       │   │             │          
+            │             └─────────────┼───┘             │          
+            │                  ▲        │                 │          
+            │                  │        ▼                 ▼          
+            │             ┌─────────────────────────────────────┐    
+            └─────────────│  THE LOOP: thin retrievals + gap    │    
+                          │  detections + session syntheses     │    
+                          │  flow BACK into the authoring queue │    
+                          │  — quality compounds with use       │    
+                          └─────────────────────────────────────┘    
+                                                                      
+```
 
-The kit doesn't just *store* what you give it — it actively *shapes* the
-graph as you use it. Coverage gaps surface automatically ("nobody named as
-champion for this customer", "this Done ticket has no linked PR"). Thin
-retrievals self-log ("this query came back empty — what should the vault
-know?"). Consuming agents enrich stub gaps inline from session context.
-A new `memory_annotate` tool lets every AI session pass its synthesis BACK
-into the vault, linked to the source memories — so the model's reasoning
-becomes part of the corpus. Quality compounds with use; you can measure
-it (`mv eval` shows fill_quality + pollution + retrieval-consistency
-numbers).
+## Three things make this different from a notes app or RAG layer
 
-### Retrieval is measurably good
+**🧠 Authoring is intelligent** — coverage gaps surface automatically, thin
+retrievals self-log, consuming agents enrich stub memories from session
+context, sessions write their synthesis back via `memory_annotate`.
 
-**94.9% Coverage@10 on a held-out blind set** using BM25 + an
-entity-mediated short-circuit (see below). <1ms p50. Deterministic.
-Each result shows its score breakdown. Modern dense retrievers and a
-cross-encoder reranker were tested and **dropped** — they overfit train-set
-quirks and regressed on blind. Honest negative results documented; what
-remains is what survived critical review.
+**🎯 Retrieval is measurably good** — 94.9% Cov@10 on held-out blind, <1ms
+p50, deterministic with auditable score breakdowns. Tried dense + reranker;
+dropped them because they regressed on blind. What ships is what survived.
 
-> **The AI model is intelligent. The retrieval is not. The data is structured.**
-> We measured every variant where the LLM touched retrieval — every one
-> regressed. So retrieval stays a search-engine problem; intelligence sits on
-> either side of it — capturing data well, and *reasoning over* the retrieved
-> data well.
+**🔁 Quality compounds with use** — every conversation feeds an authoring
+queue. The wake-up agent processes the queue, fills gaps via native MCPs,
+and the next retrieval is sharper than the last. `mv eval` lets you watch
+the numbers trend up.
 
-Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code).
-The architecture works with any client that supports MCP — Cursor,
-OpenAI Agents SDK, Continue, Cline, and others are converging on the same
-standard. Setup is conversational on Claude Code (skills); paste-the-skill
-on other clients (see [Using with other AI clients](#using-the-kit-with-other-ai-clients)).
+> *The model is intelligent. The retrieval is not. The data is structured.
+> Every variant where the LLM touched retrieval regressed — so retrieval
+> stays a search problem; intelligence sits on either side of it.*
 
-**Built on Claude Code, not a substitute for it.** The kit complements
-Anthropic's tools rather than replacing them. You can use Claude's chat,
-Cowork, and the kit together — they're designed to compose.
-
-**Maintainer:** [@ayushmall](https://github.com/ayushmall). MIT licensed.
+**Built on Claude Code** with `mv-setup` for conversational install. Works
+with Cursor, Continue, Cline, OpenAI Agents SDK, Gemini — any MCP client.
+MIT licensed. Maintainer: [@ayushmall](https://github.com/ayushmall).
 
 ---
 
@@ -143,13 +147,14 @@ adapts. Same code, different content.
 
 | Domain | Entities you'd track | Sources you'd ingest |
 |---|---|---|
-| **Day job** (the original use case) | people, customers, projects, teams, products | calendar, gmail, slack, linear, notion, github, granola |
-| **Personal life / household** | family, friends, dates, places, recurring obligations | calendar, photos metadata, notes app, email |
-| **Sports management** (fantasy / coaching) | players, teams, matchups, injuries, drafts | scraped stats, lineup notes, opponent scouting |
-| **Research / academia** | papers, authors, labs, methods, datasets | zotero, gscholar exports, manual reading notes |
-| **Side projects** | repos, contributors, design docs, customer interviews | github, notion, gmail |
-| **Hobby management** (e.g. cooking, gardening) | recipes, suppliers, seasons, techniques | recipe notes, supplier emails |
-| **Investment / portfolio tracking** | companies, deals, founders, theses, signals | gmail, news clipper, manual deal notes |
+| **Product Management** (the original use case) | people, customers, projects, teams, products, decisions | calendar, gmail, slack, linear, notion, github, granola |
+| **Engineering Leadership** | engineers, services, on-call incidents, customer issues, RFCs, PRs, postmortems | github, linear, jira, slack, datadog, pagerduty |
+| **Sales / Account Executive** | accounts, opportunities, contacts, deals, competitors, objections | salesforce/hubspot, gmail, gong/granola, slack |
+| **Customer Success** | accounts, health scores, expansion targets, renewals, support threads | salesforce, gainsight, pylon/zendesk, gmail, granola |
+| **Recruiting / People Ops** | candidates, requisitions, interview loops, decisions, offers | greenhouse/lever, gmail, calendar, slack |
+| **Investing** | companies, founders, sectors, theses, deals, signals | gmail, affinity/notion CRM, news clipper |
+| **Research / academia** | papers, authors, labs, methods, datasets, citations | zotero, gscholar, manual reading notes |
+| **Personal life / household** | family, friends, dates, places, recurring obligations | calendar, photo metadata, notes, email |
 
 The pattern is always the same:
 

@@ -141,6 +141,13 @@ def diagnose() -> dict:
                 latest_by_src[src] = d
         report["latest_event_per_source"] = dict(sorted(latest_by_src.items()))
 
+    # ─── authoring queue ───
+    try:
+        from memoryvault_kit.authoring_queue import summarize as queue_summarize
+        report["authoring_queue"] = queue_summarize()
+    except Exception:
+        pass
+
     return report
 
 
@@ -176,6 +183,14 @@ def render_human(r: dict) -> str:
         lines.append(f"  recency (latest event_date per source):")
         for src, d in rec.items():
             lines.append(f"    {src:<22} {d[:19]}")
+    # Authoring queue
+    aq = r.get("authoring_queue", {})
+    if aq:
+        lines.append(f"  authoring queue: {aq.get('pending_total', 0)} pending "
+                     f"({aq.get('high_priority_count', 0)} high-pri)")
+        bk = aq.get("pending_by_kind", {})
+        if bk:
+            lines.append(f"    by kind: " + ", ".join(f"{k}={v}" for k, v in bk.items()))
 
     # Quality metrics (slow)
     q = r.get("quality", {})

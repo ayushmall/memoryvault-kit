@@ -9,7 +9,7 @@ description: Schedule the kit's heal + eval to run automatically. Use when the u
 The kit's quality compounds with use, but only if the heal chain runs
 regularly. This skill wires up automatic execution.
 
-## Two routines to create
+## Three routines to create
 
 ### Routine 1 — Nightly heal (idempotent maintenance)
 
@@ -24,6 +24,21 @@ build_alias_map · connect_entities · split_mentions · in_degree ·
 discover_surfaces · coverage_gaps · enrich_gaps. All idempotent.
 
 Cron: `0 2 * * *`
+
+### Routine 1.5 — Nightly authoring-cycle (drain the queue)
+
+Runs after the heal chain at 2:30 AM:
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.authoring_cycle --apply
+```
+
+Auto-resolves queue items whose retrieval the heal chain just fixed,
+and prints the remaining action plan to a log. Items needing
+deep-dive deferred to the next Claude Code session that invokes
+`mv-authoring-cycle`.
+
+Cron: `30 2 * * *`
 
 ### Routine 2 — Weekly eval (health check)
 
