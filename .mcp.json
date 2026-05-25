@@ -1,0 +1,10 @@
+{
+  "memoryvault": {
+    "type": "stdio",
+    "command": "python3",
+    "args": ["-m", "memoryvault_kit.mcp_server"],
+    "env": {
+      "MEMORYVAULT_ROOT": "${MEMORYVAULT_ROOT}"
+    }
+  }
+}

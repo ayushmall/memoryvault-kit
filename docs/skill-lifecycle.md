@@ -148,17 +148,61 @@ this list doesn't fire when it should, that's a bug.
 
 ## How to actually run the cold test
 
-Open a fresh Claude Code session in an empty directory:
+A fresh Claude Code session has no idea what memoryvault is unless you
+install the kit as a plugin first. The skills, MCP server, and scheduled
+task definitions all need to be visible to that session.
+
+### Step 1 — install the kit as a Claude Code plugin
+
+The kit ships `.claude-plugin/plugin.json` + `.mcp.json` at the repo
+root, so Claude Code can install it directly from a local path:
+
+```bash
+# From inside Claude Code:
+/plugin install /Users/ayushmall/memoryvault-kit
+```
+
+This makes Claude Code:
+- Auto-discover all 21 skills in `skills/`
+- Register the `memoryvault` MCP server from `.mcp.json`
+- Expose the kit's slash commands (`/mv-setup`, `/mv-schedule`, etc.)
+
+Restart the Claude Code session after install so the registration takes
+effect.
+
+### Step 2 — run the cold test
+
+Open a fresh Claude Code session in an empty test directory:
 
 ```bash
 mkdir ~/MemoryVault-test && cd ~/MemoryVault-test
 export MEMORYVAULT_ROOT=$(pwd)
-# Tell the session: "set up memoryvault"
 ```
+
+In the session, type either:
+- `/mv-setup` (explicit invocation), or
+- "set up memoryvault" (the skill should auto-fire on this phrasing)
 
 Then walk through. At each checkbox, verify the actual command ran (check
 session transcript for the tool calls or files for the artifacts). When
 something is missing, that's the bug to fix.
+
+### Alternative install paths (if plugin install isn't available)
+
+**Manual user-global copy:**
+```bash
+cp -r ~/memoryvault-kit/skills/* ~/.claude/skills/
+claude mcp add memoryvault python3 -m memoryvault_kit.mcp_server
+```
+Then any fresh session sees the skills. Less clean but works.
+
+**Project-local symlink** (skills only fire in one directory):
+```bash
+cd ~/MemoryVault-test
+mkdir -p .claude
+ln -s ~/memoryvault-kit/skills .claude/skills
+claude mcp add memoryvault python3 -m memoryvault_kit.mcp_server
+```
 
 The goal is for every checkbox to be hit without you having to type the
 underlying commands. If the kit is doing its job, the skills handle it.
