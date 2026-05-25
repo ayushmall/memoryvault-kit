@@ -1,23 +1,48 @@
 # memoryvault-kit
 
-**A personal memory layer for your AI tools.** Your professional context —
-meetings, decisions, customers, projects — lives in plain markdown files you
-own. Any AI tool that speaks [MCP](https://modelcontextprotocol.io) can
-query it. The kit retrieves better and faster than the alternatives, and the
-quality of your memory layer is something you can actually measure.
+**A personal memory layer for your AI tools.** Your context — meetings,
+decisions, customers, projects, code, whatever you want the kit to track —
+lives in plain markdown files you own. Any AI tool that speaks
+[MCP](https://modelcontextprotocol.io) can query it. **Two things make this
+different from a notes app or a RAG layer**:
 
-Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code).
-The architecture works with any future AI tool that supports MCP — Cursor,
-OpenAI's Agents SDK, and others are converging on the same standard.
+### Authoring is intelligent
+
+The kit doesn't just *store* what you give it — it actively *shapes* the
+graph as you use it. Coverage gaps surface automatically ("nobody named as
+champion for this customer", "this Done ticket has no linked PR"). Thin
+retrievals self-log ("this query came back empty — what should the vault
+know?"). Consuming agents enrich stub gaps inline from session context.
+A new `memory_annotate` tool lets every AI session pass its synthesis BACK
+into the vault, linked to the source memories — so the model's reasoning
+becomes part of the corpus. Quality compounds with use; you can measure
+it (`mv eval` shows fill_quality + pollution + retrieval-consistency
+numbers).
+
+### Retrieval is measurably good
+
+**94.9% Coverage@10 on a held-out blind set** using BM25 + an
+entity-mediated short-circuit (see below). <1ms p50. Deterministic.
+Each result shows its score breakdown. Modern dense retrievers and a
+cross-encoder reranker were tested and **dropped** — they overfit train-set
+quirks and regressed on blind. Honest negative results documented; what
+remains is what survived critical review.
 
 > **The AI model is intelligent. The retrieval is not. The data is structured.**
 > We measured every variant where the LLM touched retrieval — every one
 > regressed. So retrieval stays a search-engine problem; intelligence sits on
-> either side of it.
+> either side of it — capturing data well, and *reasoning over* the retrieved
+> data well.
 
-**Built on Claude Code, not a substitute for it.** The kit complements Anthropic's
-tools rather than replacing them. You can use Claude's chat, Cowork, and the kit
-together — they're designed to compose.
+Built on top of [Claude Code](https://docs.claude.com/en/docs/claude-code).
+The architecture works with any client that supports MCP — Cursor,
+OpenAI Agents SDK, Continue, Cline, and others are converging on the same
+standard. Setup is conversational on Claude Code (skills); paste-the-skill
+on other clients (see [Using with other AI clients](#using-the-kit-with-other-ai-clients)).
+
+**Built on Claude Code, not a substitute for it.** The kit complements
+Anthropic's tools rather than replacing them. You can use Claude's chat,
+Cowork, and the kit together — they're designed to compose.
 
 **Maintainer:** [@ayushmall](https://github.com/ayushmall). MIT licensed.
 
@@ -97,6 +122,55 @@ context **portable** — same memory, every tool, your data.
 
 - You want a hosted SaaS — this runs entirely on your filesystem
 - You don't have a notes corpus yet — the kit assumes you have something to index
+
+---
+
+## It's a framework, not a product
+
+The kit was built to manage one PM's professional context, but the
+architecture is **domain-agnostic by design**. The pieces it gives you —
+typed memories, entity files, alias maps, hierarchical surfaces, coverage
+gap detection, fill-quality eval — are generic. Pick what you want to
+track, hook up the right sources, and the same retrieval + authoring
+loops apply.
+
+The interactive setup (via the `mv-setup` skill on Claude Code, or the
+CLI) is **a conversation, not a config file**. You answer "what kind of
+entities matter?" and "what sources should I ingest?", and the kit
+adapts. Same code, different content.
+
+### What you can manage with this
+
+| Domain | Entities you'd track | Sources you'd ingest |
+|---|---|---|
+| **Day job** (the original use case) | people, customers, projects, teams, products | calendar, gmail, slack, linear, notion, github, granola |
+| **Personal life / household** | family, friends, dates, places, recurring obligations | calendar, photos metadata, notes app, email |
+| **Sports management** (fantasy / coaching) | players, teams, matchups, injuries, drafts | scraped stats, lineup notes, opponent scouting |
+| **Research / academia** | papers, authors, labs, methods, datasets | zotero, gscholar exports, manual reading notes |
+| **Side projects** | repos, contributors, design docs, customer interviews | github, notion, gmail |
+| **Hobby management** (e.g. cooking, gardening) | recipes, suppliers, seasons, techniques | recipe notes, supplier emails |
+| **Investment / portfolio tracking** | companies, deals, founders, theses, signals | gmail, news clipper, manual deal notes |
+
+The pattern is always the same:
+
+1. **Pick your entities** — what nouns matter? (people, projects, customers, players, papers, recipes)
+2. **Pick your sources** — where does data about those entities live? (calendar, slack, gmail, github, a custom scraper)
+3. **Set up an authoring agent** — the kit walks you through this; Claude Code can configure it via the `mv-setup` skill
+4. **Let the loops run** — heal nightly, eval weekly, gaps surface automatically, your synthesis flows back via `memory_annotate`
+
+The kit is most useful when **you consume the right set of data from
+the right sources for your domain**. A garbage corpus stays a garbage
+corpus; the kit makes a good corpus easier to query and harder to drift.
+
+### Why a framework instead of a vertical product
+
+A vertical product (a CRM, a fantasy-sports tool, a research notebook
+app) bakes in opinions about *what* you should track. The kit bakes in
+opinions about *how* memory should work — typed nouns, structured
+graphs, authored-not-extracted, measured-not-hoped — and leaves the
+"what" to you.
+
+The "what" should match your work. Nobody else's framework will.
 
 ---
 
