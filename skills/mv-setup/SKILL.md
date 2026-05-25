@@ -13,7 +13,7 @@ CLI.
 
 ## What you're going to do
 
-A 5-step flow. After each step, confirm before moving on.
+A 7-step flow. After each step, confirm before moving on.
 
 ### Step 1 — Confirm they have the repo + Python
 

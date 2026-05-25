@@ -489,6 +489,132 @@ Reproduce on your own vault: `python3 -m memoryvault_kit.retrieval.combined --ev
 
 ---
 
+## What moves the needle: every lever, what it shifted
+
+The numbers above didn't appear at once. They moved through ~30 specific
+changes across authoring, graph healing, retrieval, and the
+quality-feedback loop. Each change had a hypothesis, a metric, and an
+honest before/after. **The point of this section is to make every lever
+inspectable** — if you're considering forking or contributing, this is
+the prior art.
+
+### A. Authoring quality levers
+
+The vault is only as good as the memories in it. We measure with
+`fill_quality` (6-component rule-based score, 0–1):
+
+| Lever | What changed | What moved |
+|---|---|---|
+| **Pre-write checks block thin memories** | `memoryvault_kit/graph/checks.py` runs on every `memory_save`; refuses memories < 200 body chars, missing entities, etc. (unless `force=True`) | Body adequacy ~0.98 (would be <0.5 without) |
+| **Preservation Rules 1–17** | `PRESERVATION_RULES.md` codifies numbers-verbatim, dates-exact, quote-decisions, name-everyone, causal-links, negations, all-entities-linked, the-why | title_specificity rose as ingest modules learned to put ticket IDs / decision-makers in title |
+| **Per-type playbooks** | 8 playbooks under `docs/memory-playbooks/` (decision/event/project_fact/reference/relationship/user_fact/preference/feedback), each with Read/Reflect/Edit/Maintain | type_match rose from ~0.6 to **0.82** |
+| **Rule 11 (decision-maker in title)** | `Soham: rerun at node level` vs `decision about rerun` | needle-bucket Cov@5: 71.4% → 81.6% |
+| **Rule 12 (email handles as aliases)** | `alice@example.com` → resolves to `[[Alice Chen]]` | alias-bucket Cov@5: +25.7pp |
+| **Rule 13 (3–4 letter acronyms as aliases)** | `VAB` → `[[Visual Agent Builder]]` | alias-bucket continued lift |
+| **Rule 14 (code memories link to product)** | PR touching `agents/*` paths links `[[Agents Platform]]`, not just `[[<your-repo>]]` | code-related queries find product context |
+
+### B. Entity-graph levers
+
+Memories are leaves; entities are the structural hubs. The graph
+quality determines whether structural retrieval can short-circuit BM25.
+
+| Lever | What changed | What moved |
+|---|---|---|
+| **Alias map** (`build_alias_map.py`) | Surface form → canonical name for every entity (`Sarah` → `Sarah Chen`, `Acme` → `Acme Corp`) | enabled entity short-circuit; alias bucket from 40% to 65.7% |
+| **Rule 15 — vault owner is a participant** (`heal_user.py`) | Owner's calendar / inbox / authored docs auto-link to their entity | 13 → 191 memories linked to the vault-owner entity |
+| **Rule 16 — silent-participant heal** (`connect_entities.py`) | Walk every memory body; if an alias appears as a whole word, add the wikilink to `entities:` | 3,380+ wikilinks added on first pass; lateral-bucket 88.9% → 100% |
+| **Rule 17 — entities vs mentions split** (`split_mentions.py`) | Entities in title/opening = structural (`entities:`); peripheral body refs = `mentions:` (1× weight vs 3×) | **pollution_rate** = 0.0% (was undefined → 6.7% → 0.0%) |
+| **In-degree analysis** (`in_degree.py`) | Rank entities by inbound-link count into hub/mature/growing/stub tiers | Surfaces the "centers of gravity" for retrieval anchoring |
+| **Org structure modeling** | `entities/teams/` + `discover_org.py` + `.mvkit/org_roster.json` | "What's the engineering team working on" answerable structurally |
+| **Hierarchical surfaces** (`parent_surface:` + `parent:`) | Memories link up the source-native tree (PR → repo → org; page → database → team-space) | Tree-walk retrieval: "what's in this channel/folder/project" |
+
+### C. Retrieval levers — what beat what, honestly
+
+We tried a lot of things. Most "modern" upgrades lost.
+
+| Lever | Hypothesis | Result |
+|---|---|---|
+| **BM25 (rank_bm25 verified)** | Classic IR floor | Cov@10 blind = 92.4% — strong baseline |
+| **+ Entity short-circuit** | When query mentions an entity verbatim, walk graph backlinks, sort by recency | **+2.5pp blind** (94.9%) — kept |
+| **+ Attribute-lookup short-circuit** | For "decisions by <person>" patterns, filter by entity AND type | +9.1pp lateral bucket — kept |
+| **+ Structured-filter retrieval** | For "high-priority backlog" patterns, filter by frontmatter fields (priority/state/type) | +5.3pp disambiguation — kept |
+| **+ Multi-pass entity expansion** | Re-query with resolved aliases | minor — kept as helper |
+| **+ Wider recall (top-50)** | More candidates feeding the reranker | required for reranker mode; no net win when reranker dropped |
+| **+ BGE-small dense embeddings** | Modern semantic match | Cov@10 blind = **70.6%** — *lost by 22pp to BM25*. Dropped. |
+| **+ Hybrid (BM25 + dense, RRF)** | Best of both worlds | Cov@10 = 88.6% — also lost. Dropped. |
+| **+ BGE cross-encoder reranker** | Re-rank top-50 → top-10 | Train +3.4pp / blind **−2.5pp** → overfit signal. Dropped from default. |
+| **+ Query-side alias expansion** | Rewrite query with all known aliases before BM25 | small lift, kept |
+| **Lean ⊆ Full invariant** | Lean's top-K = strict subset of Full's; reranker / dense are *lifts*, not different algorithms | **0 violations / 42 queries** — protects users from surprise re-orderings on tier switch |
+
+**The headline lesson:** retrieval is a search-engine problem. Every
+attempt to inject the LLM into the retrieval path regressed on blind.
+Intelligence sits at *capture time* (better memories → better matches)
+and *consume time* (the model reasoning over results), not in the
+ranker.
+
+### D. Coverage + lifecycle levers (the compounding loop)
+
+These don't move retrieval directly — they move the **quality of what
+gets retrieved next time** by surfacing what to author or fix.
+
+| Lever | What changed | What moved |
+|---|---|---|
+| **Coverage gap detection** (`coverage_gaps.py`) | 11 workflow-grounded gap classes (G1-G19): unmapped people, ownerless projects, customers without champion, Done-without-PR, stale hubs, type imbalance, customer triad missing, orphan surfaces, memory-without-parent | Surfaces 70+ specific authoring tasks per ingest, each as a `mem_GAP_*` memory |
+| **Retrieval-thin auto-feedback** (`log_retrieval_gap.py`) | Every `memory_ask` with top score < 5 or < 3 results writes a feedback memory with the query | The vault remembers what it failed to answer — future authoring fills it |
+| **Stub gap enrichment (consumption-side)** | MCP tool descriptions + `memory-use` skill tell every consuming agent to enrich stub gaps with their session context via `memory_update` | Gap memories grow from template to grounded narrative across uses (demo: Snowflake gap, where Claude reading the auto-gathered Evidence concluded the heuristic over-fired and updated the gap to propose a detector fix) |
+| **`memory_annotate`** (session synthesis back-write) | Consuming agent passes its conclusion BACK as `type: feedback, tags: [session-annotation]` linked to source memory ids | Future retrievals get raw memories + prior model syntheses — the model's reasoning becomes part of the corpus |
+| **Replay-enrich** (`replay_enrich.py`) | For queries asked ≥2× still-thin, walk partial results' `parent_surface:` to suggest which native MCP (Notion / Slack / Linear / GitHub) would give richer content | Failed retrievals become deep-dive tasks; new memories link back to the originating query |
+| **`mv migrate`** | One command runs the full heal+enrich chain idempotently | Keeps the loop trivial for users to schedule (cron / Anthropic Routines / launchd) |
+| **`mv eval`** (3-eval suite) | fill_quality + pollution + Lean⊆Full consistency in one shot | A single number to watch; regression detection on commit |
+| **`mv doctor`** | Vault inventory + tier + per-source recency + gap-by-class | Single command for "is my vault healthy" — the lever that makes loop-awareness routine |
+
+### E. Structural / temporal levers
+
+| Lever | What changed | What moved |
+|---|---|---|
+| **`event_date:` + `as_of_date:`** | Source-specific mapping: Linear/PR `event_date = updated` (state-change); Calendar/Granola/Gmail `event_date = thread/event start`; Reference/Relationship `event_date = null` + `as_of_date` (when observed) | Temporal queries ("last month's progress") work structurally; reference docs don't pollute date filters |
+| **`parent_surface:` + `parent:`** | Memories link up the source's native tree (PR → repo → org; Notion page → database → team-space → workspace) | "What's in <folder/channel/project>" becomes a structural walk, not a keyword match — tree_walk MCP tool surfaces it |
+| **Token-budget tier (Lean / Full)** (`profile.py`) | One knob controls retrieval params + ingest depth + which skills load | Same code base serves a $0.50-per-month side project vault and a heavy-use professional vault |
+| **Mature entities tier** | `mature_entities.{json,md}` ranks by in-degree; `memory-ask` skill consults it first | Retrieval anchors on hubs before falling back to BM25 |
+
+### F. Eval methodology (so the numbers mean something)
+
+The numbers above are only credible because of how they were measured.
+
+- **20% blind set carved before tuning** (79 questions on the maintainer's vault). Never inspected during development.
+- **322-question train set** across 10 buckets (needle, multi-hop, alias, disambiguation, aggregate, lateral, paraphrase, temporal, negation-rejection, abstention).
+- **`tiktoken` exact token counts** + wall-clock latency (no estimation).
+- **Inter-rater spot-check** on 50 gold labels — found and corrected 8 mislabels (D8 finding).
+- **Generation by sub-agents** that hadn't seen the development conversation — unbiased question authoring (avoids "I tuned to my own probes").
+- **Bucket-by-bucket reporting** — overall Cov@10 can hide regressions in a single failure mode; per-bucket exposes them.
+- **Negative results documented** (modern dense retrievers, hybrid RRF, cross-encoder reranker) — kept around so future contributors don't waste time on the same explorations.
+
+### G. Things we tried that didn't work (or worked less than expected)
+
+- **Cross-encoder reranker as default** — +3.4pp train, −2.5pp blind. Classic overfit. Available as opt-in; not default.
+- **MiniLM / BGE dense** — lost by 20+pp on this name-dense small vault. Useful at scale, not here.
+- **Hybrid RRF (BM25 + dense)** — also lost. Dense's drag dominated.
+- **"Stuff whole vault into context"** baseline — token cost untenable; we kept it on the eval-roadmap to measure as the upper-bound at-any-cost baseline, but the kit's whole point is to *not* do this.
+
+---
+
+## Reproducing the numbers on your own vault
+
+```bash
+python3 -m memoryvault_kit.eval             # fill_quality + pollution + consistency
+python3 -m memoryvault_kit.retrieval.combined --eval         # train-set retrieval table
+python3 -m memoryvault_kit.retrieval.combined --eval --blind # blind-set retrieval table
+python3 -m memoryvault_kit.graph.coverage_gaps --report      # what's structurally missing
+python3 -m memoryvault_kit.doctor                            # vault health snapshot
+```
+
+If your numbers differ from the maintainer's, it's likely because
+your corpus shape differs (more Notion-heavy → lower title_specificity;
+more Linear-heavy → higher; etc.). The framework is the same; the
+numbers reflect your data.
+
+---
+
 ## Honest limitations
 
 This is alpha. Specifically:
