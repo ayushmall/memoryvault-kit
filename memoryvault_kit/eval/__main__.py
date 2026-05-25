@@ -114,15 +114,83 @@ def render_human(results: dict) -> str:
     return "\n".join(lines)
 
 
+def soft_coverage() -> dict:
+    """Measure question coverage without gold annotations.
+
+    For each question in <vault>/evals/retrieval/questions.jsonl, run
+    the kit's default retriever and count: how many questions returned
+    >=2 results with top score >=5? That's the "soft coverage" used
+    during bootstrap, when the vault has no gold IDs yet.
+
+    Cheap. No LLM. No annotation required. Right metric for the
+    coverage-driven ingest loop.
+    """
+    import os
+    from pathlib import Path
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
+    qpath = vault / "evals" / "retrieval" / "questions.jsonl"
+    if not qpath.exists():
+        return {"error": f"no eval set at {qpath}. Run mv-setup Step 11 first."}
+
+    from memoryvault_kit.retrieval.combined import retrieve_combined
+    from memoryvault_kit.retrieval.bm25 import build_index, load_memories
+
+    questions = [json.loads(l) for l in qpath.read_text().splitlines() if l.strip()]
+    index = build_index(load_memories())
+
+    answerable = 0
+    per_bucket = {}
+    for q in questions:
+        results = retrieve_combined(q["question"], index, use_reranker=False, k=5)
+        score = (results[0].get("score", 0) if results else 0)
+        is_answerable = len(results) >= 2 and score >= 5
+        if is_answerable:
+            answerable += 1
+        b = q.get("bucket", "unknown")
+        per_bucket.setdefault(b, {"answerable": 0, "total": 0})
+        per_bucket[b]["total"] += 1
+        if is_answerable:
+            per_bucket[b]["answerable"] += 1
+
+    return {
+        "n_questions": len(questions),
+        "answerable": answerable,
+        "soft_coverage": answerable / len(questions) if questions else 0,
+        "by_bucket": per_bucket,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description="Run the kit's full eval suite.")
     ap.add_argument("--quick", action="store_true",
                     help="Skip the slow consistency check (still runs fill_quality + pollution)")
+    ap.add_argument("--soft", action="store_true",
+                    help="Soft coverage only — works without gold annotations. "
+                         "Used by mv-setup's ingest loop to measure progress.")
+    ap.add_argument("--quiet", action="store_true",
+                    help="Suppress chatty progress output (for the ingest loop)")
     ap.add_argument("--json", action="store_true",
                     help="Output machine-readable JSON")
     args = ap.parse_args()
 
-    print("Running mv eval…")
+    if args.soft:
+        results = soft_coverage()
+        if args.json:
+            print(json.dumps(results, indent=2))
+            return
+        if "error" in results:
+            print(results["error"]); sys.exit(1)
+        if not args.quiet:
+            print(f"Soft coverage: {results['answerable']}/{results['n_questions']} "
+                  f"questions answerable ({results['soft_coverage']*100:.0f}%)")
+            for b, m in sorted(results["by_bucket"].items()):
+                print(f"  {b:24s} {m['answerable']:>3}/{m['total']:<3}")
+        else:
+            print(f"{results['soft_coverage']:.3f}")  # just the number, for scripting
+        return
+
+    if not args.quiet:
+        print("Running mv eval…")
     results = run(quick=args.quick)
 
     if args.json:

@@ -17,31 +17,38 @@ fill in gaps.
 
 ```
 [ ] 1. Python 3.10+ available
-[ ] 2. Kit cloned + importable (memoryvault_kit/setup.py present)
+[ ] 2. Kit cloned + importable
 [ ] 3. Tier picked (Lean / Full)
-[ ] 4. Org name + vault-owner-name gathered (or org-agnostic explicitly)
+[ ] 4. Org name + vault-owner-name gathered
 [ ] 5. Vault scaffolded (memories/, entities/, .mvkit/, profile.json)
 [ ] 6. Vault-owner entity created (vault_owner: true)
 [ ] 7. PROBE: which MCPs do they have installed?
-[ ] 8. ASK: which sources do they want included in master-ingest?
-[ ] 9. ASK per-source: Linear teams, GitHub repos, Notion topics,
-       Slack channels, Calendar IDs, etc.
-[ ] 10. Write `.mvkit/connected_sources.json` with their answers
-[ ] 11. Run first per-source ingest (test that each works)
-[ ] 12. Run heal chain (`mv migrate --apply --quick`)
-[ ] 13. Run baseline eval (report fill_quality + pollution + consistency)
-[ ] 14. Generate 5 scheduled tasks via mcp__scheduled-tasks__create_scheduled_task:
-       - mv-master-ingest-daily (PARAMETERIZED with their source list)
-       - mv-heal-nightly · mv-coverage-nightly · mv-queue-router-nightly
-       - mv-eval-weekly
-[ ] 15. Register the kit's MCP with their AI client (`claude mcp add memoryvault`
-       or equivalent)
-[ ] 16. Verify memory_ask round-trip works
-[ ] 17. Write mem_BOOTSTRAP_<date>.md audit memory
+[ ] 8. ASK: which sources do they want included
+[ ] 9. ASK per-source config (or auto-detect — recommended)
+[ ] 10. Write `.mvkit/connected_sources.json`
+[ ] 11. EVAL-FIRST: generate ~30 questions from the current Claude
+       session's understanding of the user + org + sources. Write to
+       <vault>/evals/retrieval/questions.jsonl. This is the
+       acceptance criterion the ingest is trying to satisfy.
+[ ] 12. INGEST LOOP: spawn parallel sub-agents per source with a real
+       backfill window (default 60 days). After each batch lands,
+       re-run the eval. Continue until soft coverage >= 0.6 OR sources
+       exhausted OR hard cap hit. This is the BIGGEST ingest the kit
+       will ever do — not 5-10 items, but enough to make the eval
+       questions answerable.
+[ ] 13. Run heal chain (`mv migrate --apply --quick`)
+[ ] 14. Run FINAL eval — report the coverage number we hit. This is
+       the baseline future weeks trend against.
+[ ] 15. Generate 5 scheduled tasks (master-ingest-daily, heal-nightly,
+       coverage-nightly, queue-router-nightly, eval-weekly)
+[ ] 16. Register the MCP server (vault-aware — see Step 16 below)
+[ ] 17. Verify memory_ask round-trip works against the right vault
+[ ] 18. Write mem_BOOTSTRAP_<date>.md with the eval set + coverage
+       baseline so trend-tracking starts here
 ```
 
 After every step, show the user which boxes are ticked. **Do not declare
-done until item 17 is complete.**
+done until item 18 is complete.**
 
 ## Step-by-step
 
@@ -159,71 +166,153 @@ then update each source's `enabled` + `config` based on user answers.
 
 Verify the file is valid JSON.
 
-### Step 11 — First per-source ingest (REAL, not deferred)
+### Step 11 — Build the eval set FIRST (before any ingest)
 
-**This step has been the biggest UX gap.** Earlier versions deferred the
-first ingest to "the next scheduled run", which meant the user saw zero
-real memories during setup and had no proof that anything worked. Fix:
-spawn one sub-agent per enabled source, each does a smoke-test ingest,
-all run in parallel.
+This is the kit's core ideology and it has to happen before ingest:
+**you can't measure coverage of an empty vault, so define what coverage
+*means* for this user first.** The eval set is the acceptance criterion
+the bootstrap ingest is trying to satisfy.
 
-Spawn the sub-agents in a single message with multiple `Agent` tool
-calls (so they run concurrently). For each enabled source, prompt the
-sub-agent to:
+The eval set comes from Claude's existing understanding of the user
+gathered in THIS session — their role, org, sources, recent context,
+the people and projects they've mentioned, the kinds of things they'd
+naturally ask their work memory. Not from a vault that doesn't exist
+yet.
 
-- Run that source's ingest with a hard cap (5-10 items)
-- Verify at least one memory was actually written to
-  `<vault>/memories/2026/`
-- Report success (with memory count) or failure (with the exact error
-  message)
-- If auth fails or the MCP isn't responding, return that as a soft
-  failure (the main flow will mark the source disabled with
-  skip_reason)
+**Spawn a sub-agent to generate the questions.** Pass it:
 
-Per-source ingest commands the sub-agent should use:
+- The user's name + role + org (from Steps 4/6 + org.json)
+- The list of enabled sources from connected_sources.json
+- A short summary of relevant context from this conversation (the
+  entities, projects, customers, products you've heard about)
+- The 9 question buckets from `docs/eval_methodology.md`: needle,
+  multi-hop, alias, disambiguation, aggregate, lateral, paraphrase,
+  temporal, negation-rejection
 
-- **Linear** (native module): `python3 -m memoryvault_kit.ingest.linear
-  --teams <X> --apply --max 10`
-- **Notion** (native module): `python3 -m memoryvault_kit.ingest.notion
-  --search "<topic>" --apply --max 5`
-- **GitHub PRs** (native module): `python3 -m
-  memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply
-  --max 10`
-- **Slack**: invoke the `slack-channel-digest` skill on the first 1-2
-  channels from `config.channels`, cap at 5 threads
-- **Calendar**: call `list_events` for the next 14 days on configured
-  calendars, call `memory_save` for any non-trivial event (max 5)
-- **Granola**: call `list_meetings` for the last 14 days, save the
-  first 3 with attendees >= 2 via `memory_save`
-- **Gmail**: read the last 20 threads, save the first 3 substantive
-  ones (skip noise per the filters)
-- **GDrive**: list recently-modified docs in `config.folders`, save
-  metadata for the top 5
-- **Pylon**: pull the most recent 5 issues across `config.accounts`
-
-After all sub-agents return, aggregate the results into a single
-report:
+Sub-agent prompt template:
 
 ```
-Smoke-test ingest:
-  linear     : ✓ 10 memories (ENG team)
-  notion     : ✓ 5 memories (Strategy topic)
-  slack      : ✓ 4 memories (#design-review, #eng-platform)
-  granola    : ✓ 3 meeting recaps
-  gmail      : ⚠ 0 memories — all 20 threads filtered as noise (skip thresholds may be too tight)
-  calendar   : ✗ MCP not responding — marking enabled:false skip_reason:"google-calendar MCP missing"
-  ────
-  Total: 22 memories written, 1 source disabled, 1 warning
+You are generating a starter eval set for [name]'s memoryvault.
+They work at [org] as [role]. They've connected: [source list].
+Recent context from their session suggests these matter to them:
+[entities + projects + customers, distilled].
+
+Write 30 questions they'd naturally ask their work memory.
+Cover at least 6 of the 9 buckets. Each question must:
+  - Reference real entities (people, products, customers) by name
+  - Be answerable from ingested source data (no hypotheticals)
+  - Have a `bucket:` tag from the 9-bucket taxonomy
+  - Have `expected_memory_ids: []` (vault is empty — gold IDs get
+    annotated later by the user or by future eval-runner passes)
+
+Output JSONL, one question per line. Schema:
+  {"id": "q001", "question": "...", "bucket": "needle",
+   "expected_entities": ["[[Alice Chen]]"], "expected_memory_ids": []}
 ```
 
-For any source that fails: update `connected_sources.json` to set
-`enabled: false` and `skip_reason: "<one-line description>"`. Surface
-that decision to the user so they can fix the underlying MCP and
-re-enable later. Never silently disable.
+Write the output to `<vault>/evals/retrieval/questions.jsonl`. Show
+the user the first 10, ask for any edits/removals/additions. They
+own this — they should be able to read each question and think "yes,
+I'd ask my vault that."
 
-If ALL sources fail, stop here and tell the user — don't proceed to
-heal/eval/schedule on an empty vault. That's a real problem to debug,
-not something to paper over.
+**The questions don't need gold IDs yet.** The bootstrap ingest uses
+*soft coverage* — "did the retriever return >=2 results with score
+>=5" — which works on an empty-gold eval set. Gold IDs get backfilled
+later by the user reviewing top results, or auto-suggested by the
+weekly eval-runner.
+
+### Step 12 — Ingest loop until coverage threshold (THIS is the biggest ingest)
+
+This is NOT a 5-10-item smoke test. It is the BIGGEST ingest the kit
+will ever do, because it's pulling the backfill that makes the eval
+questions answerable. The loop continues until one of:
+
+- Soft coverage >= target (default 0.6 — 60% of eval questions have
+  ≥2 plausible results)
+- All configured sources have been fully drained for the backfill
+  window
+- Hard wall-clock cap hit (default 60 minutes)
+- User explicitly stops it
+
+The loop:
+
+```
+target_coverage  = 0.6      # configurable
+backfill_window  = 60 days  # configurable per tier
+hard_cap_minutes = 60       # configurable
+per_source_max   = 300      # per ingest pass, raise if needed
+
+while True:
+  spawn parallel sub-agents per enabled source. Each:
+    - pulls up to `per_source_max` items within `backfill_window`
+    - calls memory_save for each substantive item (per-target quality gates
+      from connected_sources.json apply: skip_drafts, skip_states, etc.)
+    - reports back: memories written, items examined, source state
+
+  after all sub-agents return:
+    - run `mv migrate --apply --quick` (heal so eval has alias_map etc.)
+    - run `mv eval --soft --quiet` against questions.jsonl
+    - parse soft coverage (questions with ≥2 results scoring >=5)
+    - print progress:
+        Ingested 142 memories (linear: 47, slack: 38, notion: 22,
+        granola: 18, gmail: 14, calendar: 3)
+        Soft coverage: 14/30 questions answerable (47%)
+        Continuing...
+
+    - if coverage >= target: break (success)
+    - if all sources drained and coverage < target: break
+      (report which questions still aren't answerable; user can
+      either accept or extend the backfill window)
+    - if hard_cap reached: break (report progress, user decides)
+    - else: increase backfill window (e.g., +30 days) and loop again
+```
+
+Per-source ingest commands inside each sub-agent (with backfill
+windows, not 5-10 caps):
+
+- **Linear**: `python3 -m memoryvault_kit.ingest.linear --teams <X>
+  --apply --since "60 days ago"`
+- **Notion**: `python3 -m memoryvault_kit.ingest.notion --search
+  "<topic>" --apply --since "60 days ago"`
+- **GitHub PRs**: `python3 -m memoryvault_kit.ingest.code_repo --repo
+  <X> --prs --apply --since "60 days ago"`
+- **Slack**: invoke `slack-channel-digest` on EACH channel in
+  `config.channels`, scanning the last 60 days
+- **Calendar**: pull all events from `config.calendars` in [-60 days,
+  +14 days], save non-trivial ones
+- **Granola**: pull all meetings from last 60 days matching
+  `config.folders`, save with attendees >= 2
+- **Gmail**: scan last 60 days of threads, save substantive ones
+  past the noise filters
+- **GDrive**: list all docs in `config.folders` modified in last 60
+  days, save the ones meeting `min_word_count`
+- **Pylon**: pull all issues from `config.accounts` in last 60 days
+
+If a source fails (auth, MCP missing): set `enabled: false` +
+`skip_reason` in connected_sources.json and continue the loop with
+remaining sources.
+
+If ALL sources fail: stop, tell the user, don't proceed.
+
+Aggregated final report at loop end:
+
+```
+Bootstrap ingest report:
+  linear     : 217 memories ingested over 60 days
+  slack      : 184 memories across 5 channels
+  notion     : 47 memories across 3 topics
+  granola    : 42 meeting recaps
+  github_prs : 73 PR memories
+  gmail      : 23 substantive threads
+  calendar   : 31 events
+  pylon      : 12 customer issues
+  gdrive     : 8 doc memories
+  ───────────────────────────────────────────
+  Total: 637 memories ingested
+  Final soft coverage: 24/30 questions answerable (80%)
+  Wall clock: 23 minutes
+  Status: ✓ exceeded target (60%)
+```
 
 ### Step 12 — Heal chain
 ```bash
