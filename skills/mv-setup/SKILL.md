@@ -11,9 +11,37 @@ cloned the repo and wants the kit working. Your job: walk them from
 "empty vault" to "running with their data" without them touching the
 CLI.
 
-## What you're going to do
+## The bootstrap checklist (track every item; don't move on until done)
 
-A 7-step flow. After each step, confirm before moving on.
+This is a one-time skill. The user clones the repo and you walk them
+through everything until the vault is producing value on its own.
+**Maintain an explicit TODO list and tick items as you complete them.**
+Do not declare done until every item is checked.
+
+```
+[ ] 1. Python 3.10+ available
+[ ] 2. Kit cloned + importable (memoryvault_kit/setup.py present)
+[ ] 3. Tier picked (Lean / Full)
+[ ] 4. Vault scaffolded (memories/, entities/, .mvkit/, profile.json)
+[ ] 5. Org config set (or explicitly skipped → org-agnostic mode)
+[ ] 6. Vault-owner entity created (entities/people/<owner-slug>.md
+        with vault_owner: true)
+[ ] 7. At least ONE source connected via the right MCP
+[ ] 8. First ingest run (at least 3-5 memories visible in vault)
+[ ] 9. Heal chain run (`mv migrate --apply --quick`) → no errors
+[ ] 10. Baseline eval reported (fill_quality + pollution + consistency)
+[ ] 11. All 5 routines scheduled (mv-master-ingest-daily,
+         mv-heal-nightly, mv-coverage-nightly, mv-queue-router-nightly,
+         mv-eval-weekly)
+[ ] 12. MCP server registered with their AI client (Claude Code:
+         `claude mcp add memoryvault` — or paste config)
+[ ] 13. First memory_ask round-trip works
+```
+
+After every step, confirm with the user before moving on. Show them
+which checkboxes are still open.
+
+## The flow in detail
 
 ### Step 1 — Confirm they have the repo + Python
 
@@ -131,16 +159,53 @@ sentence:
 - `Lean⊆Full invariant`: whether the kit's retrieval is consistent
   across tiers (must be 0 violations)
 
-### Step 7 — Offer the routine
+### Step 7 — Set up the routines (NOT optional — this is the loop)
 
-"Want me to set up a nightly routine that re-runs the heal chain +
-runs the eval weekly?"
+**Don't ask "do you want this?"** — explain why it's non-negotiable
+and just do it. The kit's quality compounds with use, but only if the
+routines run. Skipping this is the #1 way users end up with a stale
+vault and lose faith in the kit.
 
-If yes → invoke the `mv-schedule` skill (or directly call CronCreate
-with the appropriate cron expressions).
+Invoke `mv-schedule` skill OR directly call
+`mcp__scheduled-tasks__create_scheduled_task` 5 times to register:
 
-If no → tell them they can do it later: `/mv-schedule` (the skill) or
-manually add the cron snippet from `docs/LIFECYCLE.md`.
+1. **`mv-master-ingest-daily`** at 6:?? AM — wide-net source scour
+   (the most important — pulls fresh data from every connected MCP)
+2. `mv-heal-nightly` at 1:?? AM — heal chain
+3. `mv-coverage-nightly` at 2:?? AM — coverage gap detection
+4. `mv-queue-router-nightly` at 2:30:?? AM — drain authoring queue
+5. `mv-eval-weekly` at 2:?? AM Monday — eval suite + drift tracking
+
+Confirm all 5 are visible via `mcp__scheduled-tasks__list_scheduled_tasks`.
+Tell the user: "I've set up 5 routines. They survive across sessions,
+run on Claude Code launch if missed, and will keep your vault fresh
+automatically."
+
+If they explicitly object, leave them with a clear "you can set this up
+later with `/mv-schedule`" — but log it as a concern.
+
+### Step 8 — Verify the round-trip
+
+```
+memory_ask("show me anything from yesterday")
+```
+
+Confirm at least one result returns. If empty: the ingest failed
+silently or the MCP isn't passing through. Surface for the user.
+
+### Step 9 — Mark the bootstrap complete
+
+Write a `mem_BOOTSTRAP_<date>.md` memory of `type: event` with the
+final state:
+- Tier chosen
+- Org configured (yes/no)
+- Sources connected (list)
+- Routines scheduled (list)
+- First-ingest count + first-eval baseline numbers
+
+This memory is the audit trail that bootstrap finished. Future runs
+of `mv-doctor` will surface it as the "started using the kit on X"
+reference point.
 
 ## Tone
 
