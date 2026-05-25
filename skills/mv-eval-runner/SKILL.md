@@ -11,13 +11,43 @@ time + alert on drift.
 
 ## What you run
 
+Three things, in order. Each writes JSON to `eval-history/` so the next
+run can diff:
+
 ```bash
 cd ~/memoryvault-kit
+
+# 1. Structural checks (cheap, run first — fixes can avoid a wasted eval pass)
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.doctor \
+  --eval-recovery --json > \
+  $HOME/MemoryVault/.mvkit/eval-history/$(date +%Y%m%d-%H%M%S)-recovery.json
+
+# 2. Signal-quality (per-source ingest volume vs retrieval-hit ratio)
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.doctor \
+  --signal-quality --json > \
+  $HOME/MemoryVault/.mvkit/eval-history/$(date +%Y%m%d-%H%M%S)-signal.json
+
+# 3. The three-pillar eval suite
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval --json > \
   $HOME/MemoryVault/.mvkit/eval-history/$(date +%Y%m%d-%H%M%S).json
 ```
 
-(The `eval-history/` directory accumulates one file per run.)
+(The `eval-history/` directory accumulates one file per run, three
+files per weekly cycle.)
+
+## After the eval — write the weekly summary
+
+Combine the three JSONs into a single `mem_WEEKLY_<date>.md` memory of
+type:reference, tagged `weekly-summary`. Include:
+
+- Three-pillar numbers vs 4-run trend
+- Any `mem_QUALITY_*-regression` memories written this run
+- Doctor checks that failed even after auto-fix attempts (the nightly
+  heal already tried — if they're still failing on Monday, escalate)
+- Top 3 noisy sources from signal-quality (with the suggested fix)
+- New `mem_DISCOVERY_*` memories pending user review
+
+This is the one summary that the user actually reads. Make it dense.
 
 ## What you check
 

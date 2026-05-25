@@ -14,11 +14,12 @@ Steps (in order, each step depends on the previous):
    stateful memory types (reference, relationship, etc.)
 3. `build_alias_map` — rebuild the surface_form → canonical map
 4. `connect_entities` — Rule 16 body-mention heal
-5. `split_mentions` — Rule 17 structural vs peripheral split
-6. `in_degree` — recompute mature_entities.{json,md}
-7. `discover_surfaces` — surface entities (slack-channels, etc.)
-8. `coverage_gaps` — detect + write gap memories
-9. `enrich_gaps` — programmatic class-specific narratives
+5. `auto_relate` — populate `related:` from co-occurring distinctive entities
+6. `split_mentions` — Rule 17 structural vs peripheral split
+7. `in_degree` — recompute mature_entities.{json,md}
+8. `discover_surfaces` — surface entities (slack-channels, etc.)
+9. `coverage_gaps` — detect + write gap memories
+10. `enrich_gaps` — programmatic class-specific narratives
 
 After: runs `mv eval --quick` to report new baseline.
 
@@ -57,6 +58,10 @@ STEPS = [
      "memoryvault_kit.graph.connect_entities",
      ["--apply"], ["--report"],
      "Rule 16: walk every memory body, add wikilinks for canonical entities."),
+    ("auto_relate",
+     "memoryvault_kit.graph.auto_relate",
+     ["--apply"], ["--report"],
+     "Populate related: edges from co-occurring distinctive entities + tag overlap."),
     ("split_mentions",
      "memoryvault_kit.graph.split_mentions",
      ["--apply"], ["--report"],

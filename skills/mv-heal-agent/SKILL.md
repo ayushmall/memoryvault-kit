@@ -25,6 +25,32 @@ MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.discover_sur
 Or, equivalently, `python3 -m memoryvault_kit.migrate --apply --quick`
 (which is what `mv-schedule` wires into cron).
 
+## After the heal — run the doctor's structural checks + auto-fix
+
+The whole point of the doctor is that it runs automatically. After the
+heal chain finishes, invoke:
+
+```bash
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.doctor --eval-recovery --json
+```
+
+Parse the JSON. For each check where `ok: false`, apply the fix IF it
+is in the safe auto-apply list below. Then re-run the doctor ONCE to
+confirm; do NOT loop.
+
+| Check | Auto-apply? | Action |
+|---|---|---|
+| `alias_map` missing/stale | **yes** | `python3 -m memoryvault_kit.retrieval.build_alias_map` |
+| `event_date_population` < 60% | **yes** | `python3 -m memoryvault_kit.migrate --apply --quick` (re-run is no-op if it just ran) |
+| `related_edges` < 30% | **yes** | `python3 -m memoryvault_kit.graph.connect_entities --apply`. If still <30% after one more pass: write a `mem_QUALITY_related-edges-low-<date>.md` of type:feedback flagging the bug + STOP |
+| `haystack_growth` > 1.5× | **no** | Surface only; the eval-runner handles re-baselining |
+| `graph_walk_wired` false | **no** | Surface only; that's a code change a human must make |
+
+Auto-fixes are deliberately conservative. They're things that are
+guaranteed idempotent + safe. Anything that requires judgment surfaces
+as a `mem_QUALITY_*` memory and waits for a human (or the next
+eval-runner pass).
+
 ## What you report when done
 
 - alias map size: N surface forms → M canonical entities
@@ -32,6 +58,7 @@ Or, equivalently, `python3 -m memoryvault_kit.migrate --apply --quick`
 - split_mentions: M links demoted from entities to mentions
 - in_degree: hub / mature / growing / stub tier counts
 - discover_surfaces: new surface entities created
+- **doctor checks**: N/5 ok · auto-applied fixes: [list] · surfaced: [list]
 
 Each line a one-liner. If anything fails, report the specific step and
 error.
