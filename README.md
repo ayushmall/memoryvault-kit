@@ -126,23 +126,38 @@ them in `examples/tiny_vault/memories/`.
 
 ## Five-minute quickstart (your own vault)
 
-The kit ships three commands that encode the full lifecycle:
+### If you're on Claude Code (recommended)
+
+The kit ships **skills** that handle setup conversationally — no CLI
+required. In Claude Code:
+
+```
+/mv-setup        # walks through tier, org, scaffolding, first source
+/mv-schedule     # sets up nightly heal + weekly eval as routines
+```
+
+The `mv-setup` skill asks questions, runs the right commands, and
+hands you off to your first ingest. `mv-schedule` wires the heal
+chain into Anthropic's Routines infrastructure so it runs even when
+you're not in Claude Code.
+
+### If you prefer the CLI
 
 ```bash
-# 1. Set it up (interactive — picks tier, scaffolds dirs, asks org name)
+# 1. Scaffold (interactive — picks tier, dirs, asks org name)
 python3 -m memoryvault_kit.setup
 
-# 2. Connect your first source (e.g. calendar via google-calendar MCP)
-#    Then run the matching ingest. See docs/LIFECYCLE.md for the full map.
-#    The kit ships native ingests for Linear / Notion / GitHub PRs;
-#    Calendar / Gmail / Granola / Slack are read via authoring agent + memory_save.
+# 2. Connect a source (per-source docs in docs/ingest/)
+#    Native ingests: Linear / Notion / GitHub PRs
+#    Authoring-agent ingests: Calendar / Gmail / Granola / Slack / GDrive
+#    (see docs/ingest/<source>.md for each)
 
-# 3. After ingest, run the heal chain (or `mv migrate --apply` for the lot)
+# 3. Heal chain (idempotent — safe to re-run)
 python3 -m memoryvault_kit.migrate --apply
 
 # 4. Measure
-python3 -m memoryvault_kit.eval         # full eval suite
-python3 -m memoryvault_kit.doctor       # vault diagnostic
+python3 -m memoryvault_kit.eval     # fill_quality + pollution + consistency
+python3 -m memoryvault_kit.doctor   # vault diagnostic
 ```
 
 Three docs to read before going deep:
@@ -150,6 +165,64 @@ Three docs to read before going deep:
 - **[docs/LIFECYCLE.md](docs/LIFECYCLE.md)** — Day-0 → Day-N journey + cron snippet
 - **[docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md)** — what's solid + what's still rough
 - **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)** — what doesn't work yet (honest)
+
+---
+
+## Using the kit with other AI clients
+
+The kit is designed Claude-Code-first because that's where skills are
+richest — but the MCP layer is universal. Every other client gets the
+same vault access; the differences are how skills + setup translate.
+
+### Claude Code (full experience)
+
+- ✓ Skills auto-load from `skills/` directory
+- ✓ MCP server registered via `claude mcp add`
+- ✓ Routines via Anthropic infrastructure
+- ✓ All 9 MCP tools surface their lifecycle descriptions
+
+This is the primary target. The kit's design assumptions match.
+
+### Cursor
+
+- ✓ MCP server works — add to Cursor's MCP config (`~/.cursor/mcp.json`)
+- ⚠ Skills don't auto-load — paste the contents of
+  `skills/memory-use/SKILL.md` into your Cursor "Rules for AI" section
+  for the universal consumption contract
+- ⚠ Routines: use local cron (see `docs/LIFECYCLE.md`)
+
+### Continue / Cline
+
+- ✓ MCP server works — register in their MCP config
+- ⚠ No skill system — rely on MCP tool descriptions (the kit ships rich
+  descriptions on every tool, exactly so this works)
+- ⚠ Routines: use local cron
+
+### OpenAI Agents SDK (Python / Node)
+
+- ✓ MCP via OpenAI's MCP support — register the kit's MCP server in
+  your agent config
+- ⚠ No skills — the MCP tool descriptions carry the lifecycle
+- ⚠ For richer agent behavior, paste `skills/memory-use/SKILL.md` into
+  your agent's system prompt as a memory-use playbook
+- ⚠ Routines: use cron or your own scheduler
+
+### Gemini / generic Anthropic API
+
+- ⚠ No native MCP — wrap the kit's commands as function-call tools
+  yourself (one wrapper per tool: memory_ask, memory_save, etc.)
+- ⚠ Copy the tool descriptions from `memoryvault_kit/mcp_server.py`
+  TOOLS into your function definitions
+- ⚠ Paste `skills/memory-use/SKILL.md` into the system prompt
+- ⚠ Routines: cron
+
+### What's the same everywhere
+
+The vault files themselves. Memories are plain markdown in
+`memories/2026/mem_*.md`. Entities are markdown in `entities/*/*.md`.
+Any client that can read your filesystem can access them — the MCP is
+the *speed layer*, not the only path. The kit's auditability + portability
+holds across clients.
 
 ---
 
