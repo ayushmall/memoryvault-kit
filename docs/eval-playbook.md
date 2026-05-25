@@ -190,6 +190,25 @@ defaults even for unrelated queries → disambiguation collapsed from
 0.972 to 0.498. Primers can include alias/disambig info but NOT a
 "preferred memory list."
 
+### Auto-filling `related:` is worse than leaving it empty
+We hypothesized that graph_walk's BOOST_RELATED=3.0 boost was dead
+weight on a vault where almost no memory had `related:` set (1/1321).
+Built `auto_relate.py` to populate it from co-occurring distinctive
+entities + shared tags. The eval went the wrong way: R@5 0.7332 →
+0.7165 (-1.7pp), paraphrase -4.4pp, needle -3pp, multi-hop -1.8pp.
+
+Why: the 3.0 weight assumes `related:` is *author-curated ground truth*.
+When you fill it from BM25/entity-overlap heuristics, you're amplifying
+the same signal at higher weight — an echo chamber. The retrieval was
+already finding co-occurring memories via the entity bridge at weight
+0.8; promoting them to 3.0 over-rewards them and demotes correct-but-
+not-co-occurring memories.
+
+Lesson: `related:` is special. Treat it as a hand-curated field only.
+If you want auto-discovered relations, use a different field name
+(`related_auto:`) with its own lower-weighted boost — and ship the
+weight calibration in the same PR as the autopopulation.
+
 ### Reranker over-passive
 The fix to the above was a "default to keyword's order unless strong
 reason" prompt — which collapsed to identical-to-BM25 with wasted LLM

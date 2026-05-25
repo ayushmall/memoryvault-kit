@@ -125,10 +125,15 @@ def eval_recovery_checks() -> dict:
             if re.search(r"^related:\s*\[\s*mem_", p.read_text(), re.M):
                 n_with_related += 1
     pct_related = (n_with_related / n_total) if n_total else 0
+    # related_edges intentionally has NO auto-fix. The `auto_relate` heuristic
+    # (populate from co-occurring distinctive entities) REGRESSED R@5 by 1.7pp
+    # on the 482-Q hardened set — graph_walk's BOOST_RELATED=3.0 assumes
+    # author-curated edges; auto-generated edges create an echo chamber. Low
+    # coverage here is informational, not actionable.
     checks["related_edges"] = {
-        "ok": pct_related >= 0.3,
-        "detail": f"{n_with_related}/{n_total} memories have related: edges ({pct_related*100:.0f}%)",
-        "fix": "mv migrate --apply --quick (runs connect_entities)" if pct_related < 0.3 else None,
+        "ok": True,  # don't fail the diagnostic on this — surface as info instead
+        "detail": f"{n_with_related}/{n_total} memories have related: edges ({pct_related*100:.0f}%) — author-curated only; auto-fill regressed R@5 in past tests",
+        "fix": None,
     }
 
     # Trend: last 3 eval rows

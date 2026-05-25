@@ -58,10 +58,18 @@ STEPS = [
      "memoryvault_kit.graph.connect_entities",
      ["--apply"], ["--report"],
      "Rule 16: walk every memory body, add wikilinks for canonical entities."),
-    ("auto_relate",
-     "memoryvault_kit.graph.auto_relate",
-     ["--apply"], ["--report"],
-     "Populate related: edges from co-occurring distinctive entities + tag overlap."),
+    # auto_relate is OPT-IN. Auto-generated related: edges hurt retrieval on the
+    # 482-Q hardened set: combined_graph R@5 dropped 0.7332 → 0.7165 (-1.7pp,
+    # worst on paraphrase -4.4pp and needle -3pp). The graph_walk weight
+    # BOOST_RELATED=3.0 assumes the field is author-curated ground truth; when
+    # filled from co-occurrence, you re-use BM25/entity signal at higher
+    # weight → echo chamber. Run manually with `python3 -m
+    # memoryvault_kit.graph.auto_relate --apply` IFF you've calibrated a
+    # lower weight for auto edges first.
+    # ("auto_relate",
+    #  "memoryvault_kit.graph.auto_relate",
+    #  ["--apply"], ["--report"],
+    #  "Populate related: edges from co-occurring distinctive entities + tag overlap."),
     ("split_mentions",
      "memoryvault_kit.graph.split_mentions",
      ["--apply"], ["--report"],
