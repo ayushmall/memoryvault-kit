@@ -1,16 +1,24 @@
 ---
-name: mv-authoring-cycle
+name: mv-queue-router
 tier: full
-description: Process the authoring queue — the persistent backlog of conversations where retrieval was thin, stub gaps were touched, or contradictions were observed. Use when the user says "drain the queue", "fill the gaps", "run the authoring cycle", "process pending memories", or when scheduled to run nightly (typically via mv-schedule). Reads `.mvkit/authoring_queue/*.jsonl`, re-checks each item against the current vault (some auto-resolve because of recent ingest), and produces an action plan for the rest — deep-dive via native MCP, enrich a stub gap, or surface for human review.
+description: Read the authoring queue, classify each item by what it needs, dispatch to the right specialized agent (mv-deep-dive, mv-stub-enricher, mv-contradiction-resolver). Use when the user says "drain the queue", "process pending", "run the queue router", or when scheduled to run nightly (typically via mv-schedule, right after mv-heal-agent + mv-coverage-agent). Layer-3 in the kit's decomposition (see docs/agent-architecture.md). NO direct authoring — pure classification + dispatch. Auto-resolves items whose retrieval the live vault now answers.
+
+(This skill was previously named mv-authoring-cycle; renamed to reflect its actual role as a router after the agent decomposition.)
 ---
 
-# mv-authoring-cycle — drain the authoring queue
+# mv-queue-router — classify the queue, dispatch the work
 
-This skill is the **wake-up agent** for the kit's compounding-quality
-loop. The queue (`<vault>/.mvkit/authoring_queue/<date>.jsonl`) collects
-every conversation where retrieval needed help: thin queries, stub gaps
-that weren't enriched inline, contradictions surfaced via memory_update,
-open questions from memory_annotate session summaries.
+This skill is the **router** in the kit's authoring decomposition. The
+queue (`<vault>/.mvkit/authoring_queue/<date>.jsonl`) collects every
+conversation where retrieval needed help: thin queries, stub gaps that
+weren't enriched inline, contradictions, open questions.
+
+You don't do the authoring yourself. You classify each item by what
+it needs and either:
+1. Auto-resolve it (the live vault now answers — heal/ingest already fixed it)
+2. Dispatch to **mv-deep-dive** (escape to a source MCP)
+3. Dispatch to **mv-stub-enricher** (write a grounded narrative from session context)
+4. Dispatch to **mv-contradiction-resolver** (surface for human review)
 
 When called, you:
 

@@ -9,48 +9,63 @@ description: Schedule the kit's heal + eval to run automatically. Use when the u
 The kit's quality compounds with use, but only if the heal chain runs
 regularly. This skill wires up automatic execution.
 
-## Three routines to create
+## Routines to create (one per layer of the agent decomposition)
 
-### Routine 1 — Nightly heal (idempotent maintenance)
+The kit splits authoring work across specialized agents (see
+`docs/agent-architecture.md`). Each runs on its own schedule. Default
+stack:
 
-Runs every night at 2 AM local time:
+### Routine 1 — Layer 2: heal (1 AM)
+
+Pure local graph maintenance — no external calls.
 
 ```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.migrate --apply --quick
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.retrieval.build_alias_map && \
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.connect_entities --apply && \
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.split_mentions --apply && \
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.in_degree --write && \
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.discover_surfaces --apply
 ```
 
-This re-runs: backfill_event_date · fix_event_date_semantics ·
-build_alias_map · connect_entities · split_mentions · in_degree ·
-discover_surfaces · coverage_gaps · enrich_gaps. All idempotent.
+Or equivalently `mv migrate --apply --quick`.
+
+Cron: `0 1 * * *`
+
+### Routine 2 — Layer 3: coverage detection (2 AM)
+
+After heal, detect gaps + write `mem_GAP_*` memories.
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.coverage_gaps --apply && \
+MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.enrich_gaps --apply
+```
 
 Cron: `0 2 * * *`
 
-### Routine 1.5 — Nightly authoring-cycle (drain the queue)
+### Routine 3 — Layer 3: queue router (2:30 AM)
 
-Runs after the heal chain at 2:30 AM:
+Drain the auto-resolvable items; print remaining action plan.
 
 ```bash
 cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.authoring_cycle --apply
 ```
 
-Auto-resolves queue items whose retrieval the heal chain just fixed,
-and prints the remaining action plan to a log. Items needing
-deep-dive deferred to the next Claude Code session that invokes
-`mv-authoring-cycle`.
+Items needing deep-dive or stub-enrich defer to the next Claude Code
+session that invokes the appropriate Layer-4 agent.
 
 Cron: `30 2 * * *`
 
-### Routine 2 — Weekly eval (health check)
-
-Runs every Monday at 3 AM local time:
+### Routine 4 — Layer 5: weekly eval (Mon 3 AM)
 
 ```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval --json > $HOME/MemoryVault/.mvkit/last-eval-$(date +\%Y\%m\%d).json
+mkdir -p $HOME/MemoryVault/.mvkit/eval-history && \
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval --json > $HOME/MemoryVault/.mvkit/eval-history/$(date +\%Y\%m\%d-\%H\%M\%S).json
 ```
 
 Cron: `0 3 * * 1`
 
-(Writes JSON output to a dated file so the user can track drift.)
+Writes one JSON per run; the eval-runner skill picks up the history
+for trend detection.
 
 ## How to set them up
 
