@@ -4,12 +4,16 @@ Combined retrieval pipeline — the kit's final retrieval stack.
 
 Order:
   1. D7 entity-lookup short-circuit  (if "latest on X" pattern matches)
-  2. BM25 recall → top-30
+  2. Graph walk over BM25 seeds (entity bridges + related: edges + question-entity boost)
   3. (optional) BGE reranker → top-K
 
 This is the production path. Falls through gracefully — D7 is a fast cheap
-filter for one query pattern; if it misses, BM25 takes over; reranker is
-opt-in for quality mode.
+filter for one query pattern; if it misses, graph walk takes over; reranker
+is opt-in for quality mode.
+
+Eval @ 1321-mem vault, 482-Q hardened set (2026-05-25):
+  combined_lean (D7+BM25)         R@5=0.689  MRR=0.627
+  combined_graph (D7+graph_walk)  R@5=0.733  MRR=0.653   ← +4.4pp R@5
 
 Run the comparison eval:
     python3 -m memoryvault_kit.retrieval.combined --eval
@@ -44,9 +48,22 @@ from memoryvault_kit.retrieval.bm25 import (
     build_index, load_memories, retrieve as bm25_retrieve,
 )
 from memoryvault_kit.retrieval.entity_lookup import try_entity_lookup
+from memoryvault_kit.retrieval import graph_walk as _gw
 from memoryvault_kit.retrieval.reranker import (
     rerank, build_body_index, RECALL_N,
 )
+
+# Lazy-built graph artifacts (built once per process on first call)
+_GW_STATE = {"full_by_id": None, "entity_idx": None, "ent_aliases": None}
+
+
+def _ensure_graph_state():
+    if _GW_STATE["full_by_id"] is None:
+        full = _gw.load_full_memories()
+        _GW_STATE["full_by_id"] = {m["id"]: m for m in full}
+        _GW_STATE["entity_idx"] = _gw.build_entity_index(full)
+        _GW_STATE["ent_aliases"] = _gw.load_entity_aliases()
+    return _GW_STATE
 
 VAULT = Path(os.environ.get("MEMORYVAULT_ROOT") or next(
     (p for p in [Path(__file__).resolve(), *Path(__file__).resolve().parents]
@@ -86,13 +103,20 @@ def retrieve_combined(question: str, index: dict, bodies: dict | None = None,
     if d7_results:
         return d7_results
 
-    # Step 2: BM25 recall — reranker is the Full-tier lift
+    # Step 2: graph walk over BM25 seeds. Adds entity-bridge, related:-edge,
+    # and question-entity boost on top of BM25 — beats plain BM25 by ~4-5pp
+    # R@5 on the 482-Q hardened set.
+    gs = _ensure_graph_state()
+    gw_results = _gw.retrieve(
+        question, index, gs["full_by_id"], gs["entity_idx"], gs["ent_aliases"],
+        k=RECALL_N if (use_reranker and bodies is not None) else k,
+    )
+
+    # Step 3: optional BGE reranker (Full tier)
     if use_reranker and bodies is not None:
-        candidates = bm25_retrieve(question, index, k=RECALL_N)
-        candidate_ids = [c["id"] for c in candidates]
+        candidate_ids = [c["id"] for c in gw_results]
         return rerank(question, candidate_ids, bodies, top_k=k)
-    else:
-        return bm25_retrieve(question, index, k=k)
+    return gw_results
 
 
 def eval_all_modes():
