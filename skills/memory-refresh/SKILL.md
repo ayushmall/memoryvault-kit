@@ -129,6 +129,42 @@ MEMORYVAULT_ROOT=$VAULT python3 -m memoryvault_kit.doctor --eval-recovery --json
 Parse the JSON. Auto-apply safe fixes (alias_map rebuild, event_date
 backfill). Surface unfixable issues as `mem_QUALITY_*` memories.
 
+## Step 4b — Process the authoring queue (stubs, deep-dives, healing items)
+
+The heal chain creates `mem_GAP_*` memories for structural holes. Most
+are stubs with `tags: [stub-enrich-me]` carrying pre-gathered Evidence
+but no grounded narrative. Coverage detection may also have queued
+deep-dive items (queries asked ≥2× still-thin).
+
+This step drains what it can. Skip with `--no-queue` if the user wants
+a fast refresh (default is to drain).
+
+```bash
+# List the queue
+find $VAULT/memories/2026 -name "mem_GAP_*.md" -exec grep -l "stub-enrich-me" {} \;
+ls $VAULT/.mvkit/authoring_queue/*.jsonl 2>/dev/null
+```
+
+For each pending item, invoke the right sub-agent:
+
+| Queue item | Sub-agent | What it does |
+|---|---|---|
+| `mem_GAP_*` with `stub-enrich-me` | `mv-stub-enricher` | Read Evidence section, write grounded narrative, set `enriched: true` |
+| `query-replay` items in `authoring_queue/` | `mv-deep-dive` | Re-query via native MCP (Notion/Slack/Linear/etc.), save a new grounded memory |
+| `contradiction-pending` | `mv-contradiction-resolver` (deferred, not implemented yet — log + skip) | resolve conflicting memories |
+
+Use `Agent({subagent_type: "..."})` or invoke via the Skill tool.
+Cap the work — drain up to 10 items per refresh run. Beyond that,
+the user can re-invoke `/mv-refresh` to drain more, or schedule the
+queue-router task separately.
+
+Report what got drained and what remains:
+
+```
+Queue: 7 stubs drained, 3 deep-dives, 2 deferred (contradiction-resolver not shipped)
+       12 items remain pending (will drain next run)
+```
+
 ## Step 5 — Soft eval (cheap, no gold annotations needed)
 
 ```bash
@@ -160,7 +196,8 @@ Since last refresh (M hours ago):
 
 Heal: alias_map rebuilt, 3 new wikilinks added.
 Doctor: 5/5 checks pass.
-Soft coverage: 26/30 → 27/30 (+1).
+Queue drained: 7 stubs enriched, 3 deep-dives, 12 still pending.
+Soft coverage: 26/30 → 28/30 (+2). The +2 was from stub enrichments.
 
 Discovery proposed K new targets — see queue-router for review.
 Quality flags: <any mem_QUALITY_* written this run>
@@ -206,6 +243,19 @@ different timestamps for three different events.
   their MCPs are installed. The config is the source of truth.
 - Don't auto-accept discovery proposals. Write `mem_DISCOVERY_*`
   memories and let the user decide.
+- Don't drain the entire authoring queue in one run. Cap at 10
+  items. The remaining drain on the next refresh — keeps any one
+  run bounded so the user isn't stuck waiting.
+
+## Flags
+
+- `--no-queue` — skip Step 4b. Fast refresh, no stub enrichment or
+  deep-dive. Use when the user just wants to check what's new from
+  sources.
+- `--full` — also run the three-pillar eval (fill_quality + pollution
+  + Lean⊆Full) at Step 5 instead of just soft coverage. Slower.
+- `--vault <path>` — use a different MEMORYVAULT_ROOT just for this
+  run.
 
 ## When this skill IS called
 
