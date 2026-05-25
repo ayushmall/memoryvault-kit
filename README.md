@@ -144,18 +144,25 @@ Each of these maps to a bucket the kit was tuned against. There's an eval set of
 
 ## How well does it actually work
 
-Measured on a 1321-memory personal vault, against 482 questions across nine bucket types:
+Honestly, I don't fully know yet.
 
-| retriever | R@5 | R@10 | MRR |
-|---|---|---|---|
-| naive grep | 48% | 61% | 0.44 |
-| BM25 alone | 75% | 84% | 0.67 |
-| BM25 with graph walk and entity short-circuit (default) | 73% | 80% | 0.65 |
-| BGE small embeddings | 47% | 56% | 0.46 |
+The kit has been measured on one vault (the maintainer's, 1321 memories across 9 sources, 482 questions across 9 buckets). On that vault, the default retriever scores around R@5 = 0.74. Earlier in development on a smaller 470-memory version of the same vault it hit 0.87. Bigger haystacks are harder, which is expected.
 
-Earlier evals on a 470-memory vault hit 87% R@5 with the same retriever. The numbers dropped when the vault grew to 1321 memories, which is expected (bigger haystacks are harder). The full history is in `evals/results_log.jsonl`.
+But those numbers are about this specific vault. The eval questions were generated from its specific content, by sub-agents looking at its specific entities. A vault with a different shape (different sources, different domain, different entity density) would generate different questions and produce different numbers. The kit's per-bucket strengths and weaknesses on the maintainer's vault are not a prediction of your strengths and weaknesses.
 
-Numbers will differ on your vault. The shape of your corpus matters more than the retriever. Notion-heavy vaults score differently than Linear-heavy ones, and so on.
+What I can say with confidence:
+
+- BM25 with graph walk and entity-lookup short-circuit beats naive grep by a wide margin (grep R@5 = 0.48)
+- Modern dense embeddings (BGE-small) lose badly on this name-dense small vault (R@5 = 0.47). They likely win at much larger scale; haven't tested
+- The default retriever is sub-millisecond, runs no GPU, calls no LLM
+- The full eval-history is in `evals/results_log.jsonl` with every iteration's numbers and what changed
+
+What I cannot say:
+
+- Whether the kit will work as well on your vault. Generate your own eval set via `mv eval init --from-vault` and find out.
+- Whether the eval set is unbiased. It isn't (see `docs/eval_methodology.md` for the explicit biases — vault-shape, question-writer, gold-label).
+
+Iterate on your own numbers, not the maintainer's.
 
 ## What's in the repo
 

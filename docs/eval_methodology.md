@@ -1,12 +1,69 @@
 # Eval methodology
 
 The single highest-ROI thing you can do for this system. Without an eval set,
-you have no way to tell whether a change made retrieval better or worse — only
+you have no way to tell whether a change made retrieval better or worse, only
 "feels right." With one, you can iterate on retrieval, ingestion, and entity
 design with confidence.
 
 > Build the eval set *before* optimizing the retriever. That's the order that
 > works.
+
+## What this eval set is, and what it isn't
+
+The shipped eval set (482 questions across 9 buckets) was generated from
+the maintainer's own vault. Sub-agents that hadn't seen the development
+conversation sampled memories and wrote questions a real user might ask
+about that specific content. That's better than the maintainer writing
+their own questions (which would tune the eval to whatever the retriever
+already does well), but it's still not unbiased in a generalizable sense.
+
+**Specifically, these biases exist and you should know about them:**
+
+1. **Vault-shape bias.** The questions are about the maintainer's
+   actual entities (specific people, products, customers, projects).
+   Question patterns reflect what's in that vault: lots of "what's the
+   latest on `<engineer's email>`", many "what did `<colleague>` say
+   about `<product>`". A vault with a different shape (a sales rep's
+   account data, an engineer's pure-code corpus, a researcher's papers)
+   would generate questions of different distribution, and the
+   retriever's per-bucket numbers would shift.
+
+2. **Question-writer bias.** Sub-agents tend to write questions
+   answerable from a single memory's title or body. Genuinely hard
+   multi-hop or "infer-from-absence" questions are under-represented.
+
+3. **Gold-label bias.** Each question has one or more gold memory IDs
+   marked as the right answer. These are based on what the question
+   author thought was the answer at write time. Spot-checks have found
+   8 mislabels in 50 sampled questions (16%). The full set hasn't been
+   exhaustively reviewed by a second human.
+
+4. **Reproduction tells you about the kit on YOUR vault.** Running
+   `mv eval` on your own vault uses YOUR questions (you build them
+   via `mv eval init --from-vault`). The kit's shipped numbers tell you
+   the retriever works on one specific vault. They do not predict your
+   numbers.
+
+If you're using this as the basis for a publication, a vendor decision,
+or anything else that requires the result to generalize, those biases
+matter. If you're using it to iterate on your own kit's quality, the
+biases are still there but you'll re-bias toward your own vault as
+soon as you generate questions from it, which is exactly what you want
+for self-improvement.
+
+## How to generate your own eval set
+
+```bash
+python3 -m memoryvault_kit.eval.init --from-vault --n-questions 100
+```
+
+This samples memories from your vault and asks Claude to write
+questions about them. You review and accept/reject. The result is at
+`<vault>/evals/retrieval/questions.jsonl` and `mv eval` uses it.
+
+Your generated set will have all the same biases listed above relative
+to your vault. That's fine for iterating on your kit, not fine for
+comparing your kit to anyone else's kit.
 
 ---
 
