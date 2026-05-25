@@ -47,13 +47,18 @@ ingest per source) and separate from individual memory mtimes
 # is NOT one of the ingest sources — these are the interaction saves.
 LAST_REFRESH=$(jq -r .last_refresh_at < $VAULT/.mvkit/refresh_state.json 2>/dev/null || echo "1970-01-01")
 find $VAULT/memories/2026 -name "mem_*.md" -newer <(date -d "$LAST_REFRESH" +%s 2>/dev/null) | wc -l
+
+# Session annotations specifically (mem_ANNOT_*) — these are corrections,
+# heuristic fixes, syntheses humans made during conversations. They're
+# audit-trail data: surface them but don't act on them automatically.
+find $VAULT/memories/2026 -name "mem_ANNOT_*.md" -newer <(date -d "$LAST_REFRESH" +%s 2>/dev/null)
 ```
 
 Summarize in one paragraph before doing any work:
 
 > Your vault has been live for N days. M sources enabled. Last
-> refresh was K ago. Since then: I new interaction memories (from
-> chat sessions calling memory_save). Active retriever X. Last eval
+> refresh was K ago. Since then: I new interaction memories
+> (including A session annotations). Active retriever X. Last eval
 > R@5 was Y.
 
 The user reads this and confirms before you change anything.
@@ -199,9 +204,20 @@ Doctor: 5/5 checks pass.
 Queue drained: 7 stubs enriched, 3 deep-dives, 12 still pending.
 Soft coverage: 26/30 → 28/30 (+2). The +2 was from stub enrichments.
 
+Annotations since last refresh (visible only, no auto-action):
+  [2026-05-25] "Snowflake is a competitor, not customer. G3 detector
+                should skip companies dominated by PR-source memories."
+                → mem_GAP_g3-snowflake (already superseded by manual fix)
+
 Discovery proposed K new targets — see queue-router for review.
 Quality flags: <any mem_QUALITY_* written this run>
 ```
+
+The annotations block is informational only. The kit doesn't try to
+parse them and auto-apply fixes — they're audit data the user reads
+and acts on. If a row sits in this section across multiple refreshes
+without the linked gap or memory changing, that's a signal the user
+hasn't gotten to it yet.
 
 After reporting, write the run timestamp:
 

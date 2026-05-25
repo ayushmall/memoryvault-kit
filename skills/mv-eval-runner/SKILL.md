@@ -46,6 +46,13 @@ type:reference, tagged `weekly-summary`. Include:
   heal already tried — if they're still failing on Monday, escalate)
 - Top 3 noisy sources from signal-quality (with the suggested fix)
 - New `mem_DISCOVERY_*` memories pending user review
+- **Session annotations from the past week** (`mem_ANNOT_*` memories).
+  These are corrections + heuristic fixes humans wrote via
+  `memory_annotate` during chat sessions. Surface them with a one-line
+  summary + which gap/memory they linked to. The kit does NOT
+  auto-apply these — they're informational. If an annotation has
+  sat across multiple weekly summaries without the linked memory
+  changing, that's a clear "this fix never got applied" signal.
 
 This is the one summary that the user actually reads. Make it dense.
 

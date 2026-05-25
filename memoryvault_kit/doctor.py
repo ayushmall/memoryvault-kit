@@ -362,10 +362,12 @@ def diagnose() -> dict:
                     "hours_ago": round(hrs_ago, 1),
                     "history_count": len(history),
                 }
-                # Count interaction-driven memories since last refresh
+                # Count interaction-driven memories since last refresh +
+                # specifically count session annotations (mem_ANNOT_*)
                 if mem_dir.is_dir():
                     cutoff_ts = last_dt.timestamp()
                     interact_count = 0
+                    annot_count = 0
                     INGEST_SOURCES = {"linear", "notion", "github-pr", "slack", "gmail", "calendar",
                                       "granola", "gdrive", "pylon", "claude-code"}
                     for p in mem_dir.glob("mem_*.md"):
@@ -376,7 +378,10 @@ def diagnose() -> dict:
                         src = src_m.group(1).strip() if src_m else "unknown"
                         if src not in INGEST_SOURCES:
                             interact_count += 1
+                        if p.stem.startswith("mem_ANNOT_"):
+                            annot_count += 1
                     report["refresh"]["interaction_memories_since"] = interact_count
+                    report["refresh"]["annotations_since"] = annot_count
         except Exception as e:
             report["refresh"] = {"error": str(e)}
     else:
@@ -431,7 +436,9 @@ def render_human(r: dict) -> str:
         ago = f"{h:.1f}h ago" if h < 48 else f"{h/24:.1f}d ago"
         lines.append(f"  last /mv-refresh: {rf['last_refresh_at'][:19]} ({ago}, {rf['history_count']} runs total)")
         if "interaction_memories_since" in rf:
-            lines.append(f"    interaction memories since: {rf['interaction_memories_since']}")
+            ann = rf.get("annotations_since", 0)
+            ann_part = f" (incl. {ann} session annotations)" if ann else ""
+            lines.append(f"    interaction memories since: {rf['interaction_memories_since']}{ann_part}")
     elif "note" in rf:
         lines.append(f"  refresh: {rf['note']}")
 
