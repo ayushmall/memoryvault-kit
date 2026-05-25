@@ -49,8 +49,8 @@ tags: [reference, <area>]
 ```
 
 **Title examples:**
-- ✓ "App Server architecture: GraphQL gateway, auth, MCP, RPC, websockets"
-- ✓ "Agent Pricing Strategy — six tenets + credit-weights"
+- ✓ "App Service architecture: GraphQL gateway, auth, MCP, RPC, websockets"
+- ✓ "Pricing Strategy — tenets + credit-weights"
 - ✗ "Architecture notes" (vague)
 - ✗ "Auth stuff" (no specific subject)
 

@@ -74,7 +74,7 @@ Two patterns are supported:
 
 ```
 mem_INGEST_<SOURCE>_<8charhex>      # auto-ingested, e.g. mem_INGEST_GRANOLA_a1b2c3d4
-mem_<RAWID>                          # manually seeded, e.g. mem_01JAGF00000000000000NETSK1
+mem_<RAWID>                          # manually seeded, e.g. mem_01JAGF00000000000000ACMEC1
 ```
 
 The kit doesn't enforce a specific pattern; just keep IDs unique and stable.
@@ -115,7 +115,7 @@ retrieval entirely.
 
 ```yaml
 ---
-id: "entity:soham-mazumdar"             # required, kebab-case after entity:
+id: "entity:jane-doe"             # required, kebab-case after entity:
 name: Sara Kim                    # required, canonical display name
 type: person                            # required, see list below
 aliases: ["Sara"]                      # required (can be []) — see rules
@@ -162,7 +162,7 @@ queries that use a non-canonical term don't resolve.
 aliases: ["Acme"]                              # company shorthand
 aliases: ["Lisa"]                                # person first name
 aliases: ["Column-Level Security", "CLS"]        # formal + abbreviation
-aliases: ["your team Chat", "Canvas V2"]            # multiple product names
+aliases: ["your team Chat", "Canvas"]            # multiple product names
 
 # Bad
 aliases: ["customer"]                            # type marker — lint will block

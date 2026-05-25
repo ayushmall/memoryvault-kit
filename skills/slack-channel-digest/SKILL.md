@@ -100,17 +100,17 @@ entity backlinks instead of slow content matching.
 **Example 1 — Customer issue thread in `#customer-issues`**
 
 Input thread:
-> Anand: ConocoPhillips reported the agent canvas is hanging for runs >5 min
-> Jeff Lattal: ENG-13182 filed, P0
-> Anand: PR up — #20987
+> Sam: Acme Corp reported the agent canvas is hanging for runs >5 min
+> Sam Lee: ENG-1236 filed, P0
+> Sam: PR up — #1235
 
 Output (3 memories):
 
 1. `mem_LINEAR_eng_13182` (project_fact) — the ticket itself, linked to
-   [[ConocoPhillips]], [[Agent Builder]], `source_surface: "[[#customer-issues]]"`
+   [[Acme Corp]], [[Workflow Builder]], `source_surface: "[[#customer-issues]]"`
 2. `mem_PR_<your-repo>_20987` (project_fact) — the PR, same surface link
-3. `mem_REL_anand-resolves-conoco-hang` (relationship-update) —
-   relationship memory: Anand is the eng-side resolver for this customer issue
+3. `mem_REL_anand-resolves-acme-hang` (relationship-update) —
+   relationship memory: Sam is the eng-side resolver for this customer issue
 
 **Example 2 — Decision in `#product`**
 
@@ -125,7 +125,7 @@ Output (1 memory):
 ```yaml
 title: "Riley: rerun button exposed at node level (not canvas level) for partial-rerun control"
 type: decision
-entities: ["[[Riley Park]]", "[[Visual Agent Builder]]", "[[Alex Cho]]"]
+entities: ["[[Riley Park]]", "[[Workflow Builder]]", "[[Alex Cho]]"]
 mentions: ["[[Jane Doe]]", "[[Sam Lee]]"]
 source_surface: "[[#product]]"
 event_date: "<thread ts>"

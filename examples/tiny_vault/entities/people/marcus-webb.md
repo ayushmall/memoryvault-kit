@@ -1,6 +1,6 @@
 ---
 id: "entity:marcus-webb"
-name: Marcus Webb
+name: Alex Cho
 type: person
 aliases: ["Marcus"]
 parent: "entity:north-river"

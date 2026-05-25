@@ -10,12 +10,12 @@ Example ``org_roster.json``::
 
     {
       "people": {
-        "alex-zhang": {
+        "jane-doe": {
           "team": "Engineering Team",
           "role": "senior-engineer",
           "alias_hint": "Alex"
         },
-        "drew-kim": {
+        "alex-cho": {
           "team": "Product Team",
           "role": "product-manager"
         }

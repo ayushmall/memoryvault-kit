@@ -51,10 +51,10 @@ tags: [event, <subject>]
 ```
 
 **Title examples:**
-- ✓ "ConocoPhillips Agents 2.0 — Apr 28 onsite preparation"
-- ✓ "Agent Builder check-in Apr 30 — Report writer regressions blocking PF"
+- ✓ "Acme Corp Platform 2.0 — Apr 28 onsite preparation"
+- ✓ "Workflow Builder check-in Apr 30 — Report writer regressions blocking PF"
 - ✗ "Weekly sync" (no date or subject)
-- ✗ "Met with Conoco" (vague — what about?)
+- ✗ "Met with Acme" (vague — what about?)
 
 ## Maintain
 

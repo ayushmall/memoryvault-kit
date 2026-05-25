@@ -17,7 +17,7 @@ Example::
       "org_slug": "acme",
       "org_name": "Acme Corp",
       "org_entity": "Acme Corp",
-      "vault_owner_entity": "Alex Zhang",
+      "vault_owner_entity": "Jane Doe",
       "always_structural": ["Acme Corp", "GitHub", "Engineering Team"],
       "substrates_and_competitors": [
         "Snowflake", "Databricks", "Looker"

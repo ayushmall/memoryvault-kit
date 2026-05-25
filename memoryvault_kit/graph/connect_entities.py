@@ -2,13 +2,13 @@
 """
 Heal pass: connect entities to memories that should have linked them.
 
-The pattern observed: an entity exists (e.g., [[GenUI Infra]]), and 23
+The pattern observed: an entity exists (e.g., [[UI Infra]]), and 23
 memories mention "GenUI" in their body — but only 13 actually wikilink
 to the entity. The other 10 are silent participants. This pass walks
 every entity, finds body-mentions across all memories, and adds the
 missing wikilink to entities frontmatter.
 
-Same problem: aliases ("Apps" → GenUI Infra) should also resolve. We
+Same problem: aliases ("Apps" → UI Infra) should also resolve. We
 use the existing alias map.
 
 Two passes:

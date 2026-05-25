@@ -2,7 +2,7 @@
 id: mem_DEMO_north_river_park
 title: "North River parked — wrong fit"
 type: decision
-entities: ["[[North River]]", "[[Marcus Webb]]"]
+entities: ["[[North River]]", "[[Alex Cho]]"]
 tags: [customer, north-river, parked]
 source_host: manual
 source_ref: "demo"

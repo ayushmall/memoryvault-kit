@@ -44,7 +44,7 @@ QUERY_TEMPLATES = [
 def load_hub_entities(top_n: int = 20) -> list[str]:
     """Hub entities — most likely to be over-linked, most useful as probes."""
     if not MATURE_PATH.exists():
-        return ["Agents Platform", "Domain", "App Server", "Chat v2", "GenUI Infra"]
+        return ["Platform", "Domain", "App Service", "Chat", "UI Infra"]
     raw = json.loads(MATURE_PATH.read_text())
     hubs = raw.get("by_tier", {}).get("hub", [])
     # Filter to project / topic / team kinds — people aren't useful as probes

@@ -8,7 +8,7 @@ customers, products, topics). The clustering hint:
 
   - someone co-mentioned heavily with [[Sales Team]] + customer entities
     is likely on Sales
-  - someone co-mentioned with [[Agents Platform]] + [[Domain]] + [[Models]]
+  - someone co-mentioned with [[Platform]] + [[Domain]] + [[Models]]
     is Engineering
   - someone co-mentioned with [[Sales Team]] + customer code + technical
     topics is SE
@@ -42,26 +42,26 @@ OUT = VAULT / ".mvkit" / "org_discovery.md"
 # Team-classification hints — co-mentions with these entities suggest the team
 TEAM_HINTS = {
     "Engineering Team": [
-        "Agents Platform", "Core Platform", "Query Parser", "Domain", "Models",
-        "GenUI Infra", "Auth", "App Server", "Chat v2", "Storage",
+        "Platform", "Core Platform", "Query Parser", "Domain", "Models",
+        "UI Infra", "Auth", "App Service", "Chat", "Storage",
         "Connections & Crawler", "Jobs & Schedules",
     ],
     "Product Engineering": [
-        "Product Engineering", "Domain Health", "Customer Issues",
+        "Product Engineering", "Health Monitor", "Customer Issues",
     ],
     "Deployment Team": [
         "Deployment Team", "Deploy & Infra",
     ],
     "Product Team": [
-        "Product Team", "Visual Agent Builder", "Agent Builder",
+        "Product Team", "Workflow Builder", "Workflow Builder",
     ],
     "PMM": [
-        "Agent Builder", "Anthropic", "launch", "positioning", "messaging",
+        "Workflow Builder", "Anthropic", "launch", "positioning", "messaging",
         "sales-enablement",
     ],
     "Sales Team": [
-        "Sales Team", "ConocoPhillips", "PropertyFinder", "Trumid", "Netskope",
-        "Delhivery", "Patreon",
+        "Sales Team", "Acme Corp", "Acme Corp", "Acme Corp", "Acme Corp",
+        "Acme Corp", "Acme Corp",
     ],
     "SE Team": [
         "SE Team", "demo", "POC",
@@ -70,7 +70,7 @@ TEAM_HINTS = {
         "Customer Issues", "customer-issues", "Customer Success",
     ],
     "ACE Team": [
-        "ACE Continuous Extraction", "Adaptive Context Engine",
+        "Continuous Extraction", "Adaptive Context",
     ],
 }
 

@@ -20,7 +20,7 @@ Gap classes (workflow questions in parens):
 **Org-shape**
 G1. Person ≥5 in-links but no team+role mapping  (who's on which team?)
 G2. Project without `vault_owner_relation` or named owner  (who owns X?)
-G3. Customer entity missing a named WAI champion  (who covers X account?)
+G3. Customer entity missing a named our champion  (who covers X account?)
 G4. Team entity with no member tagged as lead  (who leads team Y?)
 
 **Cross-source connections**
@@ -432,7 +432,7 @@ def write_report(all_gaps: dict):
     descriptions = {
         "G1": "Person ≥5 links but no team+role",
         "G2": "Project without `vault_owner_relation`",
-        "G3": "Customer without named WAI champion",
+        "G3": "Customer without named our champion",
         "G4": "Team without identified lead",
         "G5": "Linear Done without linked PR",
         "G7": "Customer-issue without customer entity",

@@ -67,7 +67,7 @@ Full canon: `memoryvault_kit/PRESERVATION_RULES.md`. Apply EVERY rule on EVERY w
 1. **Numbers** — verbatim with units. "22 agents", "$45K (2x $22K budget)".
 2. **Dates** — exact, never relative. "May 23", not "next month".
 3. **Direct quotes** — for decisions/commitments/refusals. Quote the speaker.
-4. **Full triples** — name everyone. Not "they decided", but "Sara decided X with Priya and the QA team".
+4. **Full triples** — name everyone. Not "they decided", but "Sara decided X with Jane and the QA team".
 5. **Causal links** — preserve "because/since/due to". Multi-hop depends on this.
 6. **Negations** — what was rejected/deferred must be explicit, not implied.
 7. **All named entities** — every name in body → wikilink in `entities:`. No exceptions.

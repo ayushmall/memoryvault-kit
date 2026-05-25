@@ -24,7 +24,7 @@ non-negotiable preservation categories — apply ALL of them on EVERY write:
 1. **Numbers** — verbatim with units. "22 deployed agents", not "many agents". "$45K, 2x Marcus's $22K budget", not "way over budget".
 2. **Dates** — exact, never relative. "May 23", not "next month". "Apr 17 sync", not "the founder sync".
 3. **Direct quotes** — for decisions, commitments, refusals. Quote the speaker. ("Sara: 'we are not doing a stripped tier'").
-4. **Full triples** — name everyone. Not "they decided"; write "Sara decided X, with Priya and the QA team on board".
+4. **Full triples** — name everyone. Not "they decided"; write "Sara decided X, with Jane and the QA team on board".
 5. **Causal links** — preserve "because", "since", "due to". Multi-hop questions depend on this. "The launch slipped *because* per-user retention wasn't scoped — added at Acme's Apr 22 request."
 6. **Negations** — what was rejected/deferred must be explicit. "Acme's request **deferred to Q3**", not implied.
 7. **All named entities** — every name in the body MUST appear in `entities:` as a wikilink. Mentioned in passing? Still wikilink. **Silent drops break graph walk.**

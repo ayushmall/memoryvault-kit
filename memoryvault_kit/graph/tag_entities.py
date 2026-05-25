@@ -40,7 +40,7 @@ def load_alias_index():
     """Return (alias_low -> canonical_name), (canonical_low -> canonical_display),
     and (ambiguous_aliases) set — aliases that resolve to >1 canonical entity.
     Ambiguous aliases will be SKIPPED during auto-tagging to avoid wrong assignments
-    (e.g., 'Marcus' could be your team Marcus or Marcus Webb — needs human judgment)."""
+    (e.g., 'Marcus' could be your team Marcus or Alex Cho — needs human judgment)."""
     # First pass: collect every (alias_low → set of canonicals)
     raw = defaultdict(set)
     canonical_display = {}
@@ -70,9 +70,9 @@ def load_alias_index():
         else:
             ambiguous.add(al)
 
-    # Third pass: fuzzy-ambiguity. If a canonical name (e.g., "mukesh") is a
-    # strict prefix of another canonical name (e.g., "mukesh jha"), then bare
-    # token "mukesh" in a body could refer to EITHER entity. Mark it ambiguous
+    # Third pass: fuzzy-ambiguity. If a canonical name (e.g., "sam") is a
+    # strict prefix of another canonical name (e.g., "sam lee"), then bare
+    # token "sam" in a body could refer to EITHER entity. Mark it ambiguous
     # so we don't auto-tag wrongly. This catches the standalone-first-name case.
     all_canonicals = sorted(canonical_display.keys(), key=len)
     for short in all_canonicals:

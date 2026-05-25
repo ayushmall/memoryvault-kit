@@ -68,7 +68,7 @@ Project entities have a `vault_owner_relation` field that captures
 ```yaml
 # entities/projects/agents-on-embedded-surfaces.md
 ---
-name: Agents on Embedded Surfaces
+name: Platform on Embedded Surfaces
 type: project
 vault_owner_relation: "lead"   # ← this field
 linear_project_id: "b909..."

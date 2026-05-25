@@ -11,7 +11,7 @@ Gmail ingest is **authoring-agent-driven**. Agent reads via the Gmail MCP.
 
 | Email pattern | Becomes |
 |---|---|
-| Customer thread with multiple replies | `type: event` with both customer + WAI-side participants |
+| Customer thread with multiple replies | `type: event` with both customer + our-side participants |
 | Decision communicated via email | `type: decision` with quote of the decision sentence |
 | Org announcement (someone joining, leaving) | `type: relationship` |
 | Newsletter / automated mail | **skip** |
@@ -42,7 +42,7 @@ tags: [gmail, <subject-slug>]
 ## Critical: title is NOT the email subject
 
 A gmail thread "Re: Re: Re: Q2 Plans" needs a *synthesized* title like
-`"Q2 Plans: CEO locks enterprise+embedded+verticalized agents"`.
+`"Q2 Plans: CEO locks enterprise + embedded + vertical workflows"`.
 
 The agent reads the thread body, synthesizes a fact-carrying title, then
 saves. Just copying the email subject is a failure mode that tanks

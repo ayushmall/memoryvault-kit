@@ -54,7 +54,7 @@ CREATED_SOURCES = {                  # event time = original creation
 
 
 def detect_source(mem_id: str) -> str:
-    """Return the source-key for a memory id like mem_LINEAR_eng_10451."""
+    """Return the source-key for a memory id like mem_LINEAR_eng_1234."""
     body = mem_id.removeprefix("mem_")
     # multi-token prefix first (INGEST_*)
     if body.startswith("INGEST_"):

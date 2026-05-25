@@ -2,7 +2,7 @@
 id: mem_DEMO_north_river_pricing
 title: "North River pricing comes back too high"
 type: project_fact
-entities: ["[[North River]]", "[[Marcus Webb]]"]
+entities: ["[[North River]]", "[[Alex Cho]]"]
 tags: [customer, north-river, pricing]
 source_host: manual
 source_ref: "demo"

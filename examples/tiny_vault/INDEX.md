@@ -59,7 +59,7 @@
 ### person (3)
 
 - [Lisa Chen](entities/people/lisa-chen.md) (3 backlinks) — VP Eng at [[Acme Corp]]
-- [Marcus Webb](entities/people/marcus-webb.md) (3 backlinks) — Director of Data at [[North River]]
+- [Alex Cho](entities/people/marcus-webb.md) (3 backlinks) — Director of Data at [[North River]]
 - [Sara Kim](entities/people/sara-kim.md) (2 backlinks) — CTO and co-founder
 
 ### company (2)

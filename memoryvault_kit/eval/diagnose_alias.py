@@ -12,7 +12,7 @@ for each failed alias question on the TRAIN split, it:
 Failure modes considered:
   M1. Query term is in alias_map but retriever didn't surface
   M2. Query term is NOT in alias_map at all (entity missing)
-  M3. Query uses a surface form (e.g., "WoW") not present anywhere
+  M3. Query uses a surface form (e.g., "an internal slogan") not present anywhere
   M4. Gold memory has weak BM25 signal (short body, common terms)
   M5. Gold memory exists but lacks the alias in its haystack
 

@@ -64,7 +64,7 @@ Three deliberate choices:
 
 1. **`v2`, `q3`, `2026` survive** — the regex requires `[a-z0-9]` not `[a-z]`,
    so numbers and version strings tokenize correctly.
-2. **Hyphens preserved** — `chat-v2`, `audit-logs` tokenize as one token, not
+2. **Hyphens preserved** — `chat`, `audit-logs` tokenize as one token, not
    three. Matches how memories tag things.
 3. **Stopwords dropped** — `"what"`, `"is"`, `"the"` aren't worth scoring.
 
@@ -100,9 +100,9 @@ score = (unique_hits × 10 + total_hits + phrase_bonus) × (0.5 + importance)
 
 BM25 beat it by +0.033 R@5 across 220 questions. The three reasons:
 
-1. **IDF weighting.** Naive count treated `[agents]` and `[Kedia]` equally.
-   BM25 weighs rare terms much higher. "Priya Sharma is starting Parameterised
-   Agents" now retrieves on `Kedia` (df=2, IDF=5.4) more than `agents` (df=420,
+1. **IDF weighting.** Naive count treated `[agents]` and `[Doe]` equally.
+   BM25 weighs rare terms much higher. "Jane Doe is starting Parameterised
+   Agents" now retrieves on `Doe` (df=2, IDF=5.4) more than `agents` (df=420,
    IDF=0.08).
 2. **TF saturation.** Naive count rewarded 10× more for 10 mentions of `agents`.
    BM25's saturation curve flattens after the first few — diminishing returns.
@@ -142,7 +142,7 @@ lever at 1.86×.
 Source: `memoryvault_kit/retrieval/bm25.py:query_alias_phrases()`.
 
 When the question contains a *phrase* that's in the alias map (e.g.,
-"Canvas V2"), each matching phrase in a memory's haystack adds `+1.5` to the
+"Canvas"), each matching phrase in a memory's haystack adds `+1.5` to the
 score. This is phrase-level, not token-level — adding "chat" and "v2" as
 tokens would pollute matches. Requiring the full phrase keeps precision high.
 

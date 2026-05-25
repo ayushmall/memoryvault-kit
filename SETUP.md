@@ -115,7 +115,7 @@ status: active
 
 Sara 1:1, Apr 17, 2026. Decision: pause new agent feature work for 1–2 weeks
 to fix determinism. Two pain points driving: time-to-first-good-run and lack
-of review runs. Priya + Priya allocated.
+of review runs. Jane + Jane allocated.
 ```
 
 **Required fields**: `id`, `title`, `type`, `entities` (≥1 wikilink), `created`.
@@ -137,7 +137,7 @@ retriever applies a small importance multiplier; don't try to game it.
 
 ```yaml
 ---
-id: "entity:soham-mazumdar"
+id: "entity:jane-doe"
 name: Sara Kim
 type: person
 aliases: ["Sara"]
@@ -267,7 +267,7 @@ id: mem_NOTE_first_signal
 title: "Acme wants parameterized agent inputs by May"
 type: project_fact
 entities: ["[[Acme Corp]]", "[[Lisa Chen]]", "[[Q2 Launch]]"]
-tags: [customer, acme, parameterized-agents, q2-commit]
+tags: [customer, acme, plugin-framework, q2-commit]
 source_host: manual
 importance: 0.85
 created: 2026-04-15
@@ -276,7 +276,7 @@ created: 2026-04-15
 Lisa Chen flagged on the Apr 15 sync that Acme needs parameterized
 inputs to scale their 22 deployed agents. Currently each agent has hardcoded
 filters — they're cloning agents per-region. Asked for a May commit;
-Priya + you starting the workstream Apr 22.
+Jane + you starting the workstream Apr 22.
 ```
 
 ---
@@ -517,7 +517,7 @@ In all three options, the agent's daily ritual is:
    • 1 new entity: Lisa Yip (Acme)
    • Health: ✓ clean | dead_wikilinks=0 lint=0
    • Top by importance:
-     1. Acme Q2 commit on parameterized agents [0.9]
+     1. Acme Q2 commit on plugin framework [0.9]
      2. ...
    ```
 

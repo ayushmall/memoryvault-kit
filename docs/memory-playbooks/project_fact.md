@@ -46,8 +46,8 @@ Assignee: <name> · Team: <team> · Project: <project>
 ```
 
 **Title examples:**
-- ✓ "ENG-10451 [Done · high]: Build capabilities to build Parameterised Agents"
-- ✓ "PR #20622: Add Firecracker-ready Temporal sandbox runtime"
+- ✓ "ENG-1234 [Done · high]: Build capabilities to build Plugin Framework"
+- ✓ "PR #1234: Add sandbox execution runtime"
 - ✗ "Linear issue about agents" (no ID, no state)
 - ✗ "Someone working on something" (no specifics)
 

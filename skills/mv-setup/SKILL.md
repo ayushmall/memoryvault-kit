@@ -134,7 +134,7 @@ After each step completes, append/update the corresponding line in
 ```markdown
 # memoryvault-kit bootstrap state
 
-Vault: /Users/ayushmall/MemoryVault
+Vault: /Users/$USER/MemoryVault
 Started: 2026-05-25T17:13:00Z
 Last touched: 2026-05-25T17:34:12Z
 
@@ -326,7 +326,7 @@ Cover at least 6 of the 9 buckets. Each question must:
 
 Output JSONL, one question per line. Schema:
   {"id": "q001", "question": "...", "bucket": "needle",
-   "expected_entities": ["[[Alice Chen]]"], "expected_memory_ids": []}
+   "expected_entities": ["[[Jane Doe]]"], "expected_memory_ids": []}
 ```
 
 Write the output to `<vault>/evals/retrieval/questions.jsonl`. Show

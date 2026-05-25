@@ -46,7 +46,7 @@ Surfaces of different kinds are recognized by a `surface_kind:` field:
 ```yaml
 ---
 id: mem_INGEST_NOTION_<short>
-title: "Agent Builder PRD — full requirements doc"
+title: "Workflow Builder PRD — full requirements doc"
 type: reference
 parent_surface: "[[Product/PRDs database]]"        # ← NEW field
 notion_id: "2f45affb-..."
@@ -67,7 +67,7 @@ surface_kind: notion-database
 parent: "[[Product team-space]]"                   # ← NEW field
 notion_id: "<database-id>"
 medium: notion
-participants: ["[[Lisa Chen]]", "[[Drew Kim]]"]    # members with edit access
+participants: ["[[Lisa Chen]]", "[[Alex Cho]]"]    # members with edit access
 about: ["[[Product Team]]"]
 child_count: 24                                    # # memories in this surface
 created: "..."
@@ -77,7 +77,7 @@ updated: "..."
 # Product/PRDs database
 
 Notion database under the Product team-space. Contains 24 PRD pages.
-Members with edit access: Lisa Chen, Drew Kim.
+Members with edit access: Lisa Chen, Alex Cho.
 
 Pages live as memories with `parent_surface: "[[Product/PRDs database]]"`.
 ```
@@ -92,9 +92,9 @@ memory_search(parent_surface="#customer-issues")  # direct children
 
 memory_walk(surface="#customer-issues")          # recursive — all descendants
 
-# "What does Drew Kim contribute across the Product team-space?"
+# "What does Alex Cho contribute across the Product team-space?"
 memory_search(parent_surface_includes="Product team-space",
-              entities=["[[Drew Kim]]"])
+              entities=["[[Alex Cho]]"])
 ```
 
 The MCP exposes these via:
@@ -114,12 +114,12 @@ notion-workspace ─┐
                   │     │
                   │     ├── notion-database "PRDs"
                   │     │     │
-                  │     │     ├── notion-page "Agent Builder PRD"
+                  │     │     ├── notion-page "Workflow Builder PRD"
                   │     │     │     │  (leaf — has memories)
                   │     │     │     │
                   │     │     │     └── mem_INGEST_NOTION_<short>_agent-builder
                   │     │     │
-                  │     │     └── notion-page "Embedded SDK PRD"
+                  │     │     └── notion-page "Embedded API PRD"
                   │     │
                   │     └── notion-page "Q2 Planning"
                   │

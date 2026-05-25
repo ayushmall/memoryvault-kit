@@ -150,7 +150,7 @@ If all five pass, save.
 Confirm to the user with the assigned memory id and warnings:
 
 > Saved as mem_MCP_5ad2e330. Wikilinked: Lisa Chen, Acme Corp,
-> Q2 Launch. Note: the pre-write check flagged that "Priya Sharma" was
+> Q2 Launch. Note: the pre-write check flagged that "Jane Doe" was
 > mentioned in the body but not yet wikilinked — want me to update?
 
 Hand off any pre-write warnings the tool returned so the user can spot-check.

@@ -50,7 +50,7 @@ they've been there, what signals this was true at as_of_date.>
 
 **Title examples:**
 - ✓ "Jordan Lee is the CS lead on Acme Corp"
-- ✓ "Vik Singh is the Head of PMM at <Your Org>"
+- ✓ "Riley Park is the Head of PMM at <Your Org>"
 - ✗ "Jordan and Acme" (no relationship verb)
 - ✗ "Jordan is great" (not a structural fact)
 

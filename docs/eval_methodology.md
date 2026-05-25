@@ -123,7 +123,7 @@ recognize "deferred" / "rejected" / "won't ship" as a constraint.
 **multi-hop** — Answer requires combining facts from 2+ memories. The gold
 answer set should be a list of memory IDs, all required.
 
-> Good: "Given Acme's parameterized-agents ask, who at your team is starting
+> Good: "Given Acme's plugin-framework ask, who at your team is starting
 > the workstream and from when?"
 > Gold: [mem_ASK, mem_WORKSTREAM, mem_PERSON]
 
@@ -134,7 +134,7 @@ answer set should be a list of memory IDs, all required.
 
 **alias** — Use the non-canonical name *deliberately* to test alias resolution.
 
-> Good: "What is Canvas V2?" (where the canonical entity is "chat-v2")
+> Good: "What is Canvas?" (where the canonical entity is "chat")
 
 **disambiguation** — Use a first-name or short name that collides.
 
@@ -177,7 +177,7 @@ The eval set is a JSONL file at `evals/retrieval/questions.jsonl`. Each line:
   "bucket": "needle-in-haystack",
   "question": "What budget cap did North River set?",
   "expected_memory_ids": ["mem_DEMO_north_river_pricing"],
-  "expected_entities": ["[[North River]]", "[[Marcus Webb]]"],
+  "expected_entities": ["[[North River]]", "[[Alex Cho]]"],
   "expected_tags": ["customer", "pricing"],
   "notes": "Anchor: Marcus mentioned 2x budget cap in Mar 25 sync"
 }

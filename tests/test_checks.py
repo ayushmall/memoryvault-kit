@@ -110,8 +110,8 @@ def test_body_entities_missing_warns():
         "id": "mem_test_missing",
         "title": "North River update — pricing concerns",
         "type": "observation",
-        "entities": ["North River"],   # missing Marcus Webb who's in the body
-        "body": "Marcus Webb called this morning. North River still has pricing concerns and wants a 30-day extension on the trial.",
+        "entities": ["North River"],   # missing Alex Cho who's in the body
+        "body": "Alex Cho called this morning. North River still has pricing concerns and wants a 30-day extension on the trial.",
         "importance": 0.5, "source_ref": "test:missing-entity",
     }
     f = C.run_checks(mem, ctx)

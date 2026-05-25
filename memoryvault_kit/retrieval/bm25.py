@@ -3,7 +3,7 @@
 BM25 keyword retriever — keyword.0.2.
 
 Replaces the naive (unique_hits×10 + total_hits) × (0.5 + importance) scorer with proper BM25:
-  - IDF weighting (rare tokens like 'kedia' count more than common ones like 'agents')
+  - IDF weighting (rare tokens like 'doe' count more than common ones like 'agents')
   - Length normalization (long memories don't dominate by accident)
   - Saturation curve on TF (10 mentions of 'agents' aren't 10× more useful than 1)
 

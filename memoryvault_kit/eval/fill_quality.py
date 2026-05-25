@@ -16,7 +16,7 @@ Score components (each 0–1, then averaged):
 
 - **title_specificity** — does the title carry concrete facts (numbers,
   IDs, named people/projects)? Vague titles like "Meeting" or "Notes"
-  score 0. "ENG-10451 [Done · high]: Build Parameterised Agents" scores 1.
+  score 0. "ENG-1234 [Done · high]: Build Plugin Framework" scores 1.
 - **required_fields** — are id, title, type, source, entities, importance
   all present and non-empty?
 - **temporal_present** — for non-stateful memories, is event_date set

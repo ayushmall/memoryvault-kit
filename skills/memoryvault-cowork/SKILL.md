@@ -40,7 +40,7 @@ Each memory file:
 ---
 id: "mem_<source>_<hash>"
 title: "Maya escalated dashboard latency Apr 4"
-entities: ["[[Maya Chen]]", "[[NorthstarCRM]]"]
+entities: ["[[Maya]]", "[[NorthstarCRM]]"]
 tags: ["northstar", "issue", "latency"]
 importance: 0.6
 source: granola
@@ -49,7 +49,7 @@ created: "2026-04-04T10:00:00Z"
 updated: "2026-04-04T10:00:00Z"
 ---
 
-April 4, 2026: Maya Chen escalated that NorthstarCRM users are seeing 6-8
+April 4, 2026: Maya escalated that NorthstarCRM users are seeing 6-8
 second dashboard latency. Root cause traced to N+1 query in the rendering
 path. Raj's team patched within 24h.
 ```
@@ -58,7 +58,7 @@ Each entity file:
 ```markdown
 ---
 id: "entity:maya-chen"
-name: Maya Chen
+name: Maya
 type: person
 aliases: ["Maya"]
 parent: "entity:northstarcrm"
@@ -265,7 +265,7 @@ When this skill is first invoked, walk the user through:
 
 - **Data lives in your Drive.** Cowork accesses it via the Drive connector
   scoped to the vault folder only.
-- **Drive search is exact-match.** Aliases ("VAB" → "Visual Agent Builder")
+- **Drive search is exact-match.** Aliases ("VAB" → "Workflow Builder")
   need an entity file with the alias listed. Set those up over time.
 - **No cross-account access.** The skill operates only on the Drive account
   the user has connected. Multi-account users should use separate vaults.

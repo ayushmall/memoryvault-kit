@@ -2,7 +2,7 @@
 id: mem_DEMO_north_river_intro
 title: "North River intro call — slow-moving but real"
 type: event
-entities: ["[[North River]]", "[[Marcus Webb]]"]
+entities: ["[[North River]]", "[[Alex Cho]]"]
 tags: [customer, north-river, intro]
 source_host: manual
 source_ref: "demo"

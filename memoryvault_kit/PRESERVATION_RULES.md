@@ -116,9 +116,9 @@ The significance is often the thing future-you will want to retrieve.
 
 ### Don't drop colleagues mentioned in passing
 
-If Marcus briefly noted that another colleague (e.g., Priya) had a relevant analysis from January,
-**both Marcus and another colleague (e.g., Priya) go in `entities:`**. Future questions might be about
-another colleague (e.g., Priya); without the wikilink, graph walk doesn't surface this memory.
+If Marcus briefly noted that another colleague (e.g., Jane) had a relevant analysis from January,
+**both Marcus and another colleague (e.g., Jane) go in `entities:`**. Future questions might be about
+another colleague (e.g., Jane); without the wikilink, graph walk doesn't surface this memory.
 
 ### Don't generalize specific commitments
 

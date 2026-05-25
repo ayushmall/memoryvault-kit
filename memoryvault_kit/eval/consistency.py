@@ -36,8 +36,8 @@ def sample_queries(n: int = 30) -> list[str]:
     random.shuffle(questions)
     questions = questions[:n]
     # Add a few hub-entity probes
-    hubs = ["Agents Platform", "Domain", "ConocoPhillips", "Visual Agent Builder",
-            "App Server", "Frontend"]
+    hubs = ["Platform", "Domain", "Acme Corp", "Workflow Builder",
+            "App Service", "Frontend"]
     for h in hubs:
         questions.append(f"what's the latest on {h}")
         questions.append(f"who's working on {h}")

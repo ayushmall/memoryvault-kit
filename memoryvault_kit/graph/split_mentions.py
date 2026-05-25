@@ -5,7 +5,7 @@ mentions. Fixes the over-linking failure caught on 2026-05-25.
 
 Today's frontmatter has one list::
 
-    entities: ["[[Agents Platform]]", "[[Embedded SDK]]", ...]
+    entities: ["[[Platform]]", "[[Embedded API]]", ...]
 
 But not every link is equal. An entity that appears in the **title** or
 **first paragraph of the body** is a *structural participant* — the
@@ -15,13 +15,13 @@ else but references this thing.
 
 After Rule 16's body-mention heal, peripheral mentions were being
 written to ``entities:``, polluting "what's happening with X" queries:
-e.g. an Embedded SDK memory got ``[[Agents Platform]]`` and surfaced
+e.g. an Embedded API memory got ``[[Platform]]`` and surfaced
 when asking about agent progress.
 
 This pass splits them:
 
-    entities: ["[[Embedded SDK]]"]              # structural
-    mentions: ["[[Agents Platform]]", ...]      # peripheral
+    entities: ["[[Embedded API]]"]              # structural
+    mentions: ["[[Platform]]", ...]      # peripheral
 
 Detection:
 - An entity is **structural** if its canonical name (or any known

@@ -72,7 +72,7 @@ Classify each thread:
 id: <auto>
 title: "<Customer>: <specific issue summary> [<state>]"
 type: <feedback | project_fact | event>
-entities: ["[[<Customer>]]", "[[<Pylon thread owner WAI side>]]", "[[<Product>]]"]
+entities: ["[[<Customer>]]", "[[<Pylon thread owner our side>]]", "[[<Product>]]"]
 mentions: [...]
 event_date: "<thread created ts>"
 source: pylon
@@ -84,7 +84,7 @@ tags: [pylon, <issue-type>, <customer-slug>, <product>]
 ---
 
 **Reporter:** <customer-side person>
-**Triaged by:** <WAI CS owner>
+**Triaged by:** <our CS owner>
 **State:** <open | in_progress | resolved | wont_fix>
 **Linear:** <ENG-id if linked>
 
@@ -108,35 +108,35 @@ any reproduction steps mentioned, and the current resolution path.>
 **Example 1 — Active bug, linked to Linear**
 
 Input thread:
-> ConocoPhillips: "Agent canvas hangs for runs >5min, seeing this 4x today"
-> Jeff Lattal (CS): "Reproed. ENG-13182, P0."
-> Anand (Eng): "Hypothesis: Temporal heartbeat timeout. Investigating."
+> Acme Corp: "Agent canvas hangs for runs >5min, seeing this 4x today"
+> Sam Lee (CS): "Reproed. ENG-1236, P0."
+> Sam (Eng): "Hypothesis: Temporal heartbeat timeout. Investigating."
 
 Output (1 memory):
 
 ```yaml
-title: "ConocoPhillips: agent canvas hangs on runs >5min — Temporal heartbeat suspected [open]"
+title: "Acme Corp: agent canvas hangs on runs >5min — Temporal heartbeat suspected [open]"
 type: feedback
-entities: ["[[ConocoPhillips]]", "[[Jeff Lattal]]", "[[Anand]]", "[[Agents Platform]]"]
+entities: ["[[Acme Corp]]", "[[Sam Lee]]", "[[Sam]]", "[[Platform]]"]
 event_date: "<thread ts>"
 source: pylon
-source_surface: "[[ConocoPhillips Pylon]]"
+source_surface: "[[Acme Corp Pylon]]"
 source_ref: "https://app.usepylon.com/.../thread/abc123"
 importance: 0.85
-tags: [pylon, bug, customer-issue, conocophillips, agents-platform, p0]
+tags: [pylon, bug, customer-issue, acme-corp, agents-platform, p0]
 status: active
 ```
-+ ENG-13182 Linear memory links to the same surface.
-+ The G14 gap for [[ConocoPhillips]] gets the **commit** leg filled.
++ ENG-1236 Linear memory links to the same surface.
++ The G14 gap for [[Acme Corp]] gets the **commit** leg filled.
 
 **Example 2 — Closed feature ask without Linear**
 
 Input:
-> Patreon: "Can we get scheduled trigger for our weekend digest agent?"
-> May Cao (CS): "Logged for product. Targeting Q3."
+> Acme Corp: "Can we get scheduled trigger for our weekend digest agent?"
+> Riley Park (CS): "Logged for product. Targeting Q3."
 
 Output: 1 `type: project_fact` memory (feature request) + a coverage
-gap memory ("ENG ticket missing for Patreon weekend-digest scheduled
+gap memory ("ENG ticket missing for Acme Corp weekend-digest scheduled
 trigger request") so the next sync with engineering can file the ticket.
 
 ## Tier-aware depth
