@@ -46,6 +46,6 @@ tags: [user_fact, identity, <area>]
 
 ## Maintain
 
-- When the fact changes (Ayush changes company), set `status: superseded`
+- When the fact changes (e.g. owner changes company), set `status: superseded`
   on this memory and save a new one with the updated fact.
 - Re-observation just updates `as_of_date`; no new memory needed.

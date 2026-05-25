@@ -192,7 +192,7 @@ def detect_filter_query(question: str) -> dict | None:
     return spec if spec["is_filter_query"] else None
 
 
-def retrieve_by_filters(spec: dict, all_docs: list, k: int = 10, user_alias: str = "Ayush Mall") -> list[dict]:
+def retrieve_by_filters(spec: dict, all_docs: list, k: int = 10, user_alias: str = "Jane Doe") -> list[dict]:
     """Filter memories by the structured spec. Sort by priority + recency.
 
     If `owner_relation` filter is set, retrieves from project ENTITIES

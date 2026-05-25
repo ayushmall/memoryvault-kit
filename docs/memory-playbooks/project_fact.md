@@ -49,7 +49,7 @@ Assignee: <name> · Team: <team> · Project: <project>
 - ✓ "ENG-10451 [Done · high]: Build capabilities to build Parameterised Agents"
 - ✓ "PR #20622: Add Firecracker-ready Temporal sandbox runtime"
 - ✗ "Linear issue about agents" (no ID, no state)
-- ✗ "Ayush working on something" (no specifics)
+- ✗ "Someone working on something" (no specifics)
 
 ## Maintain
 

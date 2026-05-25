@@ -61,7 +61,7 @@ def resolve_or_create_entity(
       "created"         — no match; new entity file written
       "would_create"    — no match; create_if_missing=False so no write happened
     """
-    # 1. Alias map (handles surface-form variants — "Soham" → "Soham Mazumdar")
+    # 1. Alias map (handles surface-form variants — e.g. "Jane" → "Jane Doe")
     try:
         from memoryvault_kit.retrieval.entity_lookup import resolve_entity
         hit = resolve_entity(candidate_name)

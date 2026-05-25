@@ -146,7 +146,7 @@ def derive_canonical_entity(m: dict) -> tuple[str | None, str | None]:
     if name.startswith("project-"):
         slug = name[len("project-"):]
         return slug_to_title(slug), "projects"
-    # feedback-* and wisdom-* are stateful but more topic-like than project-like
+    # feedback-* and other org-prefixed memories are stateful but more topic-like than project-like
     # Leave them as-is; the body wikilinks already cover them
     return None, None
 

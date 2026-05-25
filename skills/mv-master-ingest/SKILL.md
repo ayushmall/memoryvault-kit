@@ -49,8 +49,8 @@ You don't dedupe — the module handles it internally via:
 
 - `source_ref` exact match (re-running ingest on the same Linear
   issue rewrites in place, never creates a duplicate)
-- The vault's alias map (so `Soham` resolves to the existing canonical
-  `Soham Mazumdar`, even on a fresh ingest run)
+- The vault's alias map (so a short-form like `Jane` resolves to the
+  existing canonical `Jane Doe`, even on a fresh ingest run)
 - Source-specific state files (`.mvkit/linear_state.json`,
   `.mvkit/code_state.json`) that track which IDs were last seen
 

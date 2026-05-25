@@ -24,7 +24,7 @@
 | 1 | Mature entities (in-degree) | **B+** | hub=65, mature=69, growing=117 (per `mv doctor`) | First-run is empty; need bootstrap-on-ingest |
 | 2 | Code-ingest module | **B** | --metadata + --prs modes; products/<owner>.json works | No automated re-ingest |
 | 3 | Org structure modeling | **A-** | `org.py` + `org.example.json` + `mv org init` interactive; modules read from config | Need to ship a "mv setup" wrapper |
-| 4 | Leak cleanup | **A-** | Major refs scrubbed; zero `Wisdom` strings in shipped artifacts | Residual in initial commit (user-accepted) |
+| 4 | Leak cleanup | **A-** | Major refs scrubbed; zero org-specific identifiers in shipped artifacts | Residual in initial commit (user-accepted) |
 | 5 | Token-budget tiers | **A-** | profile.py + retrieval_config() wired into combined.py; CLI works; SKILL.md tagged | Skill loader still client-dependent |
 | 6 | event_date everywhere | **B-** | 99.7% backfilled; temporal filter works | Ingest modules don't write native yet |
 | 7 | Mentions split (Rule 17) | **A-** | 2,342 links demoted; pollution **0.0%** (measured) | Re-split needed on each ingest run; document cron |
@@ -36,7 +36,7 @@
 | 13 | Fill-quality eval | **A-** | **0.860 mean** [A-] (per `mv eval`); per-source breakdown | title_specificity weak for Notion (0.49) |
 | 14 | MCP tool descriptions carry lifecycle | **A** | 7 tools, smoke-tested end-to-end; `enrichment_hint` in `memory_get` + `memory_ask` responses | None |
 | 15 | Consumption-side enrichment | **A** | Auto-evidence + memory_update lifecycle proven | None |
-| 16 | Genericity / org-agnostic | **A** | Zero `WisdomAI` / `Wisdom` refs in shipped artifacts; `.mvkit/org.json` config | None |
+| 16 | Genericity / org-agnostic | **A** | Zero org-specific identifiers in shipped artifacts; `.mvkit/org.json` config | None |
 
 **Overall self-grade: A- / B+ trending toward A-.** All three eval pillars at A-/A grade:
 - `fill_quality` **0.860** [A-]
@@ -154,10 +154,11 @@ The kit is **org-agnostic by design**. Critical that every shipped
 artifact reflects this:
 
 - **README**: zero mentions of any specific company. Pitch is "your
-  professional context, made retrievable" — not "your Wisdom data."
+  professional context, made retrievable" — not tied to one user's
+  employer.
 - **Code-ingest skill**: framed as "ingest any monorepo" — multi-product
   support via `.mvkit/products/<owner>.json` (the owner key is the
-  user's namespace, not "wisdom").
+  user's namespace, generic placeholder).
 - **Per-source ingest guides**: written against the source tool (Slack,
   Notion, Linear, etc.), with `<your-company>` / `<your-customer>`
   placeholders.

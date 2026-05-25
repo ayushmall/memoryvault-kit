@@ -141,7 +141,7 @@ Last touched: 2026-05-25T17:34:12Z
 - [x] 1. Python 3.10+ available
 - [x] 2. Kit installed + importable
 - [x] 3. Tier: Full
-- [x] 4. Org: WisdomAI · Owner: Ayush Mall
+- [x] 4. Org: Acme Corp · Owner: Jane Doe
 - [x] 5. Vault scaffolded
 - [ ] 6. ...
 ```

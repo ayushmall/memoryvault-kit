@@ -112,22 +112,22 @@ Output (3 memories):
 3. `mem_REL_anand-resolves-conoco-hang` (relationship-update) —
    relationship memory: Anand is the eng-side resolver for this customer issue
 
-**Example 2 — Decision in `#agent-builder`**
+**Example 2 — Decision in `#product`**
 
 Input thread:
-> Saksham: should we expose the rerun button at node level or canvas level?
-> Kapil: node level — gives users control over partial reruns
-> [thread emoji approved by Ayush, Soham]
+> Alex: should we expose the rerun button at node level or canvas level?
+> Riley: node level — gives users control over partial reruns
+> [thread emoji approved by Jane, Sam]
 
 Output (1 memory):
 
 `mem_<auto>` (decision):
 ```yaml
-title: "Kapil: rerun button exposed at node level (not canvas level) for partial-rerun control"
+title: "Riley: rerun button exposed at node level (not canvas level) for partial-rerun control"
 type: decision
-entities: ["[[Kapil Chhabra]]", "[[Visual Agent Builder]]", "[[Saksham]]"]
-mentions: ["[[Ayush Mall]]", "[[Soham Mazumdar]]"]
-source_surface: "[[#agent-builder]]"
+entities: ["[[Riley Park]]", "[[Visual Agent Builder]]", "[[Alex Cho]]"]
+mentions: ["[[Jane Doe]]", "[[Sam Lee]]"]
+source_surface: "[[#product]]"
 event_date: "<thread ts>"
 importance: 0.75
 ```

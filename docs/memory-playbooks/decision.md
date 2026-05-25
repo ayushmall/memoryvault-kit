@@ -56,8 +56,8 @@ tags: [decision, <topic>, <product>]
 ```
 
 **Title examples:**
-- ✓ "Kapil: ship manual canvas builder, defer 'automagical' AI-to-workflow"
-- ✓ "Soham locks Q2: enterprise + embedded + verticalized agents"
+- ✓ "Alex: ship manual canvas builder, defer 'automagical' AI-to-workflow"
+- ✓ "CEO locks Q2: enterprise + embedded + verticalized agents"
 - ✗ "Decision on agents" (vague)
 - ✗ "Q2 priorities" (no decision-maker, no specific commitment)
 

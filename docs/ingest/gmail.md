@@ -42,7 +42,7 @@ tags: [gmail, <subject-slug>]
 ## Critical: title is NOT the email subject
 
 A gmail thread "Re: Re: Re: Q2 Plans" needs a *synthesized* title like
-`"Q2 Plans: Soham locks enterprise+embedded+verticalized agents"`.
+`"Q2 Plans: CEO locks enterprise+embedded+verticalized agents"`.
 
 The agent reads the thread body, synthesizes a fact-carrying title, then
 saves. Just copying the email subject is a failure mode that tanks

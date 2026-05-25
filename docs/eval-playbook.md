@@ -64,7 +64,7 @@ cd ~/memoryvault-kit && MEMORYVAULT_ROOT=~/MemoryVault \
 ```
 
 **Symptom**: alias bucket R@5 << other buckets · entity names with
-spaces ("Jane Doe") miss when the query says just "Soham".
+spaces ("Jane Doe") miss when the query says just the first name.
 
 **Lever**: rebuild + re-eval. This recovered ~18pp alias R@5 in a real
 session.

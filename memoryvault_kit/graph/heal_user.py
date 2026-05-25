@@ -24,8 +24,8 @@ Rules:
                                           title or body
 
 Run:
-    python3 -m memoryvault_kit.graph.heal_user --owner "Ayush Mall" --first-name Ayush
-    python3 -m memoryvault_kit.graph.heal_user --owner "Ayush Mall" --first-name Ayush --apply
+    python3 -m memoryvault_kit.graph.heal_user --owner "Jane Doe" --first-name Jane
+    python3 -m memoryvault_kit.graph.heal_user --owner "Jane Doe" --first-name Jane --apply
 """
 from __future__ import annotations
 
@@ -118,8 +118,8 @@ def _patch_entities(text: str, owner: str) -> str:
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--owner", required=True, help="Canonical owner name, e.g. 'Ayush Mall'")
-    ap.add_argument("--first-name", required=True, help="First name for body match, e.g. 'Ayush'")
+    ap.add_argument("--owner", required=True, help="Canonical owner name, e.g. 'Jane Doe'")
+    ap.add_argument("--first-name", required=True, help="First name for body match, e.g. 'Jane'")
     ap.add_argument("--apply", action="store_true", help="Write changes (else dry-run)")
     args = ap.parse_args()
 

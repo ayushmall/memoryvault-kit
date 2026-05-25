@@ -1,7 +1,7 @@
 ---
 name: granola-series-recap
 tier: full
-description: Cluster Granola meeting recordings into recurring series (e.g. "Weekly Ayush <> Soham 1:1", "Agent Builder check-in"), create a granola-series surface entity per cluster, and synthesize cross-meeting decisions/project_facts from the series rather than treating each meeting as an island. Use when the user asks "what's been happening in my 1:1s with <person>?", "summarize the Agent Builder weekly", "what decisions came out of recent <series> meetings?", or when batch-ingesting Granola as a recurring source.
+description: Cluster Granola meeting recordings into recurring series (e.g. "Weekly Jane <> Alex 1:1", "Platform weekly check-in"), create a granola-series surface entity per cluster, and synthesize cross-meeting decisions/project_facts from the series rather than treating each meeting as an island. Use when the user asks "what's been happening in my 1:1s with <person>?", "summarize the Platform weekly", "what decisions came out of recent <series> meetings?", or when batch-ingesting Granola as a recurring source.
 ---
 
 # granola-series-recap
@@ -13,9 +13,9 @@ into a richer retrieval target.
 
 ## Goal
 
-When the user asks "summarize my 1:1s with Soham" the kit should
-answer via the `[[Weekly Ayush <> Soham 1:1]]` surface entity and its
-linked event memories — not by keyword-matching "Soham" across
+When the user asks "summarize my 1:1s with Alex" the kit should
+answer via the `[[Weekly Jane <> Alex 1:1]]` surface entity and its
+linked event memories — not by keyword-matching "Alex" across
 hundreds of memories.
 
 ## Read (before saving)
@@ -142,15 +142,15 @@ tags: [granola, synthesis, <series-slug>]
 **Example 1 — Discover and bootstrap a series**
 
 Vault has 8 calendar memories with titles like:
-- "Weekly Ayush <> Soham 1:1 — Mar 4"
-- "Weekly Ayush <> Soham 1:1 — Mar 11"
+- "Weekly Jane <> Alex 1:1 — Mar 4"
+- "Weekly Jane <> Alex 1:1 — Mar 11"
 - ... 6 more
 
 Action:
-1. Create `entities/surfaces/granola-weekly-ayush-soham-1-1.md` with
-   `cadence: weekly`, `participants: [[Ayush Mall]], [[Soham Mazumdar]]`
+1. Create `entities/surfaces/granola-weekly-jane-alex-1-1.md` with
+   `cadence: weekly`, `participants: [[Jane Doe]], [[Alex Cho]]`
 2. Update each of the 8 existing event memories to add
-   `source_surface: "[[Weekly Ayush <> Soham 1:1]]"` to its frontmatter
+   `source_surface: "[[Weekly Jane <> Alex 1:1]]"` to its frontmatter
 3. After 4 captured meetings, generate the first synthesis memory
 
 Now `memory_ask "what's been on Ayush <> Soham 1:1s?"` returns the
