@@ -22,8 +22,26 @@ For every question the user asks about their work, **call `memory_ask`
 FIRST**. Then answer using only what came back.
 
 ```
-memory_ask(question="<user's question, lightly cleaned>", k=5)
+memory_ask(question="<user's question, lightly cleaned>", k=5,
+           context="<recent conversation distilled to 1-3 sentences>")
 ```
+
+**Always pass `context` when you have it.** It's not used for retrieval
+— it's persisted into the gap memory if the query comes back thin. The
+next /mv-refresh queue drain reads the context to inform its deep-dive
+into native MCPs, so the agent doing the fill has more than just the
+bare query string to work with. Without context, that downstream agent
+is guessing at what you (the asker) actually wanted.
+
+What to put in `context`:
+- What the user is trying to accomplish in this session (the goal,
+  not the literal exchange)
+- Any entities/people/projects they've mentioned that aren't in the
+  query string itself
+- Time references the user implied but didn't say ("this week",
+  "since the all-hands")
+
+Keep it to 500-1500 chars. Not a transcript paste — a distilled summary.
 
 **Response shape to expect:**
 - `results`: list of memories with score + entities + snippet

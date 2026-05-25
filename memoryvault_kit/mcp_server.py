@@ -233,7 +233,15 @@ def tool_memory_update(memory_id: str, updates: dict) -> dict:
     return {"id": memory_id, "updated_fields": list(updates.keys()), "path": str(path)}
 
 
-def tool_memory_ask(question: str, k: int = 5) -> dict:
+def tool_memory_ask(question: str, k: int = 5, context: str | None = None) -> dict:
+    """Search the vault. Optionally accept surrounding conversation context.
+
+    The `context` arg, when provided, is a free-text description of the
+    surrounding conversation (recent messages, user's stated intent, what
+    the agent was trying to accomplish). It's not used for retrieval —
+    it's persisted into the gap memory if the retrieval comes back thin,
+    so a future /mv-refresh queue-drain has it to work with.
+    """
     gw, cache = _load_retrieval()
     results = gw.retrieve(question, cache["bm25_index"], cache["full_by_id"],
                           cache["entity_idx"], cache["ent_aliases"], k=k)
@@ -252,11 +260,13 @@ def tool_memory_ask(question: str, k: int = 5) -> dict:
             "snippet": (m.get("body") or "")[:400],
         })
     # Auto-log a coverage-gap feedback memory if the retrieval came back thin.
-    # The authoring agent reads these on the next session and tries to fill.
+    # The future /mv-refresh queue-drain reads these to figure out what to fill.
+    # When `context` was passed, it goes into the gap memory's body so the
+    # downstream agent has more than just the bare query to work with.
     gap_logged = None
     try:
         from memoryvault_kit.graph.log_retrieval_gap import maybe_log
-        gap_logged = maybe_log(question, out)
+        gap_logged = maybe_log(question, out, context=context)
     except Exception:
         pass
 
@@ -510,6 +520,14 @@ TOOLS = [
             "Top scores below 5.0 OR fewer than 3 results = thin retrieval; the kit will "
             "auto-log a `mem_GAP_retrieval-thin-*` memory unless one already exists for "
             "this query today.\n\n"
+            "PASS `context` WHEN YOU CAN: the optional `context` argument is a free-text "
+            "description of the surrounding conversation — recent user messages, what they're "
+            "trying to accomplish, why they're asking this question. It's not used for "
+            "retrieval, but if the query comes back thin and triggers a gap memory, the "
+            "context gets persisted into that memory's body. Later, when /mv-refresh's queue "
+            "drain processes the gap, the deep-dive sub-agent has the conversation context to "
+            "inform its native-MCP query, not just the bare query string. Keep context to "
+            "~500-1500 chars of distilled summary, not a raw paste of the conversation.\n\n"
             "WHEN RESULTS ARE THIN OR STALE — REACH FOR OTHER MCPs: the vault is a "
             "synthesis layer, not a complete mirror. If (a) 0 on-topic results, (b) top "
             "score < 5, (c) all retrieved memories' `event_date` >30d old but the question "
@@ -527,6 +545,10 @@ TOOLS = [
             "properties": {
                 "question": {"type": "string", "description": "The query as a human would phrase it"},
                 "k": {"type": "integer", "default": 5, "description": "Number of results to return (1-20)"},
+                "context": {
+                    "type": "string",
+                    "description": "OPTIONAL surrounding conversation context — recent user messages, what they're trying to accomplish, why they're asking. Not used for retrieval; persisted into the gap memory if the query comes back thin, so a future /mv-refresh queue-drain has more than just the bare query to work with. Keep to ~500-1500 chars of distilled summary."
+                },
             },
             "required": ["question"],
         },
@@ -807,7 +829,11 @@ def handle_request(req: dict) -> dict:
         args = params.get("arguments", {}) or {}
         try:
             if name == "memory_ask":
-                result = tool_memory_ask(args["question"], args.get("k", 5))
+                result = tool_memory_ask(
+                    args["question"],
+                    args.get("k", 5),
+                    context=args.get("context"),
+                )
             elif name == "memory_search_entity":
                 result = tool_memory_search_entity(args["name"])
             elif name == "memory_recent":

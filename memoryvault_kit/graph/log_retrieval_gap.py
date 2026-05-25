@@ -54,8 +54,23 @@ def query_slug(query: str) -> str:
     return f"{day}-{h}"
 
 
-def maybe_log(query: str, results: list) -> str | None:
+def maybe_log(
+    query: str,
+    results: list,
+    context: str | None = None,
+) -> str | None:
     """If the query came back thin, write a gap memory and return its id.
+
+    Args:
+        query:    The user's query string as passed to memory_ask
+        results:  The retrieval results (used to detect thinness)
+        context:  OPTIONAL surrounding conversation context — recent
+                  messages, the user's stated intent, what they were
+                  trying to do. Captured for the future agent that
+                  processes this gap during /mv-refresh's queue drain.
+                  Without this, the deep-dive sub-agent only has the
+                  bare query string to work with, which is often
+                  ambiguous out of context.
 
     Returns None if the retrieval was healthy or a gap was already
     logged today for this query.
@@ -67,11 +82,22 @@ def maybe_log(query: str, results: list) -> str | None:
     mem_id = f"mem_GAP_retrieval-thin-{slug}"
     target = MEM_DIR / f"{mem_id}.md"
     if target.exists():
+        # Already logged today — but if we now have richer context and
+        # the existing memory has none, append context. Don't overwrite.
+        if context:
+            existing = target.read_text()
+            if "## Conversation Context" not in existing:
+                target.write_text(existing.rstrip() + f"\n\n## Conversation Context\n{context}\n")
         return None
     now = datetime.now(timezone.utc).isoformat()
-    # Best-guess subject: extract a noun phrase from the query
-    # (lazy: just truncate the query)
     subject_snippet = re.sub(r"\s+", " ", query.strip())[:80]
+
+    context_block = ""
+    if context and context.strip():
+        # Trim to keep gap memories bounded — 2000 chars is generous
+        ctx_trimmed = context.strip()[:2000]
+        context_block = f"\n## Conversation Context\n{ctx_trimmed}\n"
+
     content = f"""---
 id: "{mem_id}"
 title: "Retrieval gap: '{subject_snippet}' came back thin ({reason})"
@@ -92,12 +118,17 @@ status: active
 
 ## What happened
 Retrieval returned: {reason}.
-
+{context_block}
 ## Suggested action
 Either (a) the vault is missing content on this topic — the next
 authoring session should look for source material that would answer
 this query, or (b) the canonical entities for this topic exist but
 aren't well-linked — run `mv graph heal` or extend the alias map.
+
+When /mv-refresh's Step 4b queue-drain processes this gap, the
+mv-deep-dive sub-agent should use the Conversation Context section
+above (if present) to inform its native-MCP query, not just the
+bare query string.
 
 If this query is asked again and still comes back thin, the gap
 memory remains active until manually resolved or until a new memory
