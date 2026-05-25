@@ -118,7 +118,9 @@ queues but breaks down because:
 - Each Layer-4 agent has one job + one cadence + isolated failure
 - Layers 1, 2, 3, 5, 6 run on independent schedules
 
-## Concrete first split (what ships now)
+## Concrete split (what ships now vs what's optional)
+
+### Shipping in the current cut
 
 | Agent | Status | What it owns |
 |---|---|---|
@@ -129,9 +131,22 @@ queues but breaks down because:
 | `mv-stub-enricher` | NEW | Take an enrich-stub task, write grounded narrative |
 | `mv-eval-runner` | NEW (wraps existing `mv eval`) | Run the suite + track trend |
 | `mv-ingest-*` | EXISTING | Per-source ingest (linear, notion, code) — already split this way |
-| `mv-quality-judge` | future | Sampled Claude-as-judge over recent authoring |
-| `mv-curator` | future | Dedup, merge same-event memories from multiple sources |
-| `mv-traversal` | future | Structural-insight walker |
+
+### Optional / not yet built
+
+These three agents are **explicitly optional**. The kit works without
+them. Each addresses a real edge case but only becomes valuable at
+scale (large vault, multi-source overlap, long usage history). Build
+them when the failure mode is observable — not before.
+
+| Agent | Optional because | When it'd become worth building |
+|---|---|---|
+| `mv-quality-judge` | The rule-based `fill_quality` eval catches 90% of shape issues; a Claude-as-judge sampler is incremental | When you're seeing systematic ingest-quality issues that the rule-based eval misses |
+| `mv-curator` | Same-event memories from different sources (calendar + granola for one meeting) are rare in practice and easily merged inline via `memory_update` | When you have 3+ active sources of overlapping events and dedup-by-hand becomes friction |
+| `mv-traversal` | The existing `memory_tree_walk` MCP tool covers most structural queries; a dedicated agent is only needed for *batch* structural insights | When the user starts running 10+ tree walks per session — at that point batching pays off |
+
+If you fork the kit and one of these is your bottleneck, the
+architecture has a clear slot for it. Otherwise: skip.
 
 ## How the agents communicate
 
