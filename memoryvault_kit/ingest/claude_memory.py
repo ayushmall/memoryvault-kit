@@ -161,16 +161,12 @@ def ensure_entity_file(canonical: str, subdir: str, description: str = ""):
     from memoryvault_kit.ingest._dedupe import resolve_or_create_entity
     entity_type = subdir.rstrip("s")  # projects → project
     slug = re.sub(r"[^a-z0-9]+", "-", canonical.lower()).strip("-")
-    resolved, how = resolve_or_create_entity(
+    resolved, _ = resolve_or_create_entity(
         candidate_name=canonical,
         entity_type=entity_type,
         description=description or f"{canonical} — entity auto-created from Claude Code memory.",
         hint_aliases=[slug],
     )
-    if how == "fuzzy_match" and resolved != canonical:
-        # Possible duplicate — log + use the existing rather than creating
-        print(f"  ℹ {canonical!r} matched existing entity {resolved!r} (fuzzy). Linking to existing.",
-              file=sys.stderr)
     return resolved
 
 
@@ -308,17 +304,11 @@ def main():
             # Same Claude memory we've ingested before — rewrite (handles updates)
             write_memory(mv)
             n_updated += 1
-        elif reason in ("title_entity_hit",):
+        elif reason == "title_entity_hit":
             # Likely duplicate already in the vault from another source
             print(f"  ⚠ skipping {mv['id']!r}: looks like existing {dup_id!r} ({reason})",
                   file=sys.stderr)
             n_skipped += 1
-        elif reason == "near_title_hit":
-            # Potential duplicate — log but still write (user can review)
-            print(f"  ℹ {mv['id']!r}: near-match to {dup_id!r} ({reason}). Writing both for now.",
-                  file=sys.stderr)
-            write_memory(mv)
-            n_written += 1
         else:
             write_memory(mv)
             n_written += 1

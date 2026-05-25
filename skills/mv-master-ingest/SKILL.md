@@ -37,61 +37,76 @@ For each entry in `sources`, you'll see:
 }
 ```
 
-## Dedupe before write (every ingest, no exceptions)
+## Dedupe before write (eat your own dog food)
 
-The kit eats its own dog food. Before any ingest module writes a new
-entity or memory, it MUST query the existing vault to see if a
-canonical version already exists.
+Every ingest path must check the existing vault before writing. There
+are two paths, and the dedupe story differs:
 
-Use the shared primitives in `memoryvault_kit/ingest/_dedupe.py`:
+### Path A — native ingest modules (Bash-invoked)
 
-```python
-from memoryvault_kit.ingest._dedupe import (
-    resolve_or_create_entity, find_duplicate_memory,
-)
+For `python3 -m memoryvault_kit.ingest.linear --apply` and friends.
+You don't dedupe — the module handles it internally via:
 
-# Before creating an entity (e.g. a project, person, customer):
-canonical, how = resolve_or_create_entity(
-    candidate_name="Capture MCP",
-    entity_type="project",
-    description="...",
-)
-# `how` is one of: alias_map_hit, file_exists, fuzzy_match, created
-# `fuzzy_match` means a Levenshtein-close existing entity was found
-# (e.g., typo or casing drift). Use `canonical` regardless.
+- `source_ref` exact match (re-running ingest on the same Linear
+  issue rewrites in place, never creates a duplicate)
+- The vault's alias map (so `Soham` resolves to the existing canonical
+  `Soham Mazumdar`, even on a fresh ingest run)
+- Source-specific state files (`.mvkit/linear_state.json`,
+  `.mvkit/code_state.json`) that track which IDs were last seen
 
-# Before saving a memory:
-dup_id, reason = find_duplicate_memory(
-    title=mem["title"],
-    entities=mem["entities"],
-    source_ref=mem["source_ref"],
-    source_host=mem["source_host"],
-)
-if reason == "source_ref_hit":
-    # Same item we've ingested before — UPDATE in place
-    write_memory(mem)
-elif reason == "title_entity_hit":
-    # Already covered from another source — SKIP, link via related: if useful
-    pass
-elif reason == "near_title_hit":
-    # Potential duplicate — write but log so the user can review
-    write_memory(mem); log_potential_dup(dup_id)
-else:
-    write_memory(mem)
-```
+Your job is just to invoke the module. It's idempotent by construction.
 
-For ingest sub-agents that call `memory_save` directly (rather than
-the native ingest modules), the rule is the same: before saving, call
-`memory_ask` with a paraphrase of the title + the key entities. If
-results contain a memory with the same `source_ref` or a very similar
-title + entity overlap, prefer `memory_update` on the existing memory
-over `memory_save` on a new one. This is what makes the kit
-idempotent — re-running ingest on the same source data produces zero
-new memories.
+### Path B — agent-driven saves (MCP-invoked)
 
-If a candidate entity fuzzy-matches an existing one (typo / casing
-drift), use the existing canonical and add the variant as an alias on
-the entity file rather than creating a near-duplicate entity.
+For Slack-digest, Granola recap, Calendar/Gmail saves, and anything
+where YOU (the agent) call `memory_save` directly. Here you need to
+do the dedupe yourself because there's no native module to do it
+for you.
+
+**Before every `memory_save` call:**
+
+1. **Read the entity context once at run start.** Run:
+   ```bash
+   cat ~/MemoryVault/.mvkit/mature_entities.md
+   ```
+   This is the kit's ranked list of canonical entities (hub > mature
+   > growing > stub by in-degree). Short enough to hold in context.
+   It's how you know what entities already exist.
+
+2. **For each candidate entity in your save**, call:
+   ```
+   memory_search_entity(name="<candidate>")
+   ```
+   Look at the response. If it returns a canonical, use that exact
+   spelling. If it returns `ambiguous: true` with multiple candidates,
+   pick by context (which one's neighborhood matches the rest of your
+   memory) or surface the ambiguity. If it returns nothing AND the
+   candidate isn't in mature_entities.md, you're creating a new
+   entity — be deliberate about the canonical spelling.
+
+3. **Before saving the memory**, call:
+   ```
+   memory_ask(question="<paraphrase of title>", k=3)
+   ```
+   If any returned memory has the same `source_ref` as what you're
+   about to save → call `memory_update` on it instead. If a memory
+   covers the same content from a different source → consider linking
+   via `related:` rather than creating a parallel save.
+
+4. **Only then call `memory_save`.**
+
+This is the kit eating its own dog food. The same retrieval that
+serves the user serves the ingest path. Result: re-running ingest on
+the same source data produces zero new memories.
+
+### Why not fuzzy-match in code?
+
+We had a Levenshtein step here briefly. Dropped it. Magic-number
+distance thresholds are exactly what we're trying not to ship. The
+model running the agent has semantic understanding (Acme Corp = ACME
+= Acme Corporation) and is already in the loop — let it decide.
+Code-based dedupe stays exact: source_ref match, alias_map match,
+file-exists. Anything fuzzier is the model's call.
 
 ## Discovery: rank-based, not threshold-based
 

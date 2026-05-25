@@ -41,27 +41,6 @@ def _normalize_for_match(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]+", " ", s.lower())).strip()
 
 
-def _levenshtein(a: str, b: str, max_dist: int = 3) -> int:
-    """Cheap edit distance with early termination. Returns >max_dist if exceeded."""
-    if abs(len(a) - len(b)) > max_dist:
-        return max_dist + 1
-    if a == b:
-        return 0
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        curr = [i] + [0] * len(b)
-        min_in_row = i
-        for j, cb in enumerate(b, 1):
-            cost = 0 if ca == cb else 1
-            curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
-            if curr[j] < min_in_row:
-                min_in_row = curr[j]
-        if min_in_row > max_dist:
-            return max_dist + 1
-        prev = curr
-    return prev[-1]
-
-
 def resolve_or_create_entity(
     candidate_name: str,
     entity_type: str,
@@ -71,23 +50,18 @@ def resolve_or_create_entity(
 ) -> tuple[str, str]:
     """Resolve a candidate entity name against the existing vault.
 
-    Returns (canonical_name, resolution).
-    resolution is one of:
+    Exact matching only — no fuzzy / Levenshtein. Semantic matching
+    (typo correction, abbreviation expansion, etc.) is the agent's
+    responsibility via `memory_search_entity`, not this module's.
+    Code does exact, agents do semantic.
+
+    Returns (canonical_name, resolution). resolution is one of:
       "alias_map_hit"   — found via existing alias_map lookup
-      "file_exists"     — entity file exists at expected path
-      "fuzzy_match"     — found a near-duplicate (Levenshtein ≤ 2 after normalize)
-                          POTENTIAL — caller should consider whether to merge
+      "file_exists"     — entity file exists at expected slug path
       "created"         — no match; new entity file written
       "would_create"    — no match; create_if_missing=False so no write happened
-
-    Order of checks:
-      1. Alias map (the authoritative existing-entities index)
-      2. Direct file path: entities/<type>s/<slugified>.md
-      3. Fuzzy match: scan all entity files of this type for normalized
-         titles within Levenshtein distance 2
-      4. Else: create or signal would-create
     """
-    # 1. Alias map
+    # 1. Alias map (handles surface-form variants — "Soham" → "Soham Mazumdar")
     try:
         from memoryvault_kit.retrieval.entity_lookup import resolve_entity
         hit = resolve_entity(candidate_name)
@@ -107,16 +81,7 @@ def resolve_or_create_entity(
     if direct.exists():
         return _read_canonical(direct) or candidate_name, "file_exists"
 
-    # 3. Fuzzy match across same-type entities
-    norm_candidate = _normalize_for_match(candidate_name)
-    type_dir = ENTITIES_DIR / subdir
-    if type_dir.is_dir():
-        for ent_file in type_dir.glob("*.md"):
-            ent_name = _read_canonical(ent_file) or ent_file.stem
-            if _levenshtein(_normalize_for_match(ent_name), norm_candidate, max_dist=2) <= 2:
-                return ent_name, "fuzzy_match"
-
-    # 4. Create or signal
+    # 3. Create or signal (no fuzzy step — see module docstring)
     if not create_if_missing:
         return candidate_name, "would_create"
 
@@ -153,15 +118,16 @@ def find_duplicate_memory(
     entities: list[str],
     source_ref: str | None = None,
     source_host: str | None = None,
-    similarity_threshold: float = 0.8,
 ) -> tuple[str | None, str]:
     """Detect whether a memory we're about to write already exists.
 
+    Exact-match only. Semantic dedupe (paraphrased titles, etc.) is the
+    agent's call via `memory_ask` — see mv-master-ingest skill.
+
     Returns (existing_mem_id, reason). reason is one of:
-      "source_ref_hit"    — identical source_ref already in vault. Update, don't create.
-      "title_entity_hit"  — same title (normalized) + ≥1 overlapping entity. Likely dupe.
-      "near_title_hit"    — fuzzy title match (Levenshtein ≤ 3) + ≥1 overlap. Potential dupe.
-      "no_match"          — safe to create new memory
+      "source_ref_hit"   — identical source_ref already in vault. Update, don't create.
+      "title_entity_hit" — same normalized title + ≥1 overlapping entity.
+      "no_match"         — safe to create new memory
     """
     if not MEM_DIR.is_dir():
         return None, "no_match"
@@ -184,33 +150,23 @@ def find_duplicate_memory(
                 mid = re.search(r"^id:\s*(\S+)", text, re.M)
                 return (mid.group(1) if mid else mem_path.stem), "source_ref_hit"
 
-        # 2. Title + entity overlap
+        # 2. Normalized title + entity overlap
         t_match = re.search(r'^title:\s*"?([^"\n]+)"?', text, re.M)
         if not t_match:
             continue
         their_title = t_match.group(1).strip()
         their_norm = _normalize_for_match(their_title)
 
-        # Pull entities from frontmatter
         ent_match = re.search(r"^entities:\s*\[([^\]]+)\]", text, re.M)
         their_entities = set()
         if ent_match:
             their_entities = {
-                e.strip().strip('"').strip("'").lower()
+                f"[[{e}]]".lower()
                 for e in re.findall(r"\[\[([^\]]+)\]\]", ent_match.group(1))
             }
-            their_entities = {f"[[{e}]]" for e in their_entities}
 
-        # Exact-normalized title + entity overlap
         if their_norm == norm_title and (candidate_entities & their_entities):
             mid = re.search(r"^id:\s*(\S+)", text, re.M)
             return (mid.group(1) if mid else mem_path.stem), "title_entity_hit"
-
-        # Near-title + entity overlap
-        if _levenshtein(their_norm, norm_title, max_dist=3) <= 3 and (
-            candidate_entities & their_entities
-        ):
-            mid = re.search(r"^id:\s*(\S+)", text, re.M)
-            return (mid.group(1) if mid else mem_path.stem), "near_title_hit"
 
     return None, "no_match"

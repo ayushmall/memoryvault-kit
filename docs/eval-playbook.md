@@ -64,7 +64,7 @@ cd ~/memoryvault-kit && MEMORYVAULT_ROOT=~/MemoryVault \
 ```
 
 **Symptom**: alias bucket R@5 << other buckets · entity names with
-spaces ("Soham Chatterjee") miss when the query says just "Soham".
+spaces ("Jane Doe") miss when the query says just "Soham".
 
 **Lever**: rebuild + re-eval. This recovered ~18pp alias R@5 in a real
 session.
@@ -216,8 +216,8 @@ calls. The right primer needs explicit abstain triggers + worked
 examples, or skip the rerank step entirely.
 
 ### Orphan Obsidian stubs
-Clicking `[[Soham Chatterjee]]` in Obsidian when the file is at
-`entities/people/soham-chatterjee.md` creates an empty `Soham Chatterjee.md`
+Clicking `[[Jane Doe]]` in Obsidian when the file is at
+`entities/people/jane-doe.md` creates an empty `Jane Doe.md`
 at vault root. They don't hurt retrieval directly but pollute file
 listings and confuse the heal chain. Cleanup: `dedupe_stub_files.py`
 (planned). Manual: `rm ~/MemoryVault/*.md` of any zero-byte files
