@@ -1,5 +1,6 @@
 ---
 name: memoryvault
+tier: any
 description: Personal memory layer for non-engineers — runs entirely on Claude Cowork with Google Drive as the vault store. Reads/writes structured markdown memories about your meetings, decisions, customers, projects, and code. Use this whenever the user asks about their work history ("what did Maya say", "status of the SDK", "who's working on Domain"), or asks to save something ("remember that we decided X", "save this from the meeting"), or asks to pull recent activity ("refresh from yesterday's meetings"). Triggers on memory-related phrases — "memory", "vault", "remind me about", "what was the latest on", "save this", "remember this", "ingest", "audit my memory". Drive-backed, no install required. Six sub-flows internally: ask, save, refresh, audit, heal, ingest-code.
 ---
 
@@ -264,7 +265,7 @@ When this skill is first invoked, walk the user through:
 
 - **Data lives in your Drive.** Cowork accesses it via the Drive connector
   scoped to the vault folder only.
-- **Drive search is exact-match.** Aliases ("WoW" → "Wisdom on Wisdom")
+- **Drive search is exact-match.** Aliases ("VAB" → "Visual Agent Builder")
   need an entity file with the alias listed. Set those up over time.
 - **No cross-account access.** The skill operates only on the Drive account
   the user has connected. Multi-account users should use separate vaults.

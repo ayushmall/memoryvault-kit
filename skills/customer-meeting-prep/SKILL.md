@@ -1,5 +1,6 @@
 ---
 name: customer-meeting-prep
+tier: lean
 description: Prepare for an upcoming customer meeting by pulling all relevant memories — past asks, escalations, open commitments, recent PR activity touching their use cases, decisions affecting them. Use when the user says "I have a call with <customer> in <time>", "prep me for <customer>", "what should I know about <customer> before tomorrow", "brief me on <customer>", "what's the latest with <customer>". Returns a structured pre-read: relationship history, open items, recent activity, suggested talking points. Also captures a fresh memory for the meeting itself with proper structure.
 ---
 

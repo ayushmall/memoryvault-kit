@@ -126,6 +126,35 @@ them in `examples/tiny_vault/memories/`.
 
 ---
 
+## Five-minute quickstart (your own vault)
+
+The kit ships three commands that encode the full lifecycle:
+
+```bash
+# 1. Set it up (interactive — picks tier, scaffolds dirs, asks org name)
+python3 -m memoryvault_kit.setup
+
+# 2. Connect your first source (e.g. calendar via google-calendar MCP)
+#    Then run the matching ingest. See docs/LIFECYCLE.md for the full map.
+#    The kit ships native ingests for Linear / Notion / GitHub PRs;
+#    Calendar / Gmail / Granola / Slack are read via authoring agent + memory_save.
+
+# 3. After ingest, run the heal chain (or `mv migrate --apply` for the lot)
+python3 -m memoryvault_kit.migrate --apply
+
+# 4. Measure
+python3 -m memoryvault_kit.eval         # full eval suite
+python3 -m memoryvault_kit.doctor       # vault diagnostic
+```
+
+Three docs to read before going deep:
+
+- **[docs/LIFECYCLE.md](docs/LIFECYCLE.md)** — Day-0 → Day-N journey + cron snippet
+- **[docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md)** — what's solid + what's still rough
+- **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)** — what doesn't work yet (honest)
+
+---
+
 ## Example questions this answers
 
 Once you point it at your own notes, you can ask things like:

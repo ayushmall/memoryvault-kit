@@ -64,6 +64,7 @@ def parse_memory(path: Path) -> dict:
         if m:
             fm[m.group(1)] = m.group(2).strip()
     entities = re.findall(r"\[\[([^\]]+)\]\]", fm.get("entities", ""))
+    mentions = re.findall(r"\[\[([^\]]+)\]\]", fm.get("mentions", ""))
     tags = re.findall(r"[a-z0-9\-_]+", fm.get("tags", "").lower())
     try:
         importance = float(fm.get("importance", "0.5"))
@@ -80,6 +81,7 @@ def parse_memory(path: Path) -> dict:
         "id": mem_id,
         "title": title,
         "entities": entities,
+        "mentions": mentions,
         "tags": tags,
         "importance": importance,
         "body": body,
@@ -111,7 +113,11 @@ def build_index(mems: list) -> dict:
     df = Counter()
     total_len = 0
     for m in mems:
-        haystack = (m["title"] + " " + m["body"] + " " + " ".join(m["entities"]) + " " + " ".join(m["tags"]))
+        # entities = structural participants (3× weight, repeated)
+        # mentions = peripheral references (1× weight, single)
+        ent_weight = " ".join(m["entities"]) + " " + " ".join(m["entities"]) + " " + " ".join(m["entities"])
+        ment_weight = " ".join(m.get("mentions", []))
+        haystack = (m["title"] + " " + m["body"] + " " + ent_weight + " " + ment_weight + " " + " ".join(m["tags"]))
         toks = tokenize(haystack)
         tf = Counter(toks)
         docs.append({"id": m["id"], "tf": tf, "dl": len(toks), "mem": m, "haystack_low": haystack.lower()})

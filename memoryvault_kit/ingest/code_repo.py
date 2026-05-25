@@ -300,6 +300,12 @@ def _write_pr_memory(repo_name: str, repo_full: str, pr: dict,
     tags = ["pr", "merged", "code"]
     tags_str = "[" + ", ".join(f'"{t}"' for t in tags) + "]"
 
+    # GitHub tree: PR lives under its repo (which itself lives under the org)
+    # parent_surface points to the repo entity which the products config + heal
+    # pass create as a project entity.
+    repo_name = repo_full.split("/")[-1] if "/" in repo_full else repo_full
+    org_name = repo_full.split("/")[0] if "/" in repo_full else ""
+    parent_surface_line = f'parent_surface: "[[{repo_name}]]"'
     content = f'''---
 id: "{mid}"
 title: "PR #{pr_num}: {title}"
@@ -308,7 +314,12 @@ tags: {tags_str}
 importance: 0.5
 source: github-pr
 source_ref: "https://github.com/{repo_full}/pull/{pr_num}"
+{parent_surface_line}
+github_repo: "{repo_full}"
+github_org: "{org_name}"
 created: "{merged_at}"
+event_date: "{merged_at}"
+as_of_date: null
 updated: "{merged_at}"
 ---
 

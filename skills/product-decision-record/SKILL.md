@@ -1,5 +1,6 @@
 ---
 name: product-decision-record
+tier: lean
 description: Capture a product decision (ADR-style) with context, alternatives, choice, consequences. Use when the user says "let's record this decision", "ADR for <thing>", "we decided to <X>", "write up the decision on <Y>", "log the call we made on <Z>". Produces a memory shaped for "why did we choose X?" / "why not Y?" retrieval. Critical for institutional memory — decisions decay fastest because everyone remembers WHAT was decided but not WHY.
 ---
 

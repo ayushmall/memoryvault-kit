@@ -74,6 +74,92 @@ def _invalidate_cache():
 # ─── Tool implementations ──────────────────────────────────────────
 
 
+def tool_memory_get(memory_id: str) -> dict:
+    """Fetch full body + frontmatter for a single memory."""
+    from pathlib import Path
+    import re
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    path = vault / "memories" / "2026" / f"{memory_id}.md"
+    if not path.exists():
+        return {"id": memory_id, "error": "not_found"}
+    text = path.read_text()
+    fm_end = text.find("---", 4)
+    fm_block = text[:fm_end] if fm_end > 0 else ""
+    body = text[fm_end + 3:].strip() if fm_end > 0 else text
+    # Light frontmatter parse
+    fm = {}
+    for line in fm_block.splitlines():
+        m = re.match(r"^([a-z_]+):\s*(.*)$", line.strip())
+        if m:
+            fm[m.group(1)] = m.group(2).strip()
+    # Detect stub-enrich-me condition
+    is_stub_gap = "stub-enrich-me" in fm.get("tags", "") and "enriched: false" in fm_block
+    result = {"id": memory_id, "frontmatter": fm, "body": body}
+    if is_stub_gap:
+        result["enrichment_hint"] = (
+            "This memory is a stub coverage-gap. Its body contains an `## Evidence` "
+            "section pre-gathered by the kit. Combine with your current session context "
+            "and call `memory_update` to replace the templated title + body with a "
+            "grounded narrative. Set `enriched: true` and add the `enriched` tag. "
+            "If the heuristic over-fired, set `status: superseded` and add "
+            "`heuristic-over-fired` tag."
+        )
+    return result
+
+
+def tool_memory_update(memory_id: str, updates: dict) -> dict:
+    """Partial update of a memory's frontmatter or body. Preserves id + created."""
+    from pathlib import Path
+    import re
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    path = vault / "memories" / "2026" / f"{memory_id}.md"
+    if not path.exists():
+        return {"id": memory_id, "error": "not_found"}
+    text = path.read_text()
+    fm_end = text.find("---", 4)
+    if fm_end < 0:
+        return {"id": memory_id, "error": "no_frontmatter"}
+    fm = text[:fm_end]
+    body = text[fm_end + 3:]
+
+    # Body update
+    if "body" in updates:
+        body = "\n" + str(updates["body"]).strip() + "\n"
+
+    # Frontmatter updates — never touch id/created
+    blocked = {"id", "created"}
+    fm_updates = {k: v for k, v in updates.items() if k != "body" and k not in blocked}
+
+    for field, value in fm_updates.items():
+        # Render value
+        if isinstance(value, bool):
+            rendered = str(value).lower()
+        elif isinstance(value, (int, float)):
+            rendered = str(value)
+        elif isinstance(value, list):
+            rendered = "[" + ", ".join(f'"{v}"' if not str(v).startswith('"') else str(v) for v in value) + "]"
+        elif value is None:
+            rendered = "null"
+        else:
+            rendered = f'"{value}"' if not str(value).startswith('"') else str(value)
+        if re.search(rf"^{field}:\s", fm, re.MULTILINE):
+            fm = re.sub(rf"^{field}:.*$", f"{field}: {rendered}", fm, count=1, flags=re.MULTILINE)
+        else:
+            # Insert before the closing ---
+            fm = fm.rstrip() + f"\n{field}: {rendered}\n"
+
+    # Always bump updated timestamp
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    if re.search(r"^updated:\s", fm, re.MULTILINE):
+        fm = re.sub(r"^updated:.*$", f'updated: "{now}"', fm, count=1, flags=re.MULTILINE)
+    else:
+        fm = fm.rstrip() + f'\nupdated: "{now}"\n'
+
+    path.write_text(fm + "---" + body)
+    return {"id": memory_id, "updated_fields": list(updates.keys()), "path": str(path)}
+
+
 def tool_memory_ask(question: str, k: int = 5) -> dict:
     gw, cache = _load_retrieval()
     results = gw.retrieve(question, cache["bm25_index"], cache["full_by_id"],
@@ -92,7 +178,50 @@ def tool_memory_ask(question: str, k: int = 5) -> dict:
             "importance": m.get("importance"),
             "snippet": (m.get("body") or "")[:400],
         })
-    return {"question": question, "k": k, "results": out}
+    # Auto-log a coverage-gap feedback memory if the retrieval came back thin.
+    # The authoring agent reads these on the next session and tries to fill.
+    gap_logged = None
+    try:
+        from memoryvault_kit.graph.log_retrieval_gap import maybe_log
+        gap_logged = maybe_log(question, out)
+    except Exception:
+        pass
+
+    # Capture EVERY query (not just thin ones) to a usage log for replay-enrich.
+    # Lives at .mvkit/query_log/<date>.jsonl — separate from memories to avoid
+    # polluting retrieval. See memoryvault_kit/query_log.py.
+    try:
+        from memoryvault_kit.query_log import log_query
+        log_query(question, out, gap_logged=gap_logged)
+    except Exception:
+        pass
+
+    response = {"question": question, "k": k, "results": out}
+    if gap_logged:
+        response["gap_logged"] = gap_logged
+        response["gap_logged_hint"] = (
+            f"A retrieval-thin gap was auto-logged as {gap_logged}. "
+            "If you have context that explains why this query came back thin, call "
+            "`memory_update` on that id to add a grounded description."
+        )
+
+    # Surface enrichment hints for any stub gap memories in the results.
+    stub_gaps = []
+    for r in out:
+        if r["id"].startswith("mem_GAP_") and "stub-enrich-me" in r.get("tags", []):
+            stub_gaps.append(r["id"])
+    if stub_gaps:
+        response["stub_gaps_in_results"] = stub_gaps
+        response["enrichment_hint"] = (
+            f"Results include {len(stub_gaps)} stub coverage-gap memor"
+            f"{'y' if len(stub_gaps) == 1 else 'ies'} waiting for enrichment. "
+            "Each has a pre-gathered `## Evidence` section in its body. "
+            "When you have context for any subject, call `memory_get` to see the "
+            "evidence, then `memory_update` with a grounded title + body, "
+            "`enriched: true`, and add the `enriched` tag. If the heuristic over-fired, "
+            "set `status: superseded` and add `heuristic-over-fired`."
+        )
+    return response
 
 
 def tool_memory_search_entity(name: str) -> dict:
@@ -273,7 +402,29 @@ status: active
 TOOLS = [
     {
         "name": "memory_ask",
-        "description": "Search the vault for memories matching a question. Returns top-K relevant memory snippets with titles, scores, entities, and tags. Use this whenever you need context about past events, decisions, customer interactions, or technical details.",
+        "description": (
+            "Search the vault for memories matching a question. Returns top-K relevant "
+            "memory snippets with titles, scores, entities, and tags. Use this whenever "
+            "you need context about past events, decisions, customer interactions, or "
+            "technical details.\n\n"
+            "LIFECYCLE INSTRUCTIONS — every agent calling this tool should follow:\n"
+            "1. If the response's `gap_logged` field is set, the vault auto-detected this "
+            "query came back thin and wrote a stub feedback memory. No action needed by "
+            "you unless you want to enrich it.\n"
+            "2. If any result has `id` matching `mem_GAP_*` AND its `tags` include "
+            "`stub-enrich-me`, that's a stub coverage-gap memory waiting for a grounded "
+            "narrative. Read its body's `## Evidence` section, combine with your current "
+            "session context, then call `memory_update` to replace the templated title + "
+            "body with a real description. Mark `enriched: true` in the update. This is "
+            "consumption-side enrichment — the kit pre-gathered evidence; you interpret it.\n"
+            "3. If results include memories of `type: feedback, tags: [coverage-gap]`, "
+            "those are open gaps the kit wants filled by future authoring. When you next "
+            "have content that answers one, save the new memory and `memory_update` the "
+            "gap to `status: superseded`.\n"
+            "Top scores below 5.0 OR fewer than 3 results = thin retrieval; the kit will "
+            "auto-log a `mem_GAP_retrieval-thin-*` memory unless one already exists for "
+            "this query today."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -285,7 +436,17 @@ TOOLS = [
     },
     {
         "name": "memory_search_entity",
-        "description": "Look up an entity (person, company, topic, project) by name or alias. Returns the canonical entity name, ambiguity flag, and a list of memories that reference it. Use when the user asks 'who is X?' or 'tell me about X'.",
+        "description": (
+            "Look up an entity (person, company, topic, project, team, surface) by name or "
+            "alias. Returns the canonical entity name, ambiguity flag (`ambiguous: true` if "
+            "multiple canonicals matched), and a list of memories that backlink to it.\n\n"
+            "USE WHEN: user asks 'who is X?' / 'tell me about X' / 'what's the canonical name "
+            "for X?' — or as a precursor to `memory_ask` so you query with the canonical name.\n\n"
+            "LIFECYCLE HINT: if the returned entity has < 3 backlinks, consider this entity a "
+            "stub and treat its retrieval as low-confidence. If your session has new context "
+            "about a stub entity, save a new memory linking it (via `memory_save`) to grow it "
+            "into a mature node."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -296,24 +457,67 @@ TOOLS = [
     },
     {
         "name": "memory_recent",
-        "description": "List the most recent memories in the vault, optionally filtered by type. Use for morning briefs or 'what happened recently?' queries.",
+        "description": (
+            "List the most recent memories in the vault, ordered by event_date (when the "
+            "underlying event happened — not when the memory was written). Optionally filter "
+            "by memory type.\n\n"
+            "USE WHEN: morning briefs ('what happened yesterday?') · weekly recaps · "
+            "'what's the latest in <area>' when you don't have a specific entity to anchor on.\n\n"
+            "LIFECYCLE HINT: memories with `event_date: null` are stateful facts (references, "
+            "relationships, user_facts) that don't appear in recency listings by design — "
+            "use `memory_search_entity` or `memory_ask` to find those. If `memory_recent` "
+            "comes back sparser than expected, check `mv doctor` to see latest event_date per "
+            "source — a stalled ingest is the usual cause."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "n": {"type": "integer", "default": 10, "description": "How many memories to return"},
-                "type_filter": {"type": "string", "description": "Optional: filter by memory type (decision, event, project_fact, relationship, observation, reference)"},
+                "type_filter": {"type": "string", "description": "Optional: filter by memory type (decision, event, project_fact, relationship, observation, reference, feedback)"},
             },
         },
     },
     {
         "name": "memory_health",
-        "description": "Get a one-shot vault status: total memories, entity coverage, dead wikilinks, orphan entities. Run before any deep-dive question if you suspect the vault has issues.",
+        "description": (
+            "One-shot vault diagnostic. Returns: total memories, entity-coverage percentage, "
+            "dead wikilinks (entities referenced but no file), orphan entity files (file "
+            "exists but no memory links it).\n\n"
+            "USE WHEN: a query came back thin and you suspect the vault is unhealthy · before "
+            "a deep-dive task to confirm the data is ready · periodic checkup.\n\n"
+            "REMEDIATION HINTS:\n"
+            "- High dead_wikilinks → run the heal chain: `connect_entities --apply` + "
+            "`build_alias_map`\n"
+            "- High orphan_entities → either link them via memories or archive them\n"
+            "- Low pct_with_entities → ingest is silently dropping wikilinks; check the "
+            "authoring rules in `docs/memory-playbooks/`\n"
+            "For richer health info (per-source recency, coverage gaps, eval scores) use "
+            "`mv doctor` from the CLI."
+        ),
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "memory_save",
         "description": (
-            "Write a new memory to the vault. PRESERVATION RULES — read before writing: "
+            "Write a new memory to the vault.\n\n"
+            "BEFORE SAVING — three things to check (lifecycle instructions for any MCP client):\n"
+            "1. CALL `memory_ask` with a paraphrase of your save subject — does this duplicate "
+            "an existing memory? If so, prefer `memory_update` over a new save.\n"
+            "2. CALL `memory_ask` with `tags=[coverage-gap]` (or just search for 'coverage gap "
+            "<your subject>'). If a stub gap memory exists for your subject, your save likely "
+            "fills it. Save normally, then `memory_update` the gap to `status: superseded` "
+            "with a body line: `Resolved by [[<new-id>]] (<date>).`\n"
+            "3. If you see any `mem_GAP_*` memory with `tags: stub-enrich-me, enriched: false` "
+            "during your context-gathering, enrich it with `memory_update` (read its `## Evidence` "
+            "section, write a grounded narrative, set `enriched: true`). This costs you ~1 "
+            "tool call and grows the vault's quality over time.\n\n"
+            "TEMPORAL FIELDS — required:\n"
+            "- For point-in-time memories (event, decision, project_fact): pass `event_date` "
+            "  as ISO 8601 (e.g. '2026-05-23T15:00:00Z'). This is what 'last month' filters use.\n"
+            "- For stateful memories (reference, relationship, user_fact, preference): "
+            "  `event_date` should be null; pass `as_of_date` (when the fact was observed-true).\n"
+            "- Both null = the kit can't temporally filter the memory. Avoid unless you really mean it.\n\n"
+            "PRESERVATION RULES — read before writing:\n"
             "(1) NUMBERS verbatim with units — never round or generalize. "
             "(2) DATES exact, never relative — 'May 23' not 'next month'. "
             "(3) DIRECT QUOTES for decisions and commitments — quote the speaker's actual words. "
@@ -321,7 +525,7 @@ TOOLS = [
             "(5) CAUSAL LINKS — preserve 'because', 'since', 'due to' — multi-hop questions depend on this. "
             "(6) NEGATIONS — what was rejected/deferred must be explicit, not implied. "
             "(7) ALL NAMED ENTITIES in body MUST appear as wikilinks in `entities:` — no silent drops. "
-            "(8) THE WHY — capture significance/motive, not just the outcome. "
+            "(8) THE WHY — capture significance/motive, not just the outcome.\n"
             "Self-check: if the source disappeared, could the body alone reconstruct what happened? "
             "If no, add detail. Body should be 200-1500 chars typically — over-short = summarization loss. "
             "Runs pre-write quality checks; refuses to save on errors unless `force=true`. "
@@ -341,6 +545,93 @@ TOOLS = [
                 "force": {"type": "boolean", "default": False, "description": "If true, bypass error-level check failures. Use sparingly; the checks are usually right."},
             },
             "required": ["title", "body"],
+        },
+    },
+    {
+        "name": "memory_get",
+        "description": (
+            "Fetch a single memory's full body + frontmatter by id. Use after `memory_ask` "
+            "when you need the complete content of a specific result.\n\n"
+            "ENRICHMENT HINT — if the returned memory has `tags: stub-enrich-me` AND "
+            "`enriched: false`, its body's `## Evidence` section was pre-gathered by the "
+            "kit's coverage analyzer. With your current session context plus that evidence, "
+            "call `memory_update` to replace the templated title + body with a grounded "
+            "narrative. This is consumption-side gap enrichment — every MCP client should "
+            "do this without being asked, because the gap memories are the kit's mechanism "
+            "for self-improvement and you're the consumer best positioned to add context."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "Memory id, e.g. 'mem_GAP_g3-snowflake'."},
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "memory_tree_walk",
+        "description": (
+            "Walk the source-native hierarchy. Each memory carries `parent_surface:` "
+            "(its position in the source's tree — Notion page in a database in a team-space, "
+            "Slack thread in a channel, PR in a repo, Linear issue in a project, etc.). Each "
+            "surface entity carries `parent:` (its position one level up). Together they form "
+            "a 2-layer graph you can walk.\n\n"
+            "USE WHEN: user asks 'what's in <surface>?' / 'list everything in <folder>' / "
+            "'show me the descendants of <team-space>' — workflow questions that flat "
+            "keyword retrieval can't answer cleanly.\n\n"
+            "Three modes:\n"
+            "- `mode=children` — direct child memories + direct child surfaces of `surface`\n"
+            "- `mode=descendants` — recursive: every leaf memory under the subtree (with `max_depth`)\n"
+            "- `mode=ancestors` — walks UP from `name` (memory id OR surface name) to its root\n\n"
+            "Returns lists of ids/names. Combine with `memory_get` or `memory_ask` to "
+            "fetch details for the returned memories."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string", "enum": ["children", "descendants", "ancestors"], "default": "children"},
+                "surface": {"type": "string", "description": "Surface entity name (e.g. '#customer-issues', '<your-repo>', 'Product team-space'). For ancestors mode, can also be a memory id."},
+                "max_depth": {"type": "integer", "default": 5, "description": "For descendants mode — how deep to walk"},
+            },
+            "required": ["surface"],
+        },
+    },
+    {
+        "name": "memory_update",
+        "description": (
+            "Partially update an existing memory by id. Use when:\n"
+            "(a) The user corrects, extends, or refines a fact you previously saved — "
+            "prefer this over saving a duplicate.\n"
+            "(b) ENRICHMENT: you encountered a stub coverage-gap memory (tags include "
+            "`stub-enrich-me`, frontmatter `enriched: false`). The kit pre-gathered the "
+            "Evidence in the body; now write a grounded narrative replacement. Specifically: "
+            "rewrite `title` to reflect the actual situation; rewrite the body to say what "
+            "we know, what's missing, and how to fill it; set `enriched: true` and add the "
+            "`enriched` tag; if the original heuristic over-fired, set `status: superseded` "
+            "and add `heuristic-over-fired` tag with a detector-fix recommendation in the body.\n"
+            "(c) GAP RESOLUTION: a coverage gap was filled by a new memory you just saved. "
+            "Update the gap to `status: superseded` with a body line `Resolved by [[<new-id>]] "
+            "(<date>).`\n"
+            "Never changes `id` or `created`. The `updates` dict is partial — only the "
+            "fields you pass get overwritten."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "Memory id to update."},
+                "updates": {
+                    "type": "object",
+                    "description": (
+                        "Fields to overwrite. Allowed: title, type, contexts, entities, "
+                        "tags, source_ref, importance, status, body. "
+                        "For enrichment, typical shape: "
+                        "{title: '<grounded>', body: '<narrative>', status: 'active'|'superseded', "
+                        "tags: [...with `enriched` added]}."
+                    ),
+                    "additionalProperties": True,
+                },
+            },
+            "required": ["id", "updates"],
         },
     },
 ]
@@ -392,6 +683,21 @@ def handle_request(req: dict) -> dict:
                     source_ref=args.get("source_ref", "mcp:claude"),
                     force=bool(args.get("force", False)),
                 )
+            elif name == "memory_get":
+                result = tool_memory_get(args["id"])
+            elif name == "memory_update":
+                result = tool_memory_update(args["id"], args["updates"])
+            elif name == "memory_tree_walk":
+                from memoryvault_kit.retrieval.tree_walk import children_of, descendants_of, ancestors_of
+                mode = args.get("mode", "children")
+                if mode == "children":
+                    result = children_of(args["surface"])
+                elif mode == "descendants":
+                    result = descendants_of(args["surface"], max_depth=args.get("max_depth", 5))
+                elif mode == "ancestors":
+                    result = {"name": args["surface"], "ancestors": ancestors_of(args["surface"])}
+                else:
+                    result = {"error": f"unknown mode: {mode}"}
             else:
                 return err(-32601, f"unknown tool: {name}")
             # MCP requires content to be a list of content blocks

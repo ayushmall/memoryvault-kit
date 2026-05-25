@@ -1,5 +1,6 @@
 ---
 name: memory-audit
+tier: full
 description: Get a one-shot health report on the user's MemoryVault — memory count, entity coverage, dead wikilinks, orphan entities. Use when the user asks "how's my vault?", "vault status", "is my memory healthy?", or before any deep work session where you want to verify the data layer is intact. Also useful BEFORE running memory-refresh to know if there's existing rot.
 ---
 

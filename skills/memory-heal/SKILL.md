@@ -1,5 +1,6 @@
 ---
 name: memory-heal
+tier: full
 description: Auto-fix safe issues in the user's MemoryVault — backfill missing person aliases, resolve dead wikilinks by mapping to existing entities, mark orphan entity files as stubs. Use when memory-audit surfaces hygiene problems (dead_wikilinks > 0, entities_without_aliases growing) or once a month as preventive maintenance. Idempotent — running it twice is safe.
 ---
 

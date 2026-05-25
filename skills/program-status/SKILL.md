@@ -1,5 +1,6 @@
 ---
 name: program-status
+tier: lean
 description: Capture or surface a program/project status update (RAG-style: red/amber/green). Use when the user says "status on <project>", "where are we with <program>", "is <X> on track", "RAG update for <Y>", "weekly status for <project>", "what's blocked on <Z>". Produces memories shaped for "is X on track?" and "what's blocking X?" retrieval, AND surfaces existing status memories on lookup.
 ---
 

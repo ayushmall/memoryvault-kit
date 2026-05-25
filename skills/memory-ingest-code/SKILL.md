@@ -1,6 +1,7 @@
 ---
 name: memory-ingest-code
-description: Ingest code repositories into the MemoryVault as entities + PR memories. Use when the user wants their kit to understand their codebase — "ingest my repo", "pull PRs from <repo>", "add code context for <project>", "give me an engineer's memory", "set up code ingest for wisdom" etc. Two safe modes: --metadata (README + structure only) and --prs (PR descriptions + paths only, never source contents). Source-content ingest is enterprise-only and disabled by default. Walks the user through products config setup for multi-product monorepos so PRs auto-link to the right product entities.
+tier: full
+description: Ingest code repositories into the MemoryVault as entities + PR memories. Use when the user wants their kit to understand their codebase — "ingest my repo", "pull PRs from <repo-name>", "add code context for <project>", "give me an engineer's memory", "set up code ingest for my monorepo" etc. Two safe modes: --metadata (README + structure only) and --prs (PR descriptions + paths only, never source contents). Source-content ingest is enterprise-only and disabled by default. Walks the user through products config setup for multi-product monorepos so PRs auto-link to the right product entities.
 ---
 
 # memory-ingest-code

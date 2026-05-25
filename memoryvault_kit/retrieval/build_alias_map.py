@@ -3,7 +3,7 @@
 Build the alias map from entity files.
 
 The alias map answers two questions:
-  surface_form → canonical_name   (e.g., "WoW" → "Wisdom on Wisdom Customer Rollout")
+  surface_form → canonical_name   (e.g., "Acme" → "Acme Corp")
   canonical_name → [aliases]      (used for query-side expansion)
 
 Output: {VAULT}/.alias_map.json   (lives in the vault, not /tmp)
@@ -72,7 +72,7 @@ def build():
         print(f"ERROR: entities dir not found at {ENTITIES_DIR}", file=sys.stderr)
         return None
 
-    surface_to_canonical = {}     # "WoW" → "Wisdom on Wisdom Customer Rollout"
+    surface_to_canonical = {}     # "Acme" → "Acme Corp"
     canonical_to_aliases = {}     # canonical → list of all known surface forms
     entity_to_path = {}           # canonical → file path (for debugging)
     skipped_blocklist = []

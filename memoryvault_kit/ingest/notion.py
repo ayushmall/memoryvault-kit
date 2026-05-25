@@ -67,6 +67,59 @@ def _detect_entities_from_body(body: str, alias_map: dict | None = None) -> list
     return sorted(entities)
 
 
+def _ensure_notion_surface(parent_id: str, parent_type: str, parent_title: str = "",
+                           workspace: str = "") -> str | None:
+    """Idempotent: create or update a Notion surface entity for a parent node.
+
+    Returns the canonical entity name (the wikilink target) or None if no parent.
+    """
+    if not parent_id or parent_type in ("none", "workspace"):
+        # Pages that live at workspace root may have no parent surface
+        if parent_type == "workspace" and workspace:
+            kind = "notion-workspace"
+            title = workspace
+        else:
+            return None
+    else:
+        kind_map = {"database": "notion-database",
+                    "page": "notion-page-with-children",
+                    "team_space": "notion-team-space"}
+        kind = kind_map.get(parent_type, "notion-page-with-children")
+        title = parent_title or f"Notion {parent_type} {parent_id[:8]}"
+
+    from pathlib import Path
+    import os
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
+    surf_dir = vault / "entities" / "surfaces"
+    surf_dir.mkdir(parents=True, exist_ok=True)
+    safe_title = title.replace('"', "'").strip() or f"notion-{parent_id[:8]}"
+    slug = re.sub(r"[^a-z0-9-]+", "-",
+                  f"notion-{parent_type}-{safe_title}".lower()).strip("-")[:60]
+    path = surf_dir / f"{slug}.md"
+    if not path.exists():
+        from memoryvault_kit import org as _org
+        org_slug = _org.org_slug()
+        parent_line = f'parent: "entity:{org_slug}"' if org_slug else "parent: null"
+        path.write_text(f"""---
+id: "entity:surface:{slug}"
+name: "{safe_title}"
+type: surface
+surface_kind: {kind}
+medium: notion
+notion_id: "{parent_id}"
+notion_type: "{parent_type}"
+{parent_line}
+created: "2026-05-25T00:00:00Z"
+updated: "2026-05-25T00:00:00Z"
+---
+
+Notion {parent_type}: **{safe_title}**.
+
+Child pages live as memories with `parent_surface: "[[{safe_title}]]"`.
+""")
+    return safe_title
+
+
 def write_notion_memory(page: dict, alias_map: dict | None = None) -> Path:
     """Write a Notion page as a memory file.
 
@@ -81,6 +134,11 @@ def write_notion_memory(page: dict, alias_map: dict | None = None) -> Path:
         "last_edited_by": {"name": "..."},
         "body": "extracted markdown text",
         "properties": {...},   # optional
+        "parent": {                        # NEW — Notion API parent object
+            "type": "database_id" | "page_id" | "workspace" | "team_space",
+            "id": "<parent-uuid>",
+            "title": "<parent name if known>",
+        },
       }
     """
     pid = page.get("id", "")
@@ -90,7 +148,19 @@ def write_notion_memory(page: dict, alias_map: dict | None = None) -> Path:
     path = MEMORIES_DIR / f"{mid}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    body = (page.get("body", "") or "")[:2000].strip()
+    # Tier-aware capture depth (see memoryvault_kit/profile.py)
+    from memoryvault_kit.profile import ingest_depth
+    depth_cfg = ingest_depth()
+    max_chars = depth_cfg["max_body_chars"]
+    include_comments = depth_cfg["include_comments"]
+
+    body = (page.get("body", "") or "")[:max_chars].strip()
+    if include_comments and page.get("comments"):
+        body += "\n\n## Comments\n"
+        for c in page["comments"][:20]:
+            author = (c.get("author") or {}).get("name", "?")
+            text = (c.get("text") or "")[:300]
+            body += f"\n- **{author}**: {text}"
     page_type = page.get("type", "page")
     last_editor = (page.get("last_edited_by") or {}).get("name", "") or "unknown"
     url = page.get("url", "")
@@ -99,7 +169,9 @@ def write_notion_memory(page: dict, alias_map: dict | None = None) -> Path:
 
     # Auto-detect entities from body
     detected_entities = _detect_entities_from_body(body + " " + title, alias_map)
-    entities = [f"[[{e}]]" for e in detected_entities[:10]]  # cap at 10
+    # Cap based on tier — Full extracts up to 25 secondary entities, Lean keeps 10
+    cap = 25 if depth_cfg["extract_secondary_entities"] else 10
+    entities = [f"[[{e}]]" for e in detected_entities[:cap]]
     # Always add last editor as a person entity if known
     if last_editor and last_editor != "unknown":
         entities.append(f"[[{last_editor}]]")
@@ -109,6 +181,23 @@ def write_notion_memory(page: dict, alias_map: dict | None = None) -> Path:
     tags_str = "[" + ", ".join(f'"{t}"' for t in tags) + "]"
 
     body_text = body if body else "(no body content extracted)"
+    # Parent surface (Notion's native tree: workspace → team-space → database → page)
+    parent_obj = page.get("parent") or {}
+    parent_type_raw = parent_obj.get("type", "")
+    # Normalize Notion's parent.type strings (database_id, page_id, workspace, team_space)
+    parent_type = parent_type_raw.removesuffix("_id") if parent_type_raw else "none"
+    parent_id = parent_obj.get("id", "") or parent_obj.get("database_id", "") or parent_obj.get("page_id", "")
+    parent_title = parent_obj.get("title", "")
+    parent_surface_name = _ensure_notion_surface(parent_id, parent_type, parent_title,
+                                                  workspace=page.get("workspace", ""))
+    parent_surface_line = (f'parent_surface: "[[{parent_surface_name}]]"'
+                           if parent_surface_name else "parent_surface: null")
+    notion_parent_id_line = (f'notion_parent_id: "{parent_id}"' if parent_id
+                             else "notion_parent_id: null")
+
+    # Notion: type=reference is stateful — use as_of_date for "when last touched",
+    # event_date=null. If the page is event-shaped (e.g. a meeting recap), the
+    # authoring agent should override type:event and set event_date manually.
     content = f'''---
 id: "{mid}"
 title: "{title}"
@@ -120,8 +209,12 @@ source: notion
 source_ref: "{url}"
 notion_id: "{pid}"
 notion_type: "{page_type}"
+{parent_surface_line}
+{notion_parent_id_line}
 last_edited_by: "{last_editor}"
 created: "{created}"
+event_date: null
+as_of_date: "{updated or created}"
 updated: "{updated}"
 ---
 

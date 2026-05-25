@@ -273,6 +273,12 @@ def write_issue_memory(issue: dict) -> Path:
     created = issue.get("createdAt", "")
     updated = issue.get("updatedAt", "")
     importance = 0.75 if priority in (1, 2) else 0.5 if priority == 3 else 0.3
+    # Linear tree: parent_surface points up one level — issue's parent is the
+    # most-specific container it has (project > cycle > team, in that order).
+    parent_surface_name = project or cycle_name or team
+    parent_surface_line = (f'parent_surface: "[[{parent_surface_name}]]"'
+                           if parent_surface_name else "parent_surface: null")
+    # Linear: event_date = updated (last state change — what "shipped last month" cares about)
     content = f'''---
 id: "{mid}"
 title: "{full_title}"
@@ -286,7 +292,13 @@ linear_id: "{issue['id']}"
 linear_identifier: "{iid}"
 state: "{state}"
 priority: {priority}
+{parent_surface_line}
+linear_project: "{project}"
+linear_cycle: "{cycle_name}"
+linear_team: "{team}"
 created: "{created}"
+event_date: "{updated or created}"
+as_of_date: null
 updated: "{updated}"
 ---
 

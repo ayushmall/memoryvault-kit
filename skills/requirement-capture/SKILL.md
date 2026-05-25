@@ -1,5 +1,6 @@
 ---
 name: requirement-capture
+tier: lean
 description: Capture a product/engineering requirement properly — origin (customer ask vs internal idea), problem statement, proposed solution, scope decisions (in/out), constraints, owner, target. Use when the user says "we need to capture this requirement", "let's spec out <feature>", "write up the <X> requirement", "draft a PRD for <Y>", "what's the requirement for <Z>". Produces a memory shaped for downstream retrieval — "what did we scope for <feature>?", "why did we decide against <approach>?", "who asked for <feature>?".
 ---
 

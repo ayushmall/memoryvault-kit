@@ -1,5 +1,6 @@
 ---
 name: memory-refresh
+tier: full
 description: Ingest the last 24-48h of activity from the user's connected sources (Granola, Slack, Calendar, Notion, GDrive, Gmail, Linear) into their MemoryVault. Use when the user asks "refresh my memory", "what happened recently", "pull yesterday's activity", or as the morning routine. This is a multi-step agentic workflow — read the full instructions at `memoryvault_kit/ingest/agent_prompt.md` in the kit. Don't run on every prompt; only when explicitly requested or on a schedule.
 ---
 

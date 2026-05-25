@@ -57,14 +57,36 @@ QUESTIONS_TRAIN = VAULT / "evals" / "retrieval" / "questions_train.jsonl"
 
 
 def retrieve_combined(question: str, index: dict, bodies: dict | None = None,
-                      use_reranker: bool = False, k: int = 10) -> list[dict]:
-    """Full pipeline. Returns top-k candidates."""
-    # Step 1: D7 entity-mediated lookup
+                      use_reranker: bool | None = None,
+                      k: int | None = None) -> list[dict]:
+    """Full pipeline. Returns top-k candidates.
+
+    Tier-aware: if `use_reranker` or `k` are not explicitly passed, defaults
+    are read from the active profile (lean: k=3 + no reranker; full: k=5 +
+    reranker). The BM25 + D7 baseline is identical in both tiers — Full only
+    adds the reranker as a lift, preserving the Lean ⊆ Full invariant.
+    """
+    if use_reranker is None or k is None:
+        try:
+            from memoryvault_kit.profile import retrieval_config
+            cfg = retrieval_config()
+            if use_reranker is None:
+                use_reranker = cfg["use_reranker"]
+            if k is None:
+                k = cfg["k"]
+        except Exception:
+            # Defaults if profile module unavailable
+            if use_reranker is None:
+                use_reranker = False
+            if k is None:
+                k = 10
+
+    # Step 1: D7 entity-mediated lookup (tier-independent baseline)
     d7_results, _ = try_entity_lookup(question, index, k=k)
     if d7_results:
         return d7_results
 
-    # Step 2: BM25 recall
+    # Step 2: BM25 recall — reranker is the Full-tier lift
     if use_reranker and bodies is not None:
         candidates = bm25_retrieve(question, index, k=RECALL_N)
         candidate_ids = [c["id"] for c in candidates]

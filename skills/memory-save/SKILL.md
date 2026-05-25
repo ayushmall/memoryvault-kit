@@ -1,5 +1,6 @@
 ---
 name: memory-save
+tier: lean
 description: Persist a new memory to the user's MemoryVault. Use when the user explicitly says "save this", "remember that", "add to my vault", "note that down" — OR when you're summarizing a clearly memory-worthy outcome they just shared (a decision, a customer commitment, a new fact about a colleague). Writes a properly-formatted memory file with entity wikilinks. Don't use this for every utterance — be selective. If you're unsure, ASK the user "should I save this to your vault?" before calling. ALWAYS apply the preservation rules below — under-detailed memories are the single biggest quality failure mode of this system.
 ---
 
@@ -10,20 +11,52 @@ When the user wants to persist something to their MemoryVault, use the
 
 ---
 
-## First: read the memory-gap queue
+## First: read the coverage-gap feedback memories
 
-Before saving, **read `<vault>/.mvkit/memory-gaps.md`**. It lists topics
-that previous query sessions tried to look up but came back empty. If
-what the user is asking you to save matches any active gap (e.g. an eval
-result they're sharing matches the "What was the eval result?" gap):
+Before saving, **search for active gap memories**:
 
-1. Save the memory with extra care — title-prominent keywords from the
-   gap question, body that answers it directly
-2. Mark the gap `[x]` in `memory-gaps.md` and append a link to the new
-   memory ID
+    memory_search type=feedback tags=coverage-gap status=active
 
-This is the **compounding quality loop**: retrieval failures inform
-authoring, authoring fills the gaps, future retrievals succeed.
+These are gaps the kit's coverage analyzer or low-confidence retrievals
+detected — concrete authoring tasks waiting to be filled. Each one is
+a feedback memory with the gap class (G1–G14), the subject entity, an
+`## Evidence` section (auto-gathered: entity metadata, linked memories
+with dates/types, type distribution), and a `## How to enrich this gap`
+section that tells *you* what to do.
+
+There are three actions you can take on a gap, in priority order:
+
+### 1. Enrich the stub if it's still templated
+If the gap memory has `tags: [...stub-enrich-me]` and `enriched: false`,
+the auto-gathered evidence is sitting there waiting for you to turn
+into a narrative. **You already have everything you need**:
+- The `## Evidence` section lists the entity's linked memories, type
+  distribution, and metadata
+- Whatever context the current session has loaded
+
+Call `memory_update` to:
+- Rewrite `title:` so it reflects the actual situation (not the template)
+- Rewrite the body to say: *what we know, what's missing, how to fill it*
+- If the heuristic over-fired (the evidence shows the gap doesn't
+  apply), set `status: superseded` with `tags: [...heuristic-over-fired]`
+  and include a detector-fix recommendation
+- Set `enriched: true` and add the `enriched` tag
+
+This consumption-side enrichment grows the gap memory over its lifecycle.
+The next agent that touches it sees a real narrative, not a stub.
+
+### 2. Fill the gap if the user's new content answers it
+If what the user is asking you to save **fills a gap**:
+- Save the new memory using the relevant playbook in `docs/memory-playbooks/`
+- Update the gap memory's `status` to `superseded` and add a body line:
+  `Resolved by [[<new memory id>]] (<YYYY-MM-DD>).`
+
+### 3. Save normally if no gap applies
+But still scan open gaps in case future authoring can close them.
+
+This is the **compounding quality loop**: gaps are detected with evidence;
+consuming agents enrich them with reasoning; new authoring fills them;
+the metrics (`fill_quality`, `pollution`, `coverage`) improve.
 
 Also check the "Patterns the authoring agent should proactively check
 for" section — if today's capture matches a recurring pattern (e.g.,

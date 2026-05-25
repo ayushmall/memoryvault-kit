@@ -306,7 +306,7 @@ were ingested before this rule.
 Code memories ingested via `mv ingest-code` should be classified into
 **product entities**, not just the repo entity. Configure the
 `<vault>/.mvkit/products/<repo>.json` mapping so PRs touching
-`agents/builder/*` link to `[[Agents]]` not just `[[wisdom-repo]]`.
+`agents/builder/*` link to `[[Agents]]` not just `[[<your-repo>]]`.
 
 Cross-cutting PRs (touching multiple product paths) should be linked to
 ALL relevant product entities. That makes "what changed in Embedded?"

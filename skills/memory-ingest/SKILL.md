@@ -1,5 +1,6 @@
 ---
 name: memory-ingest
+tier: full
 description: Bulk-import a folder of markdown notes into the user's MemoryVault, OR add a single markdown file. Use when the user says "import my old notes from <path>", "bring in this file", or "convert this folder of notes to memories". Wraps each file with proper frontmatter, generates stable IDs, and lints. Different from memory-save (which is for single new memories from agent context).
 ---
 

@@ -76,7 +76,7 @@ def collect_link_counts() -> tuple[Counter, dict]:
 def classify_entity_type(name: str) -> str:
     """Best-effort: which entities/ subdir does this canonical live in?"""
     slug = name.lower().replace(" ", "-").replace("&", "and")
-    for kind in ("people", "companies", "projects", "topics", "places", "roles", "things", "teams"):
+    for kind in ("people", "companies", "projects", "topics", "places", "roles", "things", "teams", "surfaces"):
         if (ENT_DIR / kind / f"{slug}.md").exists():
             return kind
     return "unknown"
