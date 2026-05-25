@@ -153,14 +153,14 @@ Action:
    `source_surface: "[[Weekly Jane <> Alex 1:1]]"` to its frontmatter
 3. After 4 captured meetings, generate the first synthesis memory
 
-Now `memory_ask "what's been on Ayush <> Soham 1:1s?"` returns the
+Now `memory_ask "what's been on Jane <> Alex 1:1s?"` returns the
 series memory + the 8 events ordered by event_date.
 
 **Example 2 — Per-meeting capture with series link**
 
 The next Granola recording arrives; thread title matches the series
 pattern. Save as a fresh event memory and stamp it with
-`source_surface: "[[Weekly Ayush <> Soham 1:1]]"`. The synthesis
+`source_surface: "[[Weekly Jane <> Alex 1:1]]"`. The synthesis
 memory is now out of date — flag for regeneration.
 
 ## Tier-aware depth
