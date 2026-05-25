@@ -233,7 +233,7 @@ patterns rather than tuning the retriever around them.
 
 ## Step 4b — Over-consumption (the other failure mode)
 
-Under-consumption shows up as "I never wrote down that conversation." Over-consumption shows up as "retrieval got slower, R@5 dropped, and the right memory is buried under twenty similar ones." Discovery makes it easy to over-consume — every accepted target adds a new firehose.
+Under-consumption shows up as "I never wrote down that conversation." Over-consumption shows up as "retrieval got slower, R@5 dropped, and the right memory is buried under twenty similar ones."
 
 Run `mv doctor --signal-quality` weekly. It reports per-source ingest volume vs retrieval-hit rate from the query log:
 
@@ -244,23 +244,24 @@ linear                341          0        ∞  noisy
 notion                 87          0        ∞  noisy
 ```
 
-What to do when a source is flagged "noisy":
+What to do when a source is flagged noisy:
 
-1. **First diagnose**: is the source actually low-signal, or is the query log empty because retrieval hasn't been used? If `retrieved` is 0 across all sources, the kit isn't being queried — the ratio is meaningless yet. Use the kit for a week, then re-run.
+1. **First diagnose.** If `retrieved` is 0 across all sources, the kit isn't being queried, so the ratio is meaningless yet. Use the kit for a week, then re-run.
 
-2. **If genuinely noisy** (ratio > 5 with non-zero retrieved count):
-   - Lower `max_memories_per_run` on that source — caps per-run volume
-   - Tighten `signal_thresholds` — discovery only proposes active targets
-   - For GitHub: enable `per_pr_quality.skip_drafts`, raise `min_files_changed`, add bot authors to `skip_bot_authors`
-   - For Linear: add `Backlog` / `Triage` to `per_issue_quality.skip_states`, raise `min_priority`
-   - For Slack: tighten `per_channel_quality.min_thread_length` from 3 to 5
-   - For Notion: raise `signal_thresholds.min_word_count` from 100 to 250
+2. **If genuinely noisy** (ratio > 5 with non-zero retrieved count), the lever is per-target quality gates, not magic numbers:
+   - For GitHub: `per_pr_quality.skip_drafts: true`, add bot authors to `skip_bot_authors`
+   - For Linear: add `Backlog` / `Triage` to `per_issue_quality.skip_states`
+   - For Slack: raise `per_channel_quality.min_thread_length` from 3 to 5
+   - For Notion: add patterns to `discovery_exclude` so dead spaces stop surfacing
+   - For all: lower `propose_top_n` from 5 to 3 if a source has dozens of active candidates and you only want the very top
 
-3. **Last resort — prune**: a source that's been over-ingesting for months has a lot of dead weight already in the vault. Plan: a `mv prune --source <name> --max-age 90 --min-retrievals 0` that archives source-X memories older than 90 days never retrieved. (Not shipped yet — manual cleanup for now: `rg -l "^source: <name>" memories/2026/ | xargs ls -t | tail -N | xargs rm`.)
+3. **The global share cap is the real circuit breaker.** `_global_caps.max_share_per_run: 0.3` means no single source can produce more than 30% of one run's memories. If GitHub is firehoseing, the cap kicks in mid-run and reports truncation, regardless of any per-source config.
+
+4. **Last resort, prune.** A source that's over-ingested for months has dead weight in the vault. Plan: `mv prune --source <name> --max-age 90 --min-retrievals 0` to archive memories never retrieved (not shipped yet, manual cleanup for now).
 
 ## When discovery proposes too much
 
-The global cap `_global_caps.max_discovery_proposals_per_run` (default 10) keeps any single run from flooding the queue-router with 50 channels to triage. If you see >10 `mem_DISCOVERY_*` memories pending and still feel underwhelmed by what's surfacing, the per-source signal_thresholds are too loose. Tighten them rather than raising the cap.
+Two global caps. `max_discovery_proposals_per_run: 10` is the per-run total across all sources. `propose_top_n: 5` per source limits any one source's proposals. The 14-day `recently_proposed` back-off prevents the same candidates from re-appearing every day. If you still feel flooded, lower `propose_top_n` to 3 per source.
 
 ## Step 5 — What's worth shipping vs not
 

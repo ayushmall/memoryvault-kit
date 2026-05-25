@@ -37,35 +37,42 @@ For each entry in `sources`, you'll see:
 }
 ```
 
-## The balance: don't over-consume, don't under-consume
+## Discovery: rank-based, not threshold-based
 
-Discovery makes the kit cast a wide net. Without guardrails, that net catches
-every dead Slack channel, archived repo, and abandoned Notion page — bloating
-the graph and dropping retrieval quality (vault size sensitivity is real:
-2.8× growth → -10pp R@5 in past evals).
+Discovery casts a wide net. Without care, it catches every dead channel,
+archived repo, and abandoned page, which bloats the graph and drops
+retrieval quality.
 
-Every source config has two budget controls. **Enforce them strictly:**
+The rule is rank-based and scale-free: for each multi-target source,
+sort the catalog by activity in the last 30 days, drop anything with
+zero activity (the floor), drop anything matching `discovery_exclude`,
+drop anything in `recently_proposed` within the last 14 days, then
+propose the top `config.propose_top_n` (default 5). Same logic for a
+three-channel workspace and a 5000-channel workspace.
 
-1. **`signal_thresholds`** — minimum activity bars BEFORE discovery proposes
-   a target. Dead channel / archived repo / cold customer = skip. Read these
-   from `config.signal_thresholds` per source.
+Two global caps still apply:
 
-2. **`max_memories_per_run`** — per-source cap on ingest output. Even on
-   configured targets, stop after N memories and report truncation. Prevents
-   a single firehose source from drowning the others.
+- `_global_caps.max_discovery_proposals_per_run` (default 10) caps the
+  total across all sources in one run.
+- `_global_caps.max_share_per_run` (default 0.3) means no single source
+  can produce more than 30% of one run's memories. If a source is
+  trending past that share, stop ingesting from it for this run and
+  report truncation.
 
-3. **Global cap** — `_global_caps.max_memories_per_run_total` (default 200)
-   across all sources combined. If hit mid-run, stop and report. Steady-state
-   should be well under; hitting it = backfill or runaway source.
+Each `mem_DISCOVERY_*` memory body must include the proposal context:
+"top N of M active candidates ranked by &lt;metric&gt;" where the metric
+is the source's `_discovery_rank_metric` field. This lets the user
+judge the relative weight without needing absolute thresholds.
 
-4. **Global discovery cap** — `_global_caps.max_discovery_proposals_per_run`
-   (default 10) across all sources. Don't flood the queue-router with 50
-   proposals in one run.
+After writing proposals, update `recently_proposed[<source>][<slug>] =
+&lt;now ISO&gt;` for each proposed target. The 14-day back-off prevents
+re-proposing things the user saw and ignored.
 
-When a `mem_DISCOVERY_*` memory is written, its body MUST include the signal
-data that justified the proposal (message count, last activity, attendee
-count, member count, etc.). This is what lets the user make a real decision
-when accepting/rejecting.
+User actions on proposals:
+- Accept → move slug from `recently_proposed` into `config.<targets>`
+- Explicit reject → add pattern to `discovery_exclude`, remove from
+  `recently_proposed`
+- Neither → silently back off for 14 days
 
 ## The two passes per source: INGEST + DISCOVER
 
