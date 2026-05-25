@@ -152,27 +152,26 @@ def derive_canonical_entity(m: dict) -> tuple[str | None, str | None]:
 
 
 def ensure_entity_file(canonical: str, subdir: str, description: str = ""):
-    """Create entities/<subdir>/<slug>.md if it doesn't exist. Idempotent."""
+    """Resolve-or-create an entity using the shared dedupe primitive.
+
+    The shared primitive checks: alias map, exact-slug file path,
+    fuzzy match across same-type entities (Levenshtein ≤ 2). Only
+    creates if no existing canonical is found.
+    """
+    from memoryvault_kit.ingest._dedupe import resolve_or_create_entity
+    entity_type = subdir.rstrip("s")  # projects → project
     slug = re.sub(r"[^a-z0-9]+", "-", canonical.lower()).strip("-")
-    entity_path = VAULT / "entities" / subdir / f"{slug}.md"
-    if entity_path.exists():
-        return canonical
-    entity_path.parent.mkdir(parents=True, exist_ok=True)
-    fm = [
-        "---",
-        f'name: "{canonical}"',
-        f"type: {subdir.rstrip('s')}",  # projects → project
-        f'aliases: ["{slug}"]',
-        f"tags: [claude-memory-derived]",
-        f"created: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
-        f"status: active",
-        "---",
-        "",
-        description or f"{canonical} — entity auto-created from Claude Code memory.",
-        "",
-    ]
-    entity_path.write_text("\n".join(fm))
-    return canonical
+    resolved, how = resolve_or_create_entity(
+        candidate_name=canonical,
+        entity_type=entity_type,
+        description=description or f"{canonical} — entity auto-created from Claude Code memory.",
+        hint_aliases=[slug],
+    )
+    if how == "fuzzy_match" and resolved != canonical:
+        # Possible duplicate — log + use the existing rather than creating
+        print(f"  ℹ {canonical!r} matched existing entity {resolved!r} (fuzzy). Linking to existing.",
+              file=sys.stderr)
+    return resolved
 
 
 def extract_entities(m: dict) -> list[str]:
@@ -292,12 +291,39 @@ def main():
             print(f"  (dry-run; re-run with --apply to write)", file=sys.stderr)
             return
 
+    from memoryvault_kit.ingest._dedupe import find_duplicate_memory
+
     n_written = 0
+    n_updated = 0
+    n_skipped = 0
     for m in memories:
         mv = to_memoryvault(m)
-        write_memory(mv)
-        n_written += 1
-    print(f"✓ Wrote {n_written} memories from Claude Code memory layer", file=sys.stderr)
+        dup_id, reason = find_duplicate_memory(
+            title=mv["title"],
+            entities=mv["entities"],
+            source_ref=mv["source_ref"],
+            source_host=mv["source_host"],
+        )
+        if reason == "source_ref_hit":
+            # Same Claude memory we've ingested before — rewrite (handles updates)
+            write_memory(mv)
+            n_updated += 1
+        elif reason in ("title_entity_hit",):
+            # Likely duplicate already in the vault from another source
+            print(f"  ⚠ skipping {mv['id']!r}: looks like existing {dup_id!r} ({reason})",
+                  file=sys.stderr)
+            n_skipped += 1
+        elif reason == "near_title_hit":
+            # Potential duplicate — log but still write (user can review)
+            print(f"  ℹ {mv['id']!r}: near-match to {dup_id!r} ({reason}). Writing both for now.",
+                  file=sys.stderr)
+            write_memory(mv)
+            n_written += 1
+        else:
+            write_memory(mv)
+            n_written += 1
+    print(f"✓ Claude memory ingest: {n_written} new, {n_updated} updated, {n_skipped} skipped as duplicate",
+          file=sys.stderr)
 
 
 if __name__ == "__main__":

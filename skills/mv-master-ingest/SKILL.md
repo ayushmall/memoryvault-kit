@@ -37,6 +37,62 @@ For each entry in `sources`, you'll see:
 }
 ```
 
+## Dedupe before write (every ingest, no exceptions)
+
+The kit eats its own dog food. Before any ingest module writes a new
+entity or memory, it MUST query the existing vault to see if a
+canonical version already exists.
+
+Use the shared primitives in `memoryvault_kit/ingest/_dedupe.py`:
+
+```python
+from memoryvault_kit.ingest._dedupe import (
+    resolve_or_create_entity, find_duplicate_memory,
+)
+
+# Before creating an entity (e.g. a project, person, customer):
+canonical, how = resolve_or_create_entity(
+    candidate_name="Capture MCP",
+    entity_type="project",
+    description="...",
+)
+# `how` is one of: alias_map_hit, file_exists, fuzzy_match, created
+# `fuzzy_match` means a Levenshtein-close existing entity was found
+# (e.g., typo or casing drift). Use `canonical` regardless.
+
+# Before saving a memory:
+dup_id, reason = find_duplicate_memory(
+    title=mem["title"],
+    entities=mem["entities"],
+    source_ref=mem["source_ref"],
+    source_host=mem["source_host"],
+)
+if reason == "source_ref_hit":
+    # Same item we've ingested before — UPDATE in place
+    write_memory(mem)
+elif reason == "title_entity_hit":
+    # Already covered from another source — SKIP, link via related: if useful
+    pass
+elif reason == "near_title_hit":
+    # Potential duplicate — write but log so the user can review
+    write_memory(mem); log_potential_dup(dup_id)
+else:
+    write_memory(mem)
+```
+
+For ingest sub-agents that call `memory_save` directly (rather than
+the native ingest modules), the rule is the same: before saving, call
+`memory_ask` with a paraphrase of the title + the key entities. If
+results contain a memory with the same `source_ref` or a very similar
+title + entity overlap, prefer `memory_update` on the existing memory
+over `memory_save` on a new one. This is what makes the kit
+idempotent — re-running ingest on the same source data produces zero
+new memories.
+
+If a candidate entity fuzzy-matches an existing one (typo / casing
+drift), use the existing canonical and add the variant as an alias on
+the entity file rather than creating a near-duplicate entity.
+
 ## Discovery: rank-based, not threshold-based
 
 Discovery casts a wide net. Without care, it catches every dead channel,
