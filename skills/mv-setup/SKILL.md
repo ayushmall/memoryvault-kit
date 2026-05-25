@@ -104,19 +104,50 @@ Use `AskUserQuestion` to ask, with multi-select:
 Default-recommend the lowest-friction ones (calendar, gmail) for the
 quickstart. Make it clear they can opt OUT of any.
 
-### Step 9 — Per-source config
+### Step 9 — Per-source config (auto-detect by default)
 
-For EACH source they selected, ask the source-specific config:
+For sources with a catalog API (Linear teams, Slack channels, Notion
+spaces, GitHub repos, Granola folders, Pylon accounts, Calendar IDs),
+**lead with auto-detect as the recommended option**. The kit has
+discovery wired into all of these — there's no reason to make the user
+type entity names by hand when we can probe.
 
-- **Calendar**: which calendar IDs? (default: "primary")
+For each source the user enabled, present an `AskUserQuestion` with:
+
+```
+Q: Which <thing> should the kit start with?
+
+[1] Auto-detect (Recommended)
+    "I'll call <MCP_LIST_TOOL> on your behalf, rank by activity in
+    the last 30 days, and pick the top 5. Discovery keeps surfacing
+    new ones over time."
+
+[2] Let me specify
+    "Provide <thing> keys, e.g. 'ENG', 'PROD'."
+
+[3] Skip for now
+    "Discovery still runs — propose targets in tomorrow's queue-router
+    report."
+```
+
+Per-source MCP probes:
+
+- **Linear**: `list_teams` → rank by issues updated in 30d
+- **Slack**: `slack_search_channels` → rank by messages in 30d
+- **Notion**: `notion-search` (top-level) → rank by edits in 30d
+- **GitHub**: ask for `discovery_orgs`, then `gh repo list <org>` →
+  rank by commits in 30d, skip archived
+- **Granola**: `list_meeting_folders` → rank by meetings in 30d
+- **Pylon**: `search_accounts` → rank by issues in 30d
+- **Calendar**: `list_calendars` → suggest primary + any shared
+  calendar with upcoming events
+
+For sources without a catalog (Gmail, GDrive), just ask the filter
+config directly:
+
 - **Gmail**: any senders/labels to skip? (default skips no-reply, noreply)
-- **Slack**: which channels (comma-separated, without #)?
-- **Linear**: which team key(s)? (e.g. "ENG", "PROD")
-- **GitHub PRs**: which repo(s)? (e.g. "acme/api")
-- **Notion**: what topics/pages to search? (e.g. "Strategy", "Roadmap")
-- **Granola**: any folder IDs to scope? (default: all)
-- **GDrive**: which folder IDs?
-- **Pylon**: which customer accounts to track?
+- **GDrive**: which folder IDs? (no auto-detect — too many irrelevant
+  folders to rank usefully)
 
 Don't gather everything — gather only what's needed for the per-source
 ingest. Skip sources they didn't select.
@@ -128,18 +159,71 @@ then update each source's `enabled` + `config` based on user answers.
 
 Verify the file is valid JSON.
 
-### Step 11 — First per-source ingest
+### Step 11 — First per-source ingest (REAL, not deferred)
 
-For each enabled source, run ONE pass to verify it works:
-- Linear: `python3 -m memoryvault_kit.ingest.linear --teams <X> --apply` (limit to 10 issues)
-- Notion: `python3 -m memoryvault_kit.ingest.notion --search "<topic>" --apply` (limit to 5 pages)
-- GitHub: `python3 -m memoryvault_kit.ingest.code_repo --repo <X> --prs --apply --max 20`
-- Authoring-agent sources (calendar/gmail/slack/granola/gdrive): walk them
-  through one example save via `memory_save`
+**This step has been the biggest UX gap.** Earlier versions deferred the
+first ingest to "the next scheduled run", which meant the user saw zero
+real memories during setup and had no proof that anything worked. Fix:
+spawn one sub-agent per enabled source, each does a smoke-test ingest,
+all run in parallel.
 
-If a source fails (auth, MCP missing, etc.), set its `enabled: false` +
-`skip_reason: "<what failed>"` in `connected_sources.json` and move on.
-Surface to user — don't silently disable.
+Spawn the sub-agents in a single message with multiple `Agent` tool
+calls (so they run concurrently). For each enabled source, prompt the
+sub-agent to:
+
+- Run that source's ingest with a hard cap (5-10 items)
+- Verify at least one memory was actually written to
+  `<vault>/memories/2026/`
+- Report success (with memory count) or failure (with the exact error
+  message)
+- If auth fails or the MCP isn't responding, return that as a soft
+  failure (the main flow will mark the source disabled with
+  skip_reason)
+
+Per-source ingest commands the sub-agent should use:
+
+- **Linear** (native module): `python3 -m memoryvault_kit.ingest.linear
+  --teams <X> --apply --max 10`
+- **Notion** (native module): `python3 -m memoryvault_kit.ingest.notion
+  --search "<topic>" --apply --max 5`
+- **GitHub PRs** (native module): `python3 -m
+  memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply
+  --max 10`
+- **Slack**: invoke the `slack-channel-digest` skill on the first 1-2
+  channels from `config.channels`, cap at 5 threads
+- **Calendar**: call `list_events` for the next 14 days on configured
+  calendars, call `memory_save` for any non-trivial event (max 5)
+- **Granola**: call `list_meetings` for the last 14 days, save the
+  first 3 with attendees >= 2 via `memory_save`
+- **Gmail**: read the last 20 threads, save the first 3 substantive
+  ones (skip noise per the filters)
+- **GDrive**: list recently-modified docs in `config.folders`, save
+  metadata for the top 5
+- **Pylon**: pull the most recent 5 issues across `config.accounts`
+
+After all sub-agents return, aggregate the results into a single
+report:
+
+```
+Smoke-test ingest:
+  linear     : ✓ 10 memories (ENG team)
+  notion     : ✓ 5 memories (Strategy topic)
+  slack      : ✓ 4 memories (#design-review, #eng-platform)
+  granola    : ✓ 3 meeting recaps
+  gmail      : ⚠ 0 memories — all 20 threads filtered as noise (skip thresholds may be too tight)
+  calendar   : ✗ MCP not responding — marking enabled:false skip_reason:"google-calendar MCP missing"
+  ────
+  Total: 22 memories written, 1 source disabled, 1 warning
+```
+
+For any source that fails: update `connected_sources.json` to set
+`enabled: false` and `skip_reason: "<one-line description>"`. Surface
+that decision to the user so they can fix the underlying MCP and
+re-enable later. Never silently disable.
+
+If ALL sources fail, stop here and tell the user — don't proceed to
+heal/eval/schedule on an empty vault. That's a real problem to debug,
+not something to paper over.
 
 ### Step 12 — Heal chain
 ```bash
@@ -170,11 +254,40 @@ Call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
 Use off-minute times (NOT :00 or :30). Confirm all 5 are listed via
 `mcp__scheduled-tasks__list_scheduled_tasks`.
 
-### Step 15 — Register the MCP server
+### Step 15 — Register the MCP server (vault-aware)
 
-For Claude Code users:
+**Important**: The MCP server reads `MEMORYVAULT_ROOT` to know which vault
+to serve. If the user is creating their PRIMARY vault, set it as a
+persistent shell env var. If this is a TEST vault alongside an existing
+one, register the MCP with the test vault's path explicitly so queries
+hit the right place.
+
+For Claude Code users — primary vault:
 ```bash
+# Set the env var persistently in shell profile
+echo 'export MEMORYVAULT_ROOT=$HOME/MemoryVault' >> ~/.zshrc  # or .bashrc
 claude mcp add memoryvault python3 -m memoryvault_kit.mcp_server
+```
+
+For Claude Code users — test/secondary vault:
+```bash
+# Register with the test vault's path baked in
+claude mcp add memoryvault-test \
+  -e MEMORYVAULT_ROOT=$HOME/MemoryVault-test \
+  -- python3 -m memoryvault_kit.mcp_server
+```
+
+Tell the user explicitly which vault each MCP server connects to. If
+they have two vaults registered, `memory_ask` calls go to whichever
+MCP was invoked. Be clear in the bootstrap report:
+
+```
+Active MCP registrations:
+  memoryvault       → ~/MemoryVault       (primary)
+  memoryvault-test  → ~/MemoryVault-test  (this setup)
+Queries via `memory_ask` will use whichever client connects first.
+To query the test vault specifically, use:
+  MEMORYVAULT_ROOT=~/MemoryVault-test python3 -m memoryvault_kit.cli ask "<query>"
 ```
 
 For Cursor / Continue / Cline / OpenAI Agents SDK / Gemini — paste the
