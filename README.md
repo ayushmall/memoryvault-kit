@@ -4,27 +4,18 @@
 > for your AI tools that gets sharper every time you use it.
 
 ```
-                                                                      
-   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-   │   AUTHORING     │───▶│   STRUCTURED    │───▶│   RETRIEVAL     │
-   │  is intelligent │    │     VAULT       │    │  is fast +      │
-   │                 │    │ (markdown files │    │  measurable     │
-   │  gaps surface   │    │   you own)      │    │                 │
-   │  agents enrich  │    │                 │    │  94.9% Cov@10   │
-   │  sessions feed  │    │  entities ──┐   │    │  <1ms p50       │
-   │  back synthesis │    │  memories   │   │    │  deterministic  │
-   └─────────────────┘    │  surfaces   │   │    └─────────────────┘
-            ▲             │  tree       │   │             │          
-            │             └─────────────┼───┘             │          
-            │                  ▲        │                 │          
-            │                  │        ▼                 ▼          
-            │             ┌─────────────────────────────────────┐    
-            └─────────────│  THE LOOP: thin retrievals + gap    │    
-                          │  detections + session syntheses     │    
-                          │  flow BACK into the authoring queue │    
-                          │  — quality compounds with use       │    
-                          └─────────────────────────────────────┘    
-                                                                      
+   YOUR DATA   ─────▶   YOUR VAULT   ─────▶   YOUR AI TOOLS
+   calendar             markdown files        Claude Code
+   gmail                you own               Cursor
+   slack                                      ChatGPT
+   linear               entities              any MCP client
+   notion               memories
+   github               surfaces
+   ...                  alias map
+                              ▲
+                              │
+                              └── use sharpens it
+                              (gaps + syntheses feed back)
 ```
 
 ## Three things make this different from a notes app or RAG layer
