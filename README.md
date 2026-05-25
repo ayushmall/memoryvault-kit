@@ -3,20 +3,17 @@
 > **Your professional context, made retrievable.** A personal memory layer
 > for your AI tools that gets sharper every time you use it.
 
-```
-   YOUR DATA   ──[scouring agents]──▶   YOUR VAULT   ─────▶   YOUR AI TOOLS
-   calendar    (wake up on schedule,    markdown files        Claude Code
-   gmail        per-source strategy)    you own               Cursor
-   slack                                                      ChatGPT
-   linear                               entities              any MCP client
-   notion                               memories
-   granola                              surfaces
-   github                               alias map
-   ...                                       ▲
-                                             │
-                                             └── use sharpens it over time
-                                             (gaps + syntheses feed back)
-```
+<p align="center">
+  <img src="docs/img/architecture.svg" alt="memoryvault-kit architecture: scattered sources scoured by per-source agents into a markdown vault (Obsidian-compatible), accessed by any AI tool via MCP or CLI, with a feedback loop where use sharpens the vault over time" width="100%"/>
+</p>
+
+> **Your data** lives scattered across calendar, gmail, slack, notion, linear,
+> granola, github, gdrive. **Per-source scouring agents** wake on schedule
+> and shape that data into **your vault** — plain markdown files you own,
+> readable in Obsidian or any text editor. **Your AI tools** (Claude Code,
+> Cursor, Continue, OpenAI Agents SDK, Gemini, the `mv` CLI) query the
+> vault via MCP or directly. Every session feeds gaps + syntheses back —
+> quality compounds over time.
 
 ## Four things make this different from a notes app or RAG layer
 
