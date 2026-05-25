@@ -28,15 +28,33 @@ about partial setups, point at /mv-setup.
 VAULT=${MEMORYVAULT_ROOT:-$HOME/MemoryVault}
 cat $VAULT/.mvkit/bootstrap_state.md
 cat $VAULT/.mvkit/connected_sources.json
+cat $VAULT/.mvkit/refresh_state.json 2>/dev/null || echo "(no prior refresh — first run)"
 cat $VAULT/.mvkit/active_retriever.json 2>/dev/null || echo "(default retriever: combined_graph)"
 ls -t $VAULT/.mvkit/eval-history/ 2>/dev/null | head -3
 head -30 $VAULT/.mvkit/mature_entities.md 2>/dev/null
 ```
 
+Read `last_refresh_at` from `refresh_state.json`. This is the
+authoritative "when did /mv-refresh last run" timestamp — separate
+from `last_ingest_per_source` (which tracks scheduled-or-manual
+ingest per source) and separate from individual memory mtimes
+(which track interaction-driven saves during normal conversations).
+
+**Also scan for interaction-driven changes** since the last refresh:
+
+```bash
+# Memories created/modified since last_refresh_at where source_host
+# is NOT one of the ingest sources — these are the interaction saves.
+LAST_REFRESH=$(jq -r .last_refresh_at < $VAULT/.mvkit/refresh_state.json 2>/dev/null || echo "1970-01-01")
+find $VAULT/memories/2026 -name "mem_*.md" -newer <(date -d "$LAST_REFRESH" +%s 2>/dev/null) | wc -l
+```
+
 Summarize in one paragraph before doing any work:
 
 > Your vault has been live for N days. M sources enabled. Last
-> refresh K hours ago. Active retriever X. Last eval R@5 was Y.
+> refresh was K ago. Since then: I new interaction memories (from
+> chat sessions calling memory_save). Active retriever X. Last eval
+> R@5 was Y.
 
 The user reads this and confirms before you change anything.
 
@@ -124,19 +142,21 @@ Only if the user explicitly asks for `--full`, run the three-pillar
 eval (fill_quality + pollution + Lean⊆Full). That takes longer and
 is overkill for a daily refresh.
 
-## Step 6 — Final report
+## Step 6 — Final report + write refresh_state.json
 
 Single dense paragraph. Format:
 
 ```
 Refresh complete (N min).
 
-Sources:
-  linear     +7 issues
-  slack      +14 messages (4 channels)
-  granola    +3 meetings
-  ...
-  Total: +32 new memories. Vault: 669 total.
+Since last refresh (M hours ago):
+  Interaction memories: +I (from memory_save during chat sessions)
+  Ingested this run:
+    linear     +7 issues
+    slack      +14 messages (4 channels)
+    granola    +3 meetings
+    ...
+  Total new this run: +32. Vault now at 669 memories.
 
 Heal: alias_map rebuilt, 3 new wikilinks added.
 Doctor: 5/5 checks pass.
@@ -145,6 +165,36 @@ Soft coverage: 26/30 → 27/30 (+1).
 Discovery proposed K new targets — see queue-router for review.
 Quality flags: <any mem_QUALITY_* written this run>
 ```
+
+After reporting, write the run timestamp:
+
+```bash
+python3 -c "
+import json, datetime
+from pathlib import Path
+state_path = Path('$VAULT/.mvkit/refresh_state.json')
+state = {}
+if state_path.exists():
+    state = json.loads(state_path.read_text())
+now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+state.setdefault('history', [])
+state['history'].append({
+    'at': now,
+    'sources_run': [...],
+    'memories_ingested': <count>,
+    'memories_via_interaction': <count>,
+    'soft_coverage_after': <number>,
+})
+state['history'] = state['history'][-20:]   # keep last 20 runs
+state['last_refresh_at'] = now
+state_path.write_text(json.dumps(state, indent=2))
+"
+```
+
+This is the source of truth for "when did /mv-refresh last run."
+Per-source `last_ingest_per_source` tracks when each source was
+last pulled. Per-memory mtimes track interaction saves. Three
+different timestamps for three different events.
 
 ## What you do NOT do
 

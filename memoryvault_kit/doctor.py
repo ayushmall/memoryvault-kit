@@ -347,6 +347,41 @@ def diagnose() -> dict:
                 latest_by_src[src] = d
         report["latest_event_per_source"] = dict(sorted(latest_by_src.items()))
 
+    # ─── refresh cadence ───
+    refresh_state_path = mvkit_dir / "refresh_state.json"
+    if refresh_state_path.exists():
+        try:
+            rs = json.loads(refresh_state_path.read_text())
+            last = rs.get("last_refresh_at")
+            if last:
+                last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                hrs_ago = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600
+                history = rs.get("history", [])
+                report["refresh"] = {
+                    "last_refresh_at": last,
+                    "hours_ago": round(hrs_ago, 1),
+                    "history_count": len(history),
+                }
+                # Count interaction-driven memories since last refresh
+                if mem_dir.is_dir():
+                    cutoff_ts = last_dt.timestamp()
+                    interact_count = 0
+                    INGEST_SOURCES = {"linear", "notion", "github-pr", "slack", "gmail", "calendar",
+                                      "granola", "gdrive", "pylon", "claude-code"}
+                    for p in mem_dir.glob("mem_*.md"):
+                        if p.stat().st_mtime <= cutoff_ts:
+                            continue
+                        text = p.read_text()
+                        src_m = re.search(r"^source(?:_host)?:\s*\"?([^\"\n]+)\"?", text, re.M)
+                        src = src_m.group(1).strip() if src_m else "unknown"
+                        if src not in INGEST_SOURCES:
+                            interact_count += 1
+                    report["refresh"]["interaction_memories_since"] = interact_count
+        except Exception as e:
+            report["refresh"] = {"error": str(e)}
+    else:
+        report["refresh"] = {"note": "no refresh_state.json — /mv-refresh has not run yet on this vault"}
+
     # ─── authoring queue ───
     try:
         from memoryvault_kit.authoring_queue import summarize as queue_summarize
@@ -389,6 +424,17 @@ def render_human(r: dict) -> str:
         lines.append(f"  recency (latest event_date per source):")
         for src, d in rec.items():
             lines.append(f"    {src:<22} {d[:19]}")
+    # Refresh cadence
+    rf = r.get("refresh", {})
+    if "last_refresh_at" in rf:
+        h = rf["hours_ago"]
+        ago = f"{h:.1f}h ago" if h < 48 else f"{h/24:.1f}d ago"
+        lines.append(f"  last /mv-refresh: {rf['last_refresh_at'][:19]} ({ago}, {rf['history_count']} runs total)")
+        if "interaction_memories_since" in rf:
+            lines.append(f"    interaction memories since: {rf['interaction_memories_since']}")
+    elif "note" in rf:
+        lines.append(f"  refresh: {rf['note']}")
+
     # Authoring queue
     aq = r.get("authoring_queue", {})
     if aq:
