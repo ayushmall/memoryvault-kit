@@ -40,6 +40,36 @@ Summarize in one paragraph before doing any work:
 
 The user reads this and confirms before you change anything.
 
+## Step 1b — If claude_code_memory is enabled, consolidate first (optional)
+
+Before ingesting from `~/.claude/projects/*/memory/`, give the
+upstream layer a tidy pass. Anthropic ships
+`anthropic-skills:consolidate-memory` which does:
+
+- Merges duplicate memory files
+- Fixes stale time references ("next week" → absolute date)
+- Drops memories easily re-derivable from connected tools
+- Trims MEMORY.md index to <200 lines
+
+If that skill is available in the session, invoke it BEFORE Step 2's
+claude_code_memory ingest. If it isn't installed, skip and proceed —
+the kit's ingest handles raw files fine, just less efficiently.
+
+Check + invoke:
+
+```
+# If the user has the anthropic-skills plugin enabled,
+# the consolidate-memory skill is available. Invoke it via:
+Skill({ skill: "anthropic-skills:consolidate-memory" })
+```
+
+Skip this step if claude_code_memory isn't in the user's enabled
+sources. It only matters when we're about to ingest from those files.
+
+This is the kit cooperating with Anthropic's memory layer rather than
+fighting it. Upstream consolidation → cleaner input → fewer
+duplicates landing in the vault.
+
 ## Step 2 — Ingest deltas across all enabled sources
 
 Read `connected_sources.json`'s `last_ingest_per_source[<source>]`.

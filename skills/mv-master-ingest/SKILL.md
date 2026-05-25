@@ -175,6 +175,20 @@ fails again, leave `skip_reason` updated.
 ## Per-source ingest commands (look up in the config's `mcp` field)
 
 ### `claude_code_memory` (filesystem, no MCP)
+**PRE-CONSOLIDATE**: If `anthropic-skills:consolidate-memory` is
+available in the current Claude Code session, invoke it BEFORE the
+ingest. It tidies the upstream memory layer (merges duplicates,
+fixes stale time refs, trims the MEMORY.md index). Result: we
+ingest cleaner input.
+
+```
+Skill({ skill: "anthropic-skills:consolidate-memory" })
+```
+
+If the skill isn't installed, skip this and proceed with the ingest
+directly. Don't fail the source if the consolidate skill isn't
+present — the kit's ingest handles raw files fine.
+
 **INGEST**: Claude Code accumulates memory across sessions at
 `~/.claude/projects/*/memory/*.md`. Some of the highest-signal source
 data in the kit's reach — Claude has been distilling what matters
