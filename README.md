@@ -4,21 +4,29 @@
 > for your AI tools that gets sharper every time you use it.
 
 ```
-   YOUR DATA   ─────▶   YOUR VAULT   ─────▶   YOUR AI TOOLS
-   calendar             markdown files        Claude Code
-   gmail                you own               Cursor
-   slack                                      ChatGPT
-   linear               entities              any MCP client
-   notion               memories
-   github               surfaces
-   ...                  alias map
-                              ▲
-                              │
-                              └── use sharpens it
-                              (gaps + syntheses feed back)
+   YOUR DATA   ──[scouring agents]──▶   YOUR VAULT   ─────▶   YOUR AI TOOLS
+   calendar    (wake up on schedule,    markdown files        Claude Code
+   gmail        per-source strategy)    you own               Cursor
+   slack                                                      ChatGPT
+   linear                               entities              any MCP client
+   notion                               memories
+   granola                              surfaces
+   github                               alias map
+   ...                                       ▲
+                                             │
+                                             └── use sharpens it over time
+                                             (gaps + syntheses feed back)
 ```
 
-## Three things make this different from a notes app or RAG layer
+## Four things make this different from a notes app or RAG layer
+
+**🤖 Active scouring agents** — per-source agents wake up on schedule and
+pull what's new, each with a custom strategy: Notion preserves
+page → database → team-space; Slack preserves channel → thread; Granola
+clusters recordings into recurring meeting series; GitHub maps PRs to
+product entities via path config; Linear pulls issues by team with state-
+change as event_date. They run via `mv-schedule` (Anthropic Routines OR
+local cron). You don't manually ingest.
 
 **🧠 Authoring is intelligent** — coverage gaps surface automatically, thin
 retrievals self-log, consuming agents enrich stub memories from session
@@ -28,10 +36,11 @@ context, sessions write their synthesis back via `memory_annotate`.
 p50, deterministic with auditable score breakdowns. Tried dense + reranker;
 dropped them because they regressed on blind. What ships is what survived.
 
-**🔁 Quality compounds with use** — every conversation feeds an authoring
-queue. The wake-up agent processes the queue, fills gaps via native MCPs,
-and the next retrieval is sharper than the last. `mv eval` lets you watch
-the numbers trend up.
+**🔁 Quality compounds over time** — every conversation feeds an authoring
+queue. A second wake-up agent processes that queue, fills gaps via the
+native MCP for each source, and the next retrieval is sharper than the last.
+Yesterday's failed query becomes today's authoring task; `mv eval` lets you
+watch fill_quality + pollution + retrieval-consistency numbers trend up.
 
 > *The model is intelligent. The retrieval is not. The data is structured.
 > Every variant where the LLM touched retrieval regressed — so retrieval
