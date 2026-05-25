@@ -1,5 +1,6 @@
 {
-  "name": "memoryvault-kit-local",
+  "name": "memoryvault-kit",
+  "description": "Memoryvault-kit's own marketplace — one plugin, the kit itself.",
   "owner": {
     "name": "Ayush Mall",
     "url": "https://github.com/ayushmall"

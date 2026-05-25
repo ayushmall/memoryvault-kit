@@ -159,7 +159,7 @@ The kit ships `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`
 
 ```bash
 claude plugin marketplace add /path/to/memoryvault-kit
-claude plugin install memoryvault-kit@memoryvault-kit-local
+claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
 The first command registers the kit's directory as a local plugin
@@ -173,7 +173,7 @@ This makes Claude Code:
 
 Restart the Claude Code session after install so the registration takes
 effect. Verify with `claude plugin list` — you should see
-`memoryvault-kit@memoryvault-kit-local` in the output.
+`memoryvault-kit@memoryvault-kit` in the output.
 
 ### Step 2 — run the cold test
 

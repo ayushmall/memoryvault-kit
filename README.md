@@ -53,7 +53,7 @@ If you're on Claude Code, install the kit as a plugin so the session knows about
 
 ```bash
 claude plugin marketplace add /path/to/memoryvault-kit
-claude plugin install memoryvault-kit@memoryvault-kit-local
+claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
 That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Restart Claude Code so the registration takes effect. Then type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
