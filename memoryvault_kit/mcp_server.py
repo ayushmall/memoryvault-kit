@@ -509,7 +509,18 @@ TOOLS = [
             "gap to `status: superseded`.\n"
             "Top scores below 5.0 OR fewer than 3 results = thin retrieval; the kit will "
             "auto-log a `mem_GAP_retrieval-thin-*` memory unless one already exists for "
-            "this query today."
+            "this query today.\n\n"
+            "WHEN RESULTS ARE THIN OR STALE — REACH FOR OTHER MCPs: the vault is a "
+            "synthesis layer, not a complete mirror. If (a) 0 on-topic results, (b) top "
+            "score < 5, (c) all retrieved memories' `event_date` >30d old but the question "
+            "asks about 'recent'/'latest'/'now', (d) the question names an entity that "
+            "doesn't appear in any returned memory, or (e) the user asks for current state "
+            "— don't stop here. Use whatever native MCPs you have (Slack, Linear, Gmail, "
+            "Notion, GitHub, Granola, Calendar, etc.) to fetch fresh data, synthesize the "
+            "answer, then call `memory_save` (or `memory_annotate` for lighter additions) "
+            "to feed it back. Look at the `parent_surface` field on partial results — it "
+            "tells you which native source owns the full content. This deep-dive-on-demand "
+            "loop is how the vault gets richer with use."
         ),
         "inputSchema": {
             "type": "object",

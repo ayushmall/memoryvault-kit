@@ -109,29 +109,66 @@ Save for:
 - You connect 3+ memories into a new conclusion the user values
 - A synthesis the user explicitly asks you to remember for next time
 
-### 5. **Deep-dive** — when the vault has only a partial answer
+### 5. **Deep-dive** — when the vault isn't enough, reach for the source
 
-This is the key escape hatch. The vault is a **synthesis layer**, not
-a complete mirror of the source. When a query comes back partial:
+The vault is a **synthesis layer**, not a complete mirror. Master-ingest
+runs once a day and can't predict everything you'll ask about. When the
+vault doesn't fully answer the question, **use whatever MCPs you have
+to refine the answer in real time**, then feed the new findings back.
 
-1. **Look at `parent_surface` on the partial results.** That field tells
-   you which native source has the full content. Examples:
-   - parent_surface: "[[Product/PRDs database]]" → use the Notion MCP
-   - parent_surface: "[[#customer-issues]]" → use the Slack MCP
-   - parent_surface: "[[<your-repo>]]" → use `gh pr view` directly
-   - parent_surface: "[[Weekly Ayush <> Soham 1:1]]" → use Granola MCP
+This is not an exception path — it's a first-class part of the contract.
+A consuming agent that has Slack/Linear/Notion/Gmail/GitHub/Granola/Calendar
+MCPs available should treat them as natural extensions of `memory_ask`,
+not as escape hatches reserved for emergencies.
 
-2. **Call the native MCP** with the original query's terms + the
-   surface as filter.
+**Trigger conditions** (any one is enough):
 
-3. **Synthesize a new memory** from the deep-dive results via `memory_save`.
-   Set `tags: [query-replay, enrichment]` and reference the original
-   `mem_GAP_retrieval-thin-*` id if one exists.
+- 0 results returned, or fewer than k results that are actually on-topic
+- Top result's score is low (< 5 in BM25 units) — vault has weak evidence
+- All retrieved memories' `event_date` are >30 days old AND the question
+  is about "recent" / "this week" / "latest"
+- The user's question names an entity / channel / repo that doesn't
+  appear in any returned memory's frontmatter
+- The user explicitly asks for current state ("what's the status of X
+  right now") — point-in-time facts in memory may be stale
 
-4. **Re-answer the user** with the freshly-enriched context.
+**What to do:**
+
+1. **Pick the right MCP based on signal available.** If `parent_surface`
+   is set on a partial result, that's the cheapest hint — use that
+   source. If not, infer from the question itself:
+   - Asks about a person + a conversation → Slack, Gmail, Granola
+   - Asks about a project / issue / spec → Linear, Notion, GitHub
+   - Asks about a meeting → Calendar, Granola
+   - Asks about code or a PR → `gh` CLI, GitHub MCP
+
+2. **Query the native MCP** with the original question's entities +
+   time range as filters. Be specific — don't fetch more than you need.
+
+3. **Synthesize a memory back** via `memory_save` with `tags:
+   [query-replay, enrichment]`. If the retrieval was thin enough that
+   the kit auto-logged a `mem_GAP_retrieval-thin-*`, reference its id
+   in `related:` so the gap closes. For lighter synthesis (a one-line
+   correction or context add to an existing memory), use
+   `memory_annotate` instead — that links your finding to the source
+   memory without creating a duplicate.
+
+4. **Re-answer the user** with the freshly-enriched context, citing
+   both the vault memories AND the just-fetched evidence.
+
+**When NOT to deep-dive:**
+
+- The user explicitly said "from memory" / "what do you remember" —
+  they want the vault state, not a fresh fetch
+- You're in Lean tier and latency matters more than completeness
+- The MCPs you'd need aren't installed — say so plainly rather than
+  inventing answers
+- The question is ambiguous — ask for clarification first, don't
+  burn an MCP roundtrip on guesswork
 
 This is the compounding-quality loop driven by *use*: queries that
-mattered get richer over time.
+mattered get richer over time. The kit doesn't need to predict what
+you'll ask; the consuming agent fills the gap on demand.
 
 ## When `mv doctor` matters mid-conversation
 
@@ -152,12 +189,22 @@ For ANY user question about their work:
 1. memory_ask(question)
 2. read response.results + check gap_logged / stub_gaps_in_results
 3. if stub gap appeared → memory_update to enrich it (use the Evidence)
-4. answer the user, citing memory ids
-5. if you synthesized something valuable → memory_annotate to capture it
-6. if results were partial → call parent_surface's native MCP for deep-dive
-7. if you did a deep-dive → memory_save the new context
-8. if user gives feedback → memory_update the relevant memory
+4. if any trigger below fires → deep-dive to native MCP, then memory_save back:
+     · 0 on-topic results
+     · top score < 5 (weak evidence)
+     · all event_dates >30d old AND question asks for "recent"/"latest"
+     · question names an entity not in any retrieved memory
+     · question asks for current state ("right now", "as of today")
+5. answer the user, citing both vault memories AND fresh evidence
+6. if you synthesized something valuable → memory_annotate to capture it
+7. if user gives feedback → memory_update the relevant memory
 ```
+
+The deep-dive step is not optional when triggers fire — that's the
+contract that makes "use sharpens it" actually work. The kit's MCP
+tool descriptions reinforce this: `memory_ask` returns a `low_confidence`
+flag when triggers 2-4 above are detected, so even clients without
+this skill loaded get the hint.
 
 For an EXPLICIT save request:
 
