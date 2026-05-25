@@ -415,25 +415,45 @@ def retrieve_by_entity(canonical_name: str, all_docs: list, k: int = 10) -> list
     ingest pipeline's judgment), not every memory that incidentally mentions the
     name somewhere in the body.
 
-    Sorted by recency (most recent first).
+    Sort order (most-important first, then most-recent):
+      1. Canonical descriptors (type=relationship/reference/user_fact AND
+         importance >= 0.7) — these answer "who/what is X" and should always
+         lead. Within the group, sort by importance DESC then recency DESC.
+      2. Everything else — sort by recency DESC.
+
+    This fixes a real bug: "what's the latest on alice@example.com" used to
+    bury the canonical "Alice is the design lead for Foo" relationship
+    memory under a stack of recent Linear updates. The relationship memory
+    is the canonical answer; recent events are the supporting context.
     """
     canonical_low = canonical_name.lower()
-    hits = []
+    CANONICAL_TYPES = {"relationship", "reference", "user_fact"}
+    canonical_hits = []
+    other_hits = []
     for d in all_docs:
         mem = d["mem"]
         entities = mem.get("entities", []) or []
-        if any(e.lower() == canonical_low for e in entities):
-            dt = _parse_date(mem.get("updated") or mem.get("created"))
-            hits.append((dt, d))
-    hits.sort(key=lambda x: -(x[0].timestamp() if x[0] != datetime.min else 0))
+        if not any(e.lower() == canonical_low for e in entities):
+            continue
+        dt = _parse_date(mem.get("updated") or mem.get("created"))
+        dt_ts = dt.timestamp() if dt != datetime.min else 0
+        mtype = (mem.get("type") or "").lower()
+        importance = float(mem.get("importance") or 0)
+        if mtype in CANONICAL_TYPES and importance >= 0.7:
+            canonical_hits.append((importance, dt_ts, d))
+        else:
+            other_hits.append((dt_ts, d))
+    canonical_hits.sort(key=lambda x: (-x[0], -x[1]))
+    other_hits.sort(key=lambda x: -x[0])
+    ordered = [d for _, _, d in canonical_hits] + [d for _, d in other_hits]
     return [
         {
-            "id": h[1]["mem"]["id"],
+            "id": h["mem"]["id"],
             "score": 100.0 - i,
-            "title": h[1]["mem"].get("title", ""),
+            "title": h["mem"].get("title", ""),
             "source": "entity-mediated",
         }
-        for i, h in enumerate(hits[:k])
+        for i, h in enumerate(ordered[:k])
     ]
 
 
