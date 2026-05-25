@@ -1,7 +1,7 @@
 ---
 name: memoryvault
 tier: any
-description: Personal memory layer for non-engineers — runs entirely on Claude Cowork with Google Drive as the vault store. Reads/writes structured markdown memories about your meetings, decisions, customers, projects, and code. Use this whenever the user asks about their work history ("what did Maya say", "status of the SDK", "who's working on Domain"), or asks to save something ("remember that we decided X", "save this from the meeting"), or asks to pull recent activity ("refresh from yesterday's meetings"). Triggers on memory-related phrases — "memory", "vault", "remind me about", "what was the latest on", "save this", "remember this", "ingest", "audit my memory". Drive-backed, no install required. Six sub-flows internally: ask, save, refresh, audit, heal, ingest-code.
+description: "Personal memory layer for non-engineers — runs entirely on Claude Cowork with Google Drive as the vault store. Reads/writes structured markdown memories about your meetings, decisions, customers, projects, and code. Use this whenever the user asks about their work history (\"what did Maya say\", \"status of the SDK\", \"who's working on Domain\"), or asks to save something (\"remember that we decided X\", \"save this from the meeting\"), or asks to pull recent activity (\"refresh from yesterday's meetings\"). Triggers on memory-related phrases — \"memory\", \"vault\", \"remind me about\", \"what was the latest on\", \"save this\", \"remember this\", \"ingest\", \"audit my memory\". Drive-backed, no install required. Six sub-flows internally: ask, save, refresh, audit, heal, ingest-code."
 ---
 
 # memoryvault (Cowork edition)

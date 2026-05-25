@@ -154,13 +154,17 @@ task definitions all need to be visible to that session.
 
 ### Step 1 — install the kit as a Claude Code plugin
 
-The kit ships `.claude-plugin/plugin.json` + `.mcp.json` at the repo
-root, so Claude Code can install it directly from a local path:
+The kit ships `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`
++ `.mcp.json` at the repo root. Install in two steps from your terminal:
 
 ```bash
-# From inside Claude Code:
-/plugin install /Users/ayushmall/memoryvault-kit
+claude plugin marketplace add /path/to/memoryvault-kit
+claude plugin install memoryvault-kit@memoryvault-kit-local
 ```
+
+The first command registers the kit's directory as a local plugin
+marketplace (its `marketplace.json` lists the kit itself as one plugin).
+The second installs that plugin from that marketplace.
 
 This makes Claude Code:
 - Auto-discover all 21 skills in `skills/`
@@ -168,7 +172,8 @@ This makes Claude Code:
 - Expose the kit's slash commands (`/mv-setup`, `/mv-schedule`, etc.)
 
 Restart the Claude Code session after install so the registration takes
-effect.
+effect. Verify with `claude plugin list` — you should see
+`memoryvault-kit@memoryvault-kit-local` in the output.
 
 ### Step 2 — run the cold test
 

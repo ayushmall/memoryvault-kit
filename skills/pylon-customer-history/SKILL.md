@@ -1,7 +1,7 @@
 ---
 name: pylon-customer-history
 tier: full
-description: Pull a customer's recent Pylon support history and synthesize it into structured memories tied to the customer's pylon-account surface entity. Use when the user asks "what's going wrong with <customer>?", "summarize <customer>'s Pylon", "what bugs has <customer> reported?", "what's the support backlog for <customer>?", or batch-ingesting Pylon as a recurring source. Each thread becomes a `type: feedback` or `type: project_fact` memory with `source_surface: "[[<customer-name> Pylon]]"`. Directly fills the G14 customer-triad gap (contact + meeting + commit) by capturing the support leg structurally.
+description: "Pull a customer's recent Pylon support history and synthesize it into structured memories tied to the customer's pylon-account surface entity. Use when the user asks \"what's going wrong with <customer>?\", \"summarize <customer>'s Pylon\", \"what bugs has <customer> reported?\", \"what's the support backlog for <customer>?\", or batch-ingesting Pylon as a recurring source. Each thread becomes a `type: feedback` or `type: project_fact` memory with `source_surface: \"[[<customer-name> Pylon]]\"`. Directly fills the G14 customer-triad gap (contact + meeting + commit) by capturing the support leg structurally."
 ---
 
 # pylon-customer-history

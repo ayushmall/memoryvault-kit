@@ -1,7 +1,7 @@
 ---
 name: mv-schedule
 tier: any
-description: Schedule the kit's heal + eval to run automatically. Use when the user says "set up the nightly job", "schedule the heal", "automate this", "I don't want to remember to run mv migrate", or "set up the routine" — typically after mv-setup or whenever they want hands-off maintenance. Sets up TWO routines via Claude Code's schedule infrastructure: (1) nightly mv migrate --apply --quick at 2 AM local time, (2) weekly mv eval Monday 3 AM. Both run in the user's local Claude Code or via cloud routine depending on what they prefer.
+description: "Schedule the kit's heal + eval to run automatically. Use when the user says \"set up the nightly job\", \"schedule the heal\", \"automate this\", \"I don't want to remember to run mv migrate\", or \"set up the routine\" — typically after mv-setup or whenever they want hands-off maintenance. Sets up TWO routines via Claude Code's schedule infrastructure: (1) nightly mv migrate --apply --quick at 2 AM local time, (2) weekly mv eval Monday 3 AM. Both run in the user's local Claude Code or via cloud routine depending on what they prefer."
 ---
 
 # mv-schedule — set up routines for the kit

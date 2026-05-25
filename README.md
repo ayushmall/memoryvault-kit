@@ -49,13 +49,14 @@ The example vault has 10 memories about two fictional customers. You should see 
 
 ## Five minutes to point it at your own life
 
-If you're on Claude Code, install the kit as a plugin first so the session knows about it:
+If you're on Claude Code, install the kit as a plugin so the session knows about it. Two commands from your terminal:
 
-```
-/plugin install /path/to/memoryvault-kit
+```bash
+claude plugin marketplace add /path/to/memoryvault-kit
+claude plugin install memoryvault-kit@memoryvault-kit-local
 ```
 
-That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Restart Claude Code so the registration takes effect. Then just type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
+That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Restart Claude Code so the registration takes effect. Then type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
 
 If you'd rather use the CLI without the plugin:
 

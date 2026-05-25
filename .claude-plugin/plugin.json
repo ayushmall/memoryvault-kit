@@ -1,5 +1,6 @@
 {
   "name": "memoryvault-kit",
+  "version": "0.1.0",
   "description": "A memory layer for the AI tools you actually use. Pulls from calendar, gmail, slack, linear, notion, github, granola, drive; writes plain markdown you own; exposes the vault to any MCP client. Auto-discovers new sources, heals the graph nightly, measures itself weekly.",
   "author": {
     "name": "Ayush Mall",

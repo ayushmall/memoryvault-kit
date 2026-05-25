@@ -1,10 +1,10 @@
 ---
 name: mv-queue-router
 tier: full
-description: Read the authoring queue, classify each item by what it needs, dispatch to the right specialized agent (mv-deep-dive, mv-stub-enricher, mv-contradiction-resolver). Use when the user says "drain the queue", "process pending", "run the queue router", or when scheduled to run nightly (typically via mv-schedule, right after mv-heal-agent + mv-coverage-agent). Layer-3 in the kit's decomposition (see docs/agent-architecture.md). NO direct authoring — pure classification + dispatch. Auto-resolves items whose retrieval the live vault now answers.
-
-(This skill was previously named mv-authoring-cycle; renamed to reflect its actual role as a router after the agent decomposition.)
+description: "Read the authoring queue, classify each item by what it needs, dispatch to the right specialized agent (mv-deep-dive, mv-stub-enricher, mv-contradiction-resolver). Use when the user says \"drain the queue\", \"process pending\", \"run the queue router\", or when scheduled to run nightly (typically via mv-schedule, right after mv-heal-agent + mv-coverage-agent). Layer-3 in the kit's decomposition (see docs/agent-architecture.md). NO direct authoring — pure classification + dispatch. Auto-resolves items whose retrieval the live vault now answers."
 ---
+> (This skill was previously named mv-authoring-cycle; renamed to reflect its actual role as a router after the agent decomposition.)
+
 
 # mv-queue-router — classify the queue, dispatch the work
 

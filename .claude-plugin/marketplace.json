@@ -1,0 +1,14 @@
+{
+  "name": "memoryvault-kit-local",
+  "owner": {
+    "name": "Ayush Mall",
+    "url": "https://github.com/ayushmall"
+  },
+  "plugins": [
+    {
+      "name": "memoryvault-kit",
+      "source": "./",
+      "description": "A memory layer for the AI tools you actually use. Pulls from your sources, writes plain markdown, queryable from any MCP client."
+    }
+  ]
+}
