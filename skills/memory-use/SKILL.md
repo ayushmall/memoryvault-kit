@@ -14,7 +14,7 @@ each MCP tool already explain "when to call it." This skill is the
 **orchestration**: when to call which tool, in what order, with what
 expectations.
 
-## The four operations (memory mode)
+## The five operations (memory mode)
 
 ### 1. **Refer** — read what's already known
 
@@ -78,7 +78,38 @@ memory_save(title=..., body=..., type=..., entities=[...], event_date=..., impor
 **After saving**, if your new memory filled an open gap, `memory_update`
 the gap's `status` to `superseded` with a body backlink.
 
-### 4. **Deep-dive** — when the vault has only a partial answer
+### 4. **Annotate** — pass your synthesis back to the vault
+
+When you've just done valuable reasoning over retrieved memories — a
+synthesis the user found useful, a connection across memories the kit
+didn't pre-compute, a clarification the user gave — **call `memory_annotate`** to
+save your conclusion linked to the source memory ids.
+
+```
+memory_annotate(
+  synthesis="<2-6 sentences of your conclusion>",
+  source_memory_ids=[<the ids you actually used>],
+  session_summary="<optional 1-2 sentences on what the user was doing>",
+  tags=["optional", "additional", "tags"]
+)
+```
+
+The kit stores this as a `type: feedback, tags: [session-annotation]`
+memory linked to the source memories. Future retrievals on those same
+memories surface your prior synthesis too — **the model's reasoning
+becomes part of the corpus**.
+
+Skip for:
+- One-line acks ("thanks", "lgtm")
+- Trivial restatements of memory content
+- Speculation not grounded in retrieved memories
+
+Save for:
+- User confirms / corrects something about a retrieved memory
+- You connect 3+ memories into a new conclusion the user values
+- A synthesis the user explicitly asks you to remember for next time
+
+### 5. **Deep-dive** — when the vault has only a partial answer
 
 This is the key escape hatch. The vault is a **synthesis layer**, not
 a complete mirror of the source. When a query comes back partial:
@@ -122,9 +153,10 @@ For ANY user question about their work:
 2. read response.results + check gap_logged / stub_gaps_in_results
 3. if stub gap appeared → memory_update to enrich it (use the Evidence)
 4. answer the user, citing memory ids
-5. if results were partial → call parent_surface's native MCP for deep-dive
-6. if you did a deep-dive → memory_save the new context
-7. if user gives feedback → memory_update the relevant memory
+5. if you synthesized something valuable → memory_annotate to capture it
+6. if results were partial → call parent_surface's native MCP for deep-dive
+7. if you did a deep-dive → memory_save the new context
+8. if user gives feedback → memory_update the relevant memory
 ```
 
 For an EXPLICIT save request:

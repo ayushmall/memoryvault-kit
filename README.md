@@ -30,17 +30,18 @@ Three reasons to adopt this. Any one alone is sufficient.
 ### 1. Retrieval that's measurably better, faster, and reproducible
 
 - **Coverage@10 = 94.9% on a held-out 79-question blind set**, using
-  BM25 + entity-mediated short-circuit (D7). The blind set was carved before
-  any tuning and never inspected during development — this is the number
-  that survives critical review.
-- BM25-only baseline (no D7): 92.4% blind. Naive grep: 58%. Modern dense
-  embeddings (BGE-small): 70.6% — they actually *lose* to BM25 on this
-  small, name-dense vault. Hybrid RRF also loses.
+  BM25 + an **entity-mediated short-circuit** (when a query mentions an
+  entity name verbatim, retrieval bypasses BM25 and uses the entity's
+  graph backlinks instead — much sharper for "latest on X" patterns).
+  The blind set was carved before any tuning and never inspected during
+  development — this is the number that survives critical review.
+- BM25-only baseline (no entity short-circuit): 92.4% blind. Naive grep: 58%.
+  Modern dense embeddings (BGE-small): 70.6% — they actually *lose* to BM25
+  on this small, name-dense vault. Hybrid RRF also loses.
 - **Honest negative result:** a BGE cross-encoder reranker LOOKED great on
-  the train set (+3.4pp) but REGRESSED on the blind set (−2.5pp). It
-  was overfitting train-set quirks. We dropped it from the default stack.
-- Latency: <1ms p50 for the default (BM25 + D7) — no GPU, no LLM in the
-  retrieval path.
+  the train set (+3.4pp) but REGRESSED on the blind set (−2.5pp). It was
+  overfitting train-set quirks. We dropped it from the default stack.
+- Latency: <1ms p50 for the default — no GPU, no LLM in the retrieval path.
 - Deterministic: same input → same output. You can test it. You can detect
   regression. You can audit ranking decisions (each result shows the score
   breakdown).
@@ -96,9 +97,6 @@ context **portable** — same memory, every tool, your data.
 
 - You want a hosted SaaS — this runs entirely on your filesystem
 - You don't have a notes corpus yet — the kit assumes you have something to index
-- You're scaling past ~5,000 memories — at that point you'd want a dense layer added on top
-- You're happy to trust Anthropic/OpenAI with your professional memory and
-  never need to audit it — the kit's auditability is extra weight you won't use
 
 ---
 
@@ -178,25 +176,78 @@ the system was built and tuned against.
 ## Then point it at your own vault
 
 ```bash
-mv init ~/MyVault                                      # creates the folder structure
-export MEMORYVAULT_ROOT=~/MyVault
-echo 'export MEMORYVAULT_ROOT=~/MyVault' >> ~/.zshrc   # so it sticks
+python3 -m memoryvault_kit.setup        # interactive: scaffold + tier + org
+export MEMORYVAULT_ROOT=~/MemoryVault   # default location
 
-# Drop in your existing markdown notes (bulk import)
-mv ingest --folder ~/Documents/old-notes/ --dry-run    # preview first
-mv ingest --folder ~/Documents/old-notes/              # commit
+# Connect a source (each maps to an MCP server you install separately)
+# Linear / Notion / GitHub PRs have native ingest modules:
+python3 -m memoryvault_kit.ingest.linear --teams ENG --apply
+python3 -m memoryvault_kit.ingest.notion --search "<your topic>" --apply
+python3 -m memoryvault_kit.ingest.code_repo --repo <owner>/<repo> --prs --apply
 
-# Run the quality pipeline
-mv daily
-mv ask "..."
+# Calendar / Gmail / Granola / Slack / GDrive are read by the authoring
+# agent via their MCP servers + saved via the memory_save MCP tool.
+# See docs/ingest/<source>.md per source.
+
+# Run the heal + measure chain (idempotent — safe to repeat)
+python3 -m memoryvault_kit.migrate --apply     # alias_map → heal → split → in_degree → coverage → enrich
+python3 -m memoryvault_kit.eval                # fill_quality + pollution + consistency
+python3 -m memoryvault_kit.doctor              # vault health snapshot
 ```
 
 If you don't have a notes corpus yet, hand-write a few memories using the
 [schema reference](docs/schema.md) — even 10 memories about your actual work
 gives you a working system to learn from.
 
-**[→ Full setup guide (SETUP.md)](SETUP.md)** — schema, entity design, daily
-refresh agent, MCP connectors, eval methodology.
+**[→ Full setup guide (SETUP.md)](SETUP.md)** · **[Lifecycle (LIFECYCLE.md)](docs/LIFECYCLE.md)** · **[Limitations (LIMITATIONS.md)](docs/LIMITATIONS.md)**
+
+---
+
+## The authoring loop is intelligent
+
+The kit doesn't just store memories — it actively improves them over use.
+The loop runs continuously, and quality compounds:
+
+**1. Detect gaps automatically.** A coverage analyzer walks the graph and
+finds structural holes — customers without a named champion, hub entities
+that have only one memory type (events but no decisions), Linear issues
+marked Done with no linked PR, people referenced N+ times but unmapped to
+a team. Nine workflow-grounded gap classes. Each becomes a `mem_GAP_*`
+memory with pre-gathered evidence (linked memories, type distribution,
+the originating heuristic).
+
+**2. Detect retrieval failures automatically.** Every `memory_ask` call
+that comes back thin (top score below threshold OR fewer than 3 results)
+writes a `mem_GAP_retrieval-thin-*` feedback memory with the query and
+the partial results. The vault remembers what it failed to answer.
+
+**3. Enrich consumption-side.** When any agent retrieves a stub gap
+memory during a session that has relevant context loaded, the MCP tool
+descriptions tell that agent: read the auto-gathered Evidence, combine
+with current context, call `memory_update` to replace the templated
+narrative with a grounded one. This works on Claude.ai, Cursor, Claude
+Code — anywhere MCP descriptions are read.
+
+**4. Replay-enrich via native MCP.** For thin queries that keep coming
+back, `replay_enrich.py` reads the partial results' `parent_surface:`
+field, identifies which source has the richer data, and suggests a
+deep-dive query against that source's native MCP (Notion, Slack, Pylon,
+etc.). The agent fetches richer content and saves a new memory linked
+back to the original query. Failures become enrichment targets.
+
+**5. Pass session synthesis back as annotation.** A new mechanism: the
+consuming agent (which just did valuable reasoning over the retrieved
+memories) can pass its synthesis BACK to the kit via `memory_annotate`.
+The annotation gets stored linked to the source memories. Future
+retrievals get both the raw memories and the agent's prior conclusions —
+so the model's downstream reasoning improves the vault, not just consumes
+from it. This closes the loop: every chat that uses memory makes future
+chats sharper.
+
+The result: a vault where **the worst memories get found, surfaced as
+tasks, filled, and re-evaluated**. Quality is measurable
+(`mv eval` shows fill_quality + pollution + retrieval-consistency
+numbers) and trends up with use.
 
 ---
 
@@ -257,20 +308,20 @@ below are train-set only.
 | retriever | Cov@1 | Cov@5 | **Cov@10** | latency p50 |
 |---|---|---|---|---|
 | BM25 (kit core) | 59.5% | 84.8% | 92.4% | <1 ms |
-| **BM25 + D7 (default)** | **58.2%** | **87.3%** | **94.9%** | <1 ms |
+| **BM25 + entity short-circuit (default)** | **58.2%** | **87.3%** | **94.9%** | <1 ms |
 | BM25 + reranker | 63.3% | 86.1% | **88.6% ⚠️** | ~3300 ms (CPU) / ~300 ms (MPS) |
-| BM25 + D7 + reranker | 62.0% | 87.3% | 92.4% | ~3300 ms |
+| BM25 + entity + reranker | 62.0% | 87.3% | 92.4% | ~3300 ms |
 
 **Train set (322 clean questions), for comparison:**
 
 | retriever | Cov@10 train | Cov@10 blind | gap |
 |---|---|---|---|
 | BM25 | 91.3% | 92.4% | +1.1pp (generalizes well) |
-| BM25 + D7 | 93.2% | 94.9% | +1.7pp (generalizes well) |
-| BM25 + D7 + reranker | 94.7% | 92.4% | **−2.3pp (overfit signal)** |
+| BM25 + entity short-circuit | 93.2% | 94.9% | +1.7pp (generalizes well) |
+| BM25 + entity + reranker | 94.7% | 92.4% | **−2.3pp (overfit signal)** |
 
-The reranker mode is documented as available but no longer the default.
-Train-set looked great; blind set told the truth.
+The reranker is available but no longer the default. Train-set looked
+great; blind set told the truth.
 
 **Notable negative results:** modern dense retrievers (MiniLM, BGE) and hybrid
 RRF both **lose decisively** to BM25 alone on this vault. Reason: small,
@@ -278,9 +329,9 @@ name-dense corpora favor BM25's rare-token IDF over dense semantic similarity.
 Documented to avoid the "modern is better" trap.
 
 **Per-bucket lift** (BM25 vs full stack, Cov@5):
-- alias: 40.0% → 65.7% (+25.7pp) — entity-mediated short-circuit handles attribute-lookup queries
+- alias: 40.0% → 65.7% (+25.7pp) — entity short-circuit handles "what's the latest on <X>" patterns
 - needle: 71.4% → 81.6% (+10.2pp)
-- lateral: 66.7% → 75.8% (+9.1pp) — D10 attribute-lookup short-circuit
+- lateral: 66.7% → 75.8% (+9.1pp) — attribute-lookup short-circuit ("decisions by <person>")
 - paraphrase: 86.1% → 94.4% (+8.3pp)
 - disambiguation: 94.7% → 100.0% (+5.3pp)
 - aggregate: 94.4% → 97.2% (+2.8pp)
@@ -295,10 +346,11 @@ Reproduce on your own vault: `python3 -m memoryvault_kit.retrieval.combined --ev
 
 This is alpha. Specifically:
 
-- **No semantic search.** "Q1 wins" won't match memories titled "first quarter
-  successes." You either repeat tokens in your titles or use aliases. We
-  measured this is fine under 5,000 memories. Above that, you'll want to add a
-  dense layer.
+- **No semantic search by default.** "Q1 wins" won't match memories titled
+  "first quarter successes" unless aliases bridge them. The kit handles this
+  with the alias map + entity-mediated short-circuits, but pure-token
+  semantic gaps still exist; add a dense baseline if your vault grows large
+  enough that title/alias coverage breaks down.
 - **Daily refresh agent is a prompt, not a deployed service.** The agent
   prompt is written and tested manually, but the autonomous scheduled run
   requires either local cron + Claude Code OR Anthropic Routines setup —

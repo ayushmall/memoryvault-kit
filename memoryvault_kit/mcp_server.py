@@ -74,6 +74,71 @@ def _invalidate_cache():
 # ─── Tool implementations ──────────────────────────────────────────
 
 
+def tool_memory_annotate(synthesis: str, source_memory_ids: list[str],
+                          session_summary: str = "", tags: list[str] = None) -> dict:
+    """Capture an agent's session synthesis as a feedback memory linked to source memories.
+
+    Each annotation is a regular memory of type: feedback, tagged
+    `session-annotation`, with the source memories as entities. The
+    body contains the synthesis + optional session summary.
+
+    Future memory_ask calls that hit the source memories will also see
+    the annotation in their results — the model's prior reasoning
+    becomes part of the corpus.
+    """
+    from pathlib import Path
+    import hashlib
+    from datetime import datetime, timezone
+
+    if not synthesis or len(synthesis) < 30:
+        return {"error": "synthesis too short — provide 2+ sentences of actual reasoning"}
+    if not source_memory_ids:
+        return {"error": "source_memory_ids required — annotations must link to memories"}
+
+    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    mem_dir = vault / "memories" / "2026"
+    mem_dir.mkdir(parents=True, exist_ok=True)
+
+    now = datetime.now(timezone.utc)
+    h = hashlib.sha1(f"{synthesis}{now.isoformat()}".encode()).hexdigest()[:10]
+    mid = f"mem_ANNOT_{now.date().isoformat()}-{h}"
+    path = mem_dir / f"{mid}.md"
+
+    # Build entities + tags
+    entity_links = ", ".join(f'"[[{eid}]]"' for eid in source_memory_ids)
+    final_tags = ["session-annotation"] + (tags or [])
+    tag_str = ", ".join(f'"{t}"' for t in final_tags)
+
+    # Title: first sentence of synthesis, truncated
+    title_snip = synthesis.split(".")[0].strip()[:90]
+
+    body = synthesis.strip()
+    if session_summary:
+        body += f"\n\n## Session context\n{session_summary.strip()}"
+    body += f"\n\n## Source memories\n"
+    for sid in source_memory_ids:
+        body += f"- [[{sid}]]\n"
+
+    content = f"""---
+id: "{mid}"
+title: "Annotation: {title_snip}"
+type: feedback
+contexts: [work:kit]
+entities: [{entity_links}]
+tags: [{tag_str}]
+event_date: "{now.isoformat()}"
+source: mcp-annotation
+source_ref: "memory_annotate-call"
+importance: 0.6
+status: active
+---
+
+{body}
+"""
+    path.write_text(content)
+    return {"id": mid, "path": str(path), "linked_memories": len(source_memory_ids)}
+
+
 def tool_memory_get(memory_id: str) -> dict:
     """Fetch full body + frontmatter for a single memory."""
     from pathlib import Path
@@ -569,6 +634,49 @@ TOOLS = [
         },
     },
     {
+        "name": "memory_annotate",
+        "description": (
+            "Pass the consuming session's synthesis BACK to the kit so it's stored "
+            "alongside the memories that informed it. The annotation becomes a "
+            "`type: feedback, tags: [session-annotation]` memory linked to the "
+            "source memory ids. Future retrievals get both the raw memories and "
+            "your prior conclusions.\n\n"
+            "CALL THIS when you've just synthesized something useful from retrieved "
+            "memories — a conclusion the user found valuable, a connection across "
+            "memories the kit didn't pre-compute, a clarification the user provided "
+            "during the conversation. The kit captures the model's reasoning work "
+            "so future sessions inherit it.\n\n"
+            "GOOD ANNOTATIONS:\n"
+            "- 'User confirmed: Snowflake is competitor (not customer); G3 detector "
+            "  should skip it.' → annotates mem_GAP_g3-snowflake.\n"
+            "- 'Synthesizing across 5 PR memories: ENG-10451 + ENG-13026 are the "
+            "  Q2 agent-shipping pair.' → annotates the 5 PR memories so a future "
+            "  'what shipped on agents Q2' query gets the synthesis directly.\n"
+            "- 'User said Mary Zhang is on the Sales Team, not Engineering — G1 was "
+            "  wrong.' → annotates the G1 gap memory + Mary's person entity.\n\n"
+            "BAD ANNOTATIONS (don't save these):\n"
+            "- One-line acks ('thanks', 'lgtm')\n"
+            "- Trivial restatements of memory content\n"
+            "- Speculation not grounded in the retrieved memories\n\n"
+            "Annotations don't replace memories — they ADD context. They're "
+            "type:feedback so they're searchable but discounted vs. primary content."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "synthesis": {"type": "string",
+                              "description": "2-6 sentences capturing what you concluded from the retrieved memories. Quote user clarifications verbatim if any."},
+                "source_memory_ids": {"type": "array", "items": {"type": "string"},
+                                      "description": "The memory ids your synthesis was built from. Required."},
+                "session_summary": {"type": "string",
+                                     "description": "Optional: 1-2 sentences describing what the user was trying to do. Helps future agents understand context."},
+                "tags": {"type": "array", "items": {"type": "string"},
+                         "description": "Optional additional tags. session-annotation is always added."},
+            },
+            "required": ["synthesis", "source_memory_ids"],
+        },
+    },
+    {
         "name": "memory_tree_walk",
         "description": (
             "Walk the source-native hierarchy. Each memory carries `parent_surface:` "
@@ -687,6 +795,13 @@ def handle_request(req: dict) -> dict:
                 result = tool_memory_get(args["id"])
             elif name == "memory_update":
                 result = tool_memory_update(args["id"], args["updates"])
+            elif name == "memory_annotate":
+                result = tool_memory_annotate(
+                    synthesis=args["synthesis"],
+                    source_memory_ids=args["source_memory_ids"],
+                    session_summary=args.get("session_summary", ""),
+                    tags=args.get("tags") or [],
+                )
             elif name == "memory_tree_walk":
                 from memoryvault_kit.retrieval.tree_walk import children_of, descendants_of, ancestors_of
                 mode = args.get("mode", "children")
