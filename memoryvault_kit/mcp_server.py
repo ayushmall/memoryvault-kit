@@ -580,7 +580,23 @@ TOOLS = [
             "and `event_date`. When you synthesize an answer for the user, surface these as "
             "citations (e.g. \"per [Slack thread](<source_ref>), 2026-05-26\"). If the user lacks "
             "access to a source, that's fine — the snippet still carries the substance; the link "
-            "is just provenance for verification."
+            "is just provenance for verification.\n\n"
+            "CAPTURE USER FEEDBACK — this is the kit's highest-value signal: every time the user "
+            "corrects, refines, or augments the answer you gave from vault content, that correction "
+            "must flow back into the vault. Three concrete cases:\n"
+            "  1. User says a retrieved memory is wrong (\"that's not right, the actual decision "
+            "was X\") → call `memory_update` on that memory's id with the correction. Status stays "
+            "active; the body gets the corrected fact; add a `corrected` tag.\n"
+            "  2. User adds context the vault doesn't have (\"by the way, since then we also "
+            "decided Y\") → call `memory_save` for the new fact, linking the same entities as the "
+            "memory it extends.\n"
+            "  3. User flags a retrieval miss (\"why didn't you find Z?\") → if their context lets "
+            "you answer Z, call `memory_save` to write that memory now so future retrievals find "
+            "it; also call `memory_update` on the auto-logged `mem_GAP_*` (if `gap_logged` was "
+            "set) to set `status: superseded` and reference the new memory.\n"
+            "Do this WITHOUT explicit instruction — the user expects their corrections to stick. "
+            "Silent feedback (the gap_logged auto-log) is the kit's floor; explicit user feedback "
+            "is the kit's ceiling. Catch both."
         ),
         "inputSchema": {
             "type": "object",
@@ -589,7 +605,7 @@ TOOLS = [
                 "k": {"type": "integer", "default": 5, "description": "Number of results to return (1-20)"},
                 "context": {
                     "type": "string",
-                    "description": "OPTIONAL surrounding conversation context — recent user messages, what they're trying to accomplish, why they're asking. Not used for retrieval; persisted into the gap memory if the query comes back thin, so a future /memory-refresh queue-drain has more than just the bare query to work with. Keep to ~500-1500 chars of distilled summary."
+                    "description": "STRONGLY RECOMMENDED — distilled summary of the surrounding conversation: what the user is trying to accomplish, entities/people/projects they've mentioned in the last few turns that aren't in the query string itself, time references they implied (\"this week\", \"since the all-hands\"). Not used for retrieval; persisted into the auto-logged gap memory if the query comes back thin, so when /memory-refresh's next queue drain processes the gap, the deep-dive sub-agent has full conversational context — not just the bare query string — to inform its native-MCP fetch. 500-1500 chars of distilled summary, not raw transcript. Without this, the async feedback loop is much weaker."
                 },
             },
             "required": ["question"],
