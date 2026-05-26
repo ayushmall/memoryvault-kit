@@ -62,7 +62,13 @@ def _set_nested(d: dict, dotted: str, value):
 
 
 def _measure_soft_coverage() -> float:
-    """Run mv eval --soft and return the coverage number."""
+    """Run mv eval --soft and return retrieval_coverage.
+
+    Tuning targets `retrieval_coverage` (non-abstention questions) since
+    that's what config changes actually move. Abstention discipline is
+    a separate concern — it's a property of score thresholds + vault
+    completeness, not of retrieval config knobs.
+    """
     # Invalidate the config cache first so changes take effect
     try:
         from memoryvault_kit.retrieval.config import reload as _reload
@@ -77,7 +83,9 @@ def _measure_soft_coverage() -> float:
     importlib.reload(_g)
     from memoryvault_kit.eval.__main__ import soft_coverage
     result = soft_coverage()
-    return result.get("soft_coverage", 0.0)
+    # Prefer the split metric. Fall back to the combined one for older eval
+    # builds that don't return it.
+    return result.get("retrieval_coverage", result.get("soft_coverage", 0.0))
 
 
 def _write_audit_memory(title: str, body: str, tags: list[str]):

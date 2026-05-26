@@ -124,6 +124,17 @@ def soft_coverage() -> dict:
 
     Cheap. No LLM. No annotation required. Right metric for the
     coverage-driven ingest loop.
+
+    Two distinct metrics are reported:
+      - retrieval_coverage: of non-abstention questions, % where the
+        retriever surfaces a confident result. Responds to retrieval
+        config changes — this is what auto-tune optimizes.
+      - abstention_discipline: of abstention questions (expected_memory_ids
+        is empty), % where the retriever correctly stays quiet.
+        Mostly a property of vault completeness + score thresholds.
+
+    The top-line `soft_coverage` is a combined micro-average so historical
+    callers keep working.
     """
     import os
     from pathlib import Path
@@ -143,19 +154,38 @@ def soft_coverage() -> dict:
     for q in questions:
         results = retrieve_combined(q["question"], index, use_reranker=False, k=5)
         score = (results[0].get("score", 0) if results else 0)
-        is_answerable = len(results) >= 2 and score >= 5
-        if is_answerable:
-            answerable += 1
+        found_results = len(results) >= 2 and score >= 5
+        # Abstention questions have empty expected_memory_ids — success means
+        # we correctly DID NOT find a confident match. Polarity inverts.
         b = q.get("bucket", "unknown")
+        is_abstention = (b == "abstention") or not q.get("expected_memory_ids", None)
+        if is_abstention:
+            is_correct = not found_results
+        else:
+            is_correct = found_results
+        if is_correct:
+            answerable += 1
         per_bucket.setdefault(b, {"answerable": 0, "total": 0})
         per_bucket[b]["total"] += 1
-        if is_answerable:
+        if is_correct:
             per_bucket[b]["answerable"] += 1
 
+    # Split metrics: retrieval coverage (non-abstention) vs abstention discipline
+    n_total = len(questions)
+    n_abst = sum(1 for q in questions if (q.get("bucket") == "abstention"
+                                          or not q.get("expected_memory_ids", None)))
+    n_real = n_total - n_abst
+    abst_correct = per_bucket.get("abstention", {}).get("answerable", 0)
+    real_correct = answerable - abst_correct
     return {
-        "n_questions": len(questions),
+        "n_questions": n_total,
         "answerable": answerable,
-        "soft_coverage": answerable / len(questions) if questions else 0,
+        "soft_coverage": answerable / n_total if n_total else 0,
+        # Split metrics — these are the ones auto-tune should look at.
+        "retrieval_coverage": (real_correct / n_real) if n_real else 0,
+        "abstention_discipline": (abst_correct / n_abst) if n_abst else 0,
+        "n_non_abstention": n_real,
+        "n_abstention": n_abst,
         "by_bucket": per_bucket,
     }
 
@@ -182,7 +212,12 @@ def main():
             print(results["error"]); sys.exit(1)
         if not args.quiet:
             print(f"Soft coverage: {results['answerable']}/{results['n_questions']} "
-                  f"questions answerable ({results['soft_coverage']*100:.0f}%)")
+                  f"questions correct ({results['soft_coverage']*100:.0f}%)")
+            print(f"  retrieval_coverage    : {results['retrieval_coverage']*100:.1f}% "
+                  f"({results['n_non_abstention']} non-abstention Qs)")
+            print(f"  abstention_discipline : {results['abstention_discipline']*100:.1f}% "
+                  f"({results['n_abstention']} abstention Qs)")
+            print()
             for b, m in sorted(results["by_bucket"].items()):
                 print(f"  {b:24s} {m['answerable']:>3}/{m['total']:<3}")
         else:

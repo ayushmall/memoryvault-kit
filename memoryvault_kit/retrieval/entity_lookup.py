@@ -170,12 +170,27 @@ def detect_filter_query(question: str) -> dict | None:
             spec["matched_phrases"].append(f"label-implicit={word}")
             break  # one is enough
 
-    # Owner relationship — "what am I leading", "my projects", "team-adjacent"
+    # Owner relationship — "what am I leading", "my projects", "team-adjacent".
+    # Two-part check: the keyword must match AND the query must carry a
+    # first-person signal. Without the first-person guard, bare words like
+    # "lead" / "own" / "leading" wrongly fire on questions about other people
+    # ("What did the Eng Lead for VAB own besides the builder?"). Phrases that
+    # are inherently first-person (e.g. "my projects", "i lead", "mine") satisfy
+    # the guard on their own.
+    FIRST_PERSON_PHRASES = {"i lead", "i own", "i created", "i'm on",
+                            "mine", "my projects", "my initiatives", "my team"}
+    has_first_person = (
+        re.search(r"\b(my|i|me|mine|i'm|i've)\b", q) is not None
+    )
     for kw, val in RELATION_KEYWORDS.items():
         if re.search(rf"\b{re.escape(kw)}\b", q):
-            spec["owner_relation"] = val
-            spec["matched_phrases"].append(f"relation={kw}")
-            break
+            # Inherently first-person phrases pass; bare role words ("lead",
+            # "own", "leading", "creator of", ...) require corroborating
+            # first-person marker elsewhere in the query.
+            if kw in FIRST_PERSON_PHRASES or has_first_person:
+                spec["owner_relation"] = val
+                spec["matched_phrases"].append(f"relation={kw}")
+                break
 
     # A filter query needs structured-filter signal. Two ways to qualify:
     #   (a) one dimension + an explicit query word ("what high priority items?")

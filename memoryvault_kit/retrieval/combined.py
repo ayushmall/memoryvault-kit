@@ -101,6 +101,24 @@ def retrieve_combined(question: str, index: dict, bodies: dict | None = None,
     # Step 1: D7 entity-mediated lookup (tier-independent baseline)
     d7_results, _ = try_entity_lookup(question, index, k=k)
     if d7_results:
+        # When the structured path returns only 1 result (e.g. an owner-relation
+        # query against a vault that has just one matching project, or a "latest
+        # on X" query against a thinly-mentioned entity), fill the remaining
+        # slots from BM25 over the same query so the caller always gets a
+        # usable result list. The short-circuit's lone hit stays first.
+        if len(d7_results) < 2:
+            seen = {r["id"] for r in d7_results}
+            try:
+                fillers = bm25_retrieve(question, index, k=k * 2)
+            except NameError:
+                fillers = []
+            for r in fillers:
+                if r["id"] in seen:
+                    continue
+                d7_results.append(r)
+                seen.add(r["id"])
+                if len(d7_results) >= k:
+                    break
         return d7_results
 
     # Step 2: graph walk over BM25 seeds. Adds entity-bridge, related:-edge,
