@@ -1,0 +1,39 @@
+{
+  "_comment": "Vault-local user preferences learned over time. Lives at <vault>/.mvkit/learned_preferences.json (NOT committed). Skills READ this file at start to adapt their behavior per user. Skills themselves never modify it — only memory-refresh writes here (with user confirmation) when it learns something from input or error during a run. Format intentionally human-readable so the user can edit by hand any time.",
+
+  "_schema_version": 1,
+
+  "_design": "Three sections: source_overrides (per-source tweaks beyond connected_sources.json), filter_rules (cross-source skips + keeps the user has stated explicitly), and observations (running list of things refresh noticed that the user may want to act on). All optional; missing keys fall back to skill defaults.",
+
+  "source_overrides": {
+    "_doc": "Per-source preferences that aren't quite config (those live in connected_sources.json) but should persist across refreshes. Examples below; the actual list grows as the user gives feedback during refresh runs.",
+    "_example_slack": {
+      "skip_channels_extra": ["#random", "#general"],
+      "min_thread_length_extra": 5,
+      "skip_users": ["github-bot"]
+    },
+    "_example_github_prs": {
+      "skip_pr_titles_matching": ["^Bump", "^chore\\(deps\\)"],
+      "skip_authors": ["dependabot", "renovate"]
+    }
+  },
+
+  "filter_rules": {
+    "_doc": "Cross-source rules the user has stated. The skills read these and apply globally.",
+    "always_skip_titles_matching": [],
+    "always_keep_when_mentioning": []
+  },
+
+  "observations": {
+    "_doc": "Things memory-refresh noticed during runs that the user might want to act on. Append-only; the user reviews + acts + clears entries manually. Skills only read for awareness, never auto-action.",
+    "_example": [
+      {
+        "at": "2026-05-26T08:00:00Z",
+        "run": "memory-refresh",
+        "observation": "github_prs ingested 47 dependabot PRs this run; user might want to add dependabot to skip_authors",
+        "suggested_action": "edit source_overrides.github_prs.skip_authors"
+      }
+    ],
+    "active": []
+  }
+}

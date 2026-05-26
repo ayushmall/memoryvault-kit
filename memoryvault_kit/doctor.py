@@ -385,7 +385,7 @@ def diagnose() -> dict:
         except Exception as e:
             report["refresh"] = {"error": str(e)}
     else:
-        report["refresh"] = {"note": "no refresh_state.json — /mv-refresh has not run yet on this vault"}
+        report["refresh"] = {"note": "no refresh_state.json — /memory-refresh has not run yet on this vault"}
 
     # ─── authoring queue ───
     try:
@@ -434,7 +434,7 @@ def render_human(r: dict) -> str:
     if "last_refresh_at" in rf:
         h = rf["hours_ago"]
         ago = f"{h:.1f}h ago" if h < 48 else f"{h/24:.1f}d ago"
-        lines.append(f"  last /mv-refresh: {rf['last_refresh_at'][:19]} ({ago}, {rf['history_count']} runs total)")
+        lines.append(f"  last /memory-refresh: {rf['last_refresh_at'][:19]} ({ago}, {rf['history_count']} runs total)")
         if "interaction_memories_since" in rf:
             ann = rf.get("annotations_since", 0)
             ann_part = f" (incl. {ann} session annotations)" if ann else ""

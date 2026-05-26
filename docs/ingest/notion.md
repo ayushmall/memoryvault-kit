@@ -29,13 +29,13 @@ memories.
 Notion ingest is agent-driven. The Python module is a writer that takes
 pre-fetched Notion pages and turns them into memory files — but the
 fetching itself happens through the Notion MCP, which lives behind the
-user's auth. The natural invocation is to ask Claude in a `/mv-refresh`
+user's auth. The natural invocation is to ask Claude in a `/memory-refresh`
 session.
 
 In Claude Code (with the kit installed as a plugin):
 
 ```
-/mv-refresh
+/memory-refresh
 ```
 
 If `notion` is enabled in `connected_sources.json`, refresh will:

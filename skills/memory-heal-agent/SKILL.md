@@ -1,10 +1,10 @@
 ---
-name: mv-heal-agent
+name: memory-heal-agent
 tier: full
-description: "Run the graph heal chain — pure local, no external calls. Use when the user says \"heal the graph\", \"rebuild the alias map\", \"run the heal chain\", \"fix wikilinks\", or as a scheduled nightly routine via mv-schedule. Walks: rebuild alias map → connect_entities (Rule 16 body-mention heal) → split_mentions (Rule 17 entities vs mentions) → in_degree (refresh mature_entities) → discover_surfaces (slack-channel surface entities). Idempotent, fast, no MCP calls. The first layer of the kit's authoring decomposition (see docs/agent-architecture.md)."
+description: "Run the graph heal chain — pure local, no external calls. Use when the user says \"heal the graph\", \"rebuild the alias map\", \"run the heal chain\", \"fix wikilinks\", or as a scheduled nightly routine via memory-schedule. Walks: rebuild alias map → connect_entities (Rule 16 body-mention heal) → split_mentions (Rule 17 entities vs mentions) → in_degree (refresh mature_entities) → discover_surfaces (slack-channel surface entities). Idempotent, fast, no MCP calls. The first layer of the kit's authoring decomposition (see docs/agent-architecture.md)."
 ---
 
-# mv-heal-agent — graph maintenance, nothing else
+# memory-heal-agent — graph maintenance, nothing else
 
 This is a Layer-2 agent in the kit's decomposition. **One job**: keep
 the graph dense and well-shaped. No external MCP calls, no LLM
@@ -23,7 +23,7 @@ MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.graph.discover_sur
 ```
 
 Or, equivalently, `python3 -m memoryvault_kit.migrate --apply --quick`
-(which is what `mv-schedule` wires into cron).
+(which is what `memory-schedule` wires into cron).
 
 ## After the heal — run the doctor's structural checks + auto-fix
 
@@ -66,9 +66,9 @@ error.
 ## What you do NOT do
 
 - Pull from any external source (that's the ingest layer)
-- Detect coverage gaps (that's mv-coverage-agent)
-- Process the authoring queue (that's mv-queue-router + the Layer-4 agents)
-- Run evals (that's mv-eval-runner)
+- Detect coverage gaps (that's memory-coverage-agent)
+- Process the authoring queue (that's memory-queue-router + the Layer-4 agents)
+- Run evals (that's memory-eval-runner)
 
 This skill exists so the user / scheduler can run *just the heal pass*
 without invoking everything else. Useful for:
@@ -79,6 +79,6 @@ without invoking everything else. Useful for:
 
 ## When this is called
 
-- Nightly via `mv-schedule` (default 2 AM)
+- Nightly via `memory-schedule` (default 2 AM)
 - Manually after a bulk-edit
-- As a precondition to `mv-coverage-agent` (gaps are computed after heal)
+- As a precondition to `memory-coverage-agent` (gaps are computed after heal)

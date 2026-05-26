@@ -1,10 +1,10 @@
 ---
-name: mv-graph-audit
+name: memory-graph-audit
 tier: any
 description: "Walk the user through a visual audit of their vault using Obsidian's graph view. Triggers on 'audit my graph', 'check structure', 'walk through vault visually', 'find graph issues', 'mv graph audit'. Some structural problems (orphan entities, duplicate-spelling entities, broken clusters, missing champions, dead wikilinks) are visible at a glance in Obsidian but invisible to the eval set. This skill gives the user a checklist of what to look for, captures their observations as actionable feedback memories, and accepts screenshots if they want to flag something visual. Pairs the model's structural checks (mv doctor) with human visual pattern-matching."
 ---
 
-# mv-graph-audit — pair the user's eyes with the doctor's checks
+# memory-graph-audit — pair the user's eyes with the doctor's checks
 
 `mv doctor` finds structural issues from code. `mv eval` measures
 retrieval quality from a question set. Neither catches what's obvious
@@ -126,7 +126,7 @@ of `type: feedback` with:
 - importance: 0.7 (these are real user-flagged issues)
 - entities: link to the entities involved
 
-These get picked up by the next `/mv-refresh` queue-drain. Same flow as
+These get picked up by the next `/memory-refresh` queue-drain. Same flow as
 session annotations.
 
 ## Step 3 — accept screenshots
@@ -146,7 +146,7 @@ Graph audit complete. You flagged N items:
   - 1 unexpected hub (a stub entity with 30+ edges, probably auto-relate over-fired)
   - 3 root stubs to clean up
 
-Wrote N mem_QUALITY_graph-audit-* memories. Next /mv-refresh will
+Wrote N mem_QUALITY_graph-audit-* memories. Next /memory-refresh will
 surface these in its queue. Or act now on the duplicates — I can edit
 the alias_map entries directly, want me to?
 ```

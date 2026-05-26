@@ -240,7 +240,7 @@ def tool_memory_ask(question: str, k: int = 5, context: str | None = None) -> di
     surrounding conversation (recent messages, user's stated intent, what
     the agent was trying to accomplish). It's not used for retrieval —
     it's persisted into the gap memory if the retrieval comes back thin,
-    so a future /mv-refresh queue-drain has it to work with.
+    so a future /memory-refresh queue-drain has it to work with.
     """
     gw, cache = _load_retrieval()
     results = gw.retrieve(question, cache["bm25_index"], cache["full_by_id"],
@@ -260,7 +260,7 @@ def tool_memory_ask(question: str, k: int = 5, context: str | None = None) -> di
             "snippet": (m.get("body") or "")[:400],
         })
     # Auto-log a coverage-gap feedback memory if the retrieval came back thin.
-    # The future /mv-refresh queue-drain reads these to figure out what to fill.
+    # The future /memory-refresh queue-drain reads these to figure out what to fill.
     # When `context` was passed, it goes into the gap memory's body so the
     # downstream agent has more than just the bare query to work with.
     gap_logged = None
@@ -524,7 +524,7 @@ TOOLS = [
             "description of the surrounding conversation — recent user messages, what they're "
             "trying to accomplish, why they're asking this question. It's not used for "
             "retrieval, but if the query comes back thin and triggers a gap memory, the "
-            "context gets persisted into that memory's body. Later, when /mv-refresh's queue "
+            "context gets persisted into that memory's body. Later, when /memory-refresh's queue "
             "drain processes the gap, the deep-dive sub-agent has the conversation context to "
             "inform its native-MCP query, not just the bare query string. Keep context to "
             "~500-1500 chars of distilled summary, not a raw paste of the conversation.\n\n"
@@ -547,7 +547,7 @@ TOOLS = [
                 "k": {"type": "integer", "default": 5, "description": "Number of results to return (1-20)"},
                 "context": {
                     "type": "string",
-                    "description": "OPTIONAL surrounding conversation context — recent user messages, what they're trying to accomplish, why they're asking. Not used for retrieval; persisted into the gap memory if the query comes back thin, so a future /mv-refresh queue-drain has more than just the bare query to work with. Keep to ~500-1500 chars of distilled summary."
+                    "description": "OPTIONAL surrounding conversation context — recent user messages, what they're trying to accomplish, why they're asking. Not used for retrieval; persisted into the gap memory if the query comes back thin, so a future /memory-refresh queue-drain has more than just the bare query to work with. Keep to ~500-1500 chars of distilled summary."
                 },
             },
             "required": ["question"],

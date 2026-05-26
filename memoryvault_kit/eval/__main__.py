@@ -141,7 +141,7 @@ def soft_coverage() -> dict:
     vault = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
     qpath = vault / "evals" / "retrieval" / "questions.jsonl"
     if not qpath.exists():
-        return {"error": f"no eval set at {qpath}. Run mv-setup Step 11 first."}
+        return {"error": f"no eval set at {qpath}. Run memory-setup Step 11 first."}
 
     from memoryvault_kit.retrieval.combined import retrieve_combined
     from memoryvault_kit.retrieval.bm25 import build_index, load_memories
@@ -196,7 +196,7 @@ def main():
                     help="Skip the slow consistency check (still runs fill_quality + pollution)")
     ap.add_argument("--soft", action="store_true",
                     help="Soft coverage only — works without gold annotations. "
-                         "Used by mv-setup's ingest loop to measure progress.")
+                         "Used by memory-setup's ingest loop to measure progress.")
     ap.add_argument("--quiet", action="store_true",
                     help="Suppress chatty progress output (for the ingest loop)")
     ap.add_argument("--json", action="store_true",

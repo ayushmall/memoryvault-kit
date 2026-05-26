@@ -123,7 +123,7 @@ grep -c "^related: \[mem_" ~/MemoryVault/memories/2026/mem_*.md | \
 If the structural checks pass and a specific bucket is still weak:
 
 ### alias bucket weak (R@5 < 0.6)
-1. Run `mv-doctor --eval-recovery` (it'll auto-rebuild alias_map if stale)
+1. Run `memory-doctor --eval-recovery` (it'll auto-rebuild alias_map if stale)
 2. Check `bm25.py` — confirm it's reading `<vault>/.alias_map.json` (not `/tmp/`)
 3. Run `python3 -m memoryvault_kit.eval.diagnose_alias` for the question-by-question breakdown
 4. Often the canonical entity is missing the surface form in its frontmatter `aliases:` list — add it and rebuild
@@ -142,7 +142,7 @@ If the structural checks pass and a specific bucket is still weak:
 ### multi-hop weak (R@5 < 0.7)
 1. Check `related:` edges are populated (Step 2, Check 5)
 2. The "bridge" memory in the middle of the hop needs to be reachable from the seed — confirm with `python3 -m memoryvault_kit.graph.in_degree --write` then check the bridge's in-degree
-3. If the bridge is a stub (`enriched: false`), trigger `mv-stub-enricher`
+3. If the bridge is a stub (`enriched: false`), trigger `memory-stub-enricher`
 
 ### temporal weak (R@5 < 0.8)
 1. event_date population (Step 2, Check 4)

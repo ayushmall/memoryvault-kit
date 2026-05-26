@@ -15,7 +15,7 @@ The intelligent path:
   already has:
     1. Claude Code's auto-memory at ~/.claude/projects/*/memory/*.md
        (the model has been distilling facts about the user across sessions)
-    2. The mv-setup interview answers (org, role, sources, top
+    2. The memory-setup interview answers (org, role, sources, top
        projects/people the user named)
     3. The current Claude session's conversation context (whatever the
        model knows about the user from chatting with them)
@@ -30,7 +30,7 @@ This module:
   - Does NOT generate questions itself — the agent does that with full
     semantic understanding. This module is the bookkeeping.
 
-Run from inside the mv-setup skill:
+Run from inside the memory-setup skill:
     python3 -m memoryvault_kit.eval.intelligent_init --bundle > /tmp/ctx.txt
     # ... agent reads ctx.txt + writes questions.jsonl ...
     python3 -m memoryvault_kit.eval.intelligent_init --validate \

@@ -1,10 +1,10 @@
 ---
-name: mv-stub-enricher
+name: memory-stub-enricher
 tier: full
-description: For a stub coverage-gap memory (tags include stub-enrich-me, enriched=false), read its auto-gathered Evidence section + any session context you have + write a grounded narrative via memory_update. Use when invoked by mv-queue-router for "enrich-stub" classified actions — or when the user notices a stub gap in retrieval results. Layer-4b in the kit's decomposition. Doesn't fetch from external sources — pure session-context-driven enrichment (deep-dive is the escape hatch when no session context applies).
+description: For a stub coverage-gap memory (tags include stub-enrich-me, enriched=false), read its auto-gathered Evidence section + any session context you have + write a grounded narrative via memory_update. Use when invoked by memory-queue-router for "enrich-stub" classified actions — or when the user notices a stub gap in retrieval results. Layer-4b in the kit's decomposition. Doesn't fetch from external sources — pure session-context-driven enrichment (deep-dive is the escape hatch when no session context applies).
 ---
 
-# mv-stub-enricher — turn templates into narratives
+# memory-stub-enricher — turn templates into narratives
 
 Layer-4b agent. **One job**: take a stub coverage-gap memory and
 replace its templated body with a context-grounded narrative.
@@ -75,9 +75,9 @@ item resolved.
 
 ## What you do NOT do
 
-- Fetch from external sources — that's mv-deep-dive's job. If your
+- Fetch from external sources — that's memory-deep-dive's job. If your
   session has zero relevant context AND the Evidence is sparse, *don't*
-  invent. Either escalate to mv-deep-dive OR leave the gap as a stub
+  invent. Either escalate to memory-deep-dive OR leave the gap as a stub
   for next session.
 - Replace the auto-gathered Evidence section — preserve it. Your edit
   REPLACES the template + adds narrative ABOVE the Evidence.
@@ -85,7 +85,7 @@ item resolved.
 
 ## When this is called
 
-- By `mv-queue-router` for stub-gap-touched items where the agent
+- By `memory-queue-router` for stub-gap-touched items where the agent
   invoking it has session context that matches the subject
 - Inline during a conversation: the user asks about X, retrieval
   returns a stub gap about X, the consuming agent (Claude) calls

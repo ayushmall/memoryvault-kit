@@ -10,7 +10,7 @@ scattered, no ordering, no priority.
 
 This module gives the kit a real queue: a persistent JSONL list of
 "things the authoring agent should look at next time it wakes up,"
-ordered + priorityed. The wake-up agent (mv-authoring-cycle skill +
+ordered + priorityed. The wake-up agent (memory-authoring-cycle skill +
 memoryvault_kit.graph.authoring_cycle module) reads the queue in
 batch, processes each item with full context, fills gaps, writes new
 memories, and marks items processed.
@@ -34,7 +34,7 @@ What gets enqueued:
 Why this matters: today the kit reacts inline (consuming agents enrich
 stubs on the spot). The queue enables an **async loop** — the
 authoring agent wakes up nightly with the full batch, has fresh context
-(via mv-setup-style native MCP calls), and processes systematically.
+(via memory-setup-style native MCP calls), and processes systematically.
 The consuming agent stays fast; the authoring agent does the heavy
 lifting on its own schedule.
 

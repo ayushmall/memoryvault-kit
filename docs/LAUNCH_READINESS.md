@@ -134,13 +134,13 @@ exists in the architecture (see `docs/agent-architecture.md`); each
 should only be built when its specific failure mode is observable in
 real use.
 
-- **`mv-quality-judge`** — sampled Claude-as-judge for systematic shape
+- **`memory-quality-judge`** — sampled Claude-as-judge for systematic shape
   issues the rule-based `fill_quality` eval misses. Build when:
   `fill_quality` is high but retrieval quality feels off.
-- **`mv-curator`** — dedup + merge same-event memories from overlapping
+- **`memory-curator`** — dedup + merge same-event memories from overlapping
   sources (calendar + granola for one meeting). Build when: you have
   3+ overlapping sources and dedup-by-hand becomes friction.
-- **`mv-traversal`** — batch structural-insight walker. Build when:
+- **`memory-traversal`** — batch structural-insight walker. Build when:
   you're running 10+ `memory_tree_walk` calls per session.
 
 Each lives in `docs/agent-architecture.md` with its boundaries already

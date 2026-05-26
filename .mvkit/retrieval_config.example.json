@@ -39,7 +39,7 @@
   },
 
   "soft_coverage": {
-    "_doc": "Soft eval threshold — a question is 'answerable' if it returns at least min_results scoring at or above score_floor. coverage_target is what mv-setup's ingest loop aims for during bootstrap.",
+    "_doc": "Soft eval threshold — a question is 'answerable' if it returns at least min_results scoring at or above score_floor. coverage_target is what memory-setup's ingest loop aims for during bootstrap.",
     "score_floor": 5.0,
     "min_results": 2,
     "coverage_target": 0.6

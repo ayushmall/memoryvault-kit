@@ -122,7 +122,7 @@ def find_duplicate_memory(
     """Detect whether a memory we're about to write already exists.
 
     Exact-match only. Semantic dedupe (paraphrased titles, etc.) is the
-    agent's call via `memory_ask` — see mv-master-ingest skill.
+    agent's call via `memory_ask` — see memory-master-ingest skill.
 
     Returns (existing_mem_id, reason). reason is one of:
       "source_ref_hit"   — identical source_ref already in vault. Update, don't create.

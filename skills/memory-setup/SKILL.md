@@ -1,10 +1,10 @@
 ---
-name: mv-setup
+name: memory-setup
 tier: any
 description: Conversational first-run setup. Triggers on "set up memoryvault", "install memoryvault", "initialize my vault", "I want to try memoryvault", or after a clone with "what's next?". Probes the user's environment for installed MCPs, asks which sources they want to ingest, gathers per-source config (Linear teams, repo names, Notion topics, Slack channels, etc.), writes `.mvkit/connected_sources.json`, generates the per-user scheduled tasks, walks through first ingest + first eval, and writes a `mem_BOOTSTRAP_*` audit memory. Every step gathers the info the kit needs so subsequent runs are automatic.
 ---
 
-# mv-setup — gather info + wire everything up
+# memory-setup — gather info + wire everything up
 
 You are the setup wizard. The user just cloned the kit and wants it
 working with their data. Your job: ask the right questions, gather the
@@ -506,7 +506,7 @@ Writes a `mem_QUALITY_auto-tune-bootstrap-*.md` audit memory showing
 all variants' soft coverage + which won. If `default` won (common on
 simple vaults), no overrides are written — kit uses code defaults.
 If a variant won, its overrides land in `retrieval_config.json` so
-future `/mv-refresh` runs honor them automatically.
+future `/memory-refresh` runs honor them automatically.
 
 ### Step 13 — Baseline eval
 ```bash
@@ -514,7 +514,7 @@ MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval
 ```
 Report all 3 numbers + their grades. Tell the user what each means in one sentence.
 
-### Step 14a — Add recommended permissions (one-time, so /mv-refresh never prompts)
+### Step 14a — Add recommended permissions (one-time, so /memory-refresh never prompts)
 
 The kit ships a recommended permissions allowlist at
 `.claude-plugin/recommended-settings.json` containing ONLY:
@@ -527,7 +527,7 @@ or arbitrary Bash. Those stay user-grant per session.
 Ask the user via `AskUserQuestion`:
 
 > Add the kit's recommended permissions to ~/.claude/settings.json?
-> This means /mv-refresh and any kit operations won't prompt for
+> This means /memory-refresh and any kit operations won't prompt for
 > approval on every run. Only the kit's own tools are pre-allowed,
 > not your source MCPs.
 >
@@ -542,12 +542,12 @@ overwrite existing entries — append + dedupe.
 
 ### Step 14 — Scheduling (now optional, manual is the default)
 
-**Default is /mv-refresh manual.** Setting up scheduled tasks is
+**Default is /memory-refresh manual.** Setting up scheduled tasks is
 opt-in. Ask via `AskUserQuestion`:
 
 > How do you want to keep your vault fresh?
 >
-> [1] Manual via /mv-refresh (Recommended)
+> [1] Manual via /memory-refresh (Recommended)
 >     Press a button when you want fresh data. No permission
 >     prompts (Step 14a already handled that). You see what runs.
 > [2] Scheduled auto-runs
@@ -556,22 +556,22 @@ opt-in. Ask via `AskUserQuestion`:
 >     If you pick this, I'll run each task once now so its
 >     permissions warm up before the first scheduled fire.
 > [3] Both
->     Scheduled for hands-off automation, manual /mv-refresh
+>     Scheduled for hands-off automation, manual /memory-refresh
 >     anytime in between.
 
 If [1] (default): skip task creation, tell the user
-"come back anytime with /mv-refresh". Continue to Step 16.
+"come back anytime with /memory-refresh". Continue to Step 16.
 
 If [2] or [3]: call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
 
-1. `mv-master-ingest-daily` at 6:?? AM — prompt should reference
+1. `memory-master-ingest-daily` at 6:?? AM — prompt should reference
    `connected_sources.json` (so it iterates only what the user enabled).
    The prompt is NOT a hardcoded source list — it tells the runtime
    to read the file.
-2. `mv-heal-nightly` at 1:?? AM — `mv migrate --apply --quick`
-3. `mv-coverage-nightly` at 2:?? AM — coverage_gaps + enrich_gaps
-4. `mv-queue-router-nightly` at 2:?? AM — authoring_cycle --apply
-5. `mv-eval-weekly` at Mon 2:?? AM — eval suite + history archive
+2. `memory-heal-nightly` at 1:?? AM — `mv migrate --apply --quick`
+3. `memory-coverage-nightly` at 2:?? AM — coverage_gaps + enrich_gaps
+4. `memory-queue-router-nightly` at 2:?? AM — authoring_cycle --apply
+5. `memory-eval-weekly` at Mon 2:?? AM — eval suite + history archive
 
 Use off-minute times (NOT :00 or :30). Confirm all 5 are listed via
 `mcp__scheduled-tasks__list_scheduled_tasks`.
@@ -648,7 +648,7 @@ Save a `mem_BOOTSTRAP_<date>.md` of `type: event` with:
   routines scheduled (list), baseline eval numbers
 - importance: 0.9 (vault-defining moment)
 
-This is the audit trail. `mv-doctor` will reference it later.
+This is the audit trail. `memory-doctor` will reference it later.
 
 ## Tone + behavior rules
 
@@ -660,9 +660,9 @@ This is the audit trail. `mv-doctor` will reference it later.
 - **Never run something destructive** without confirmation (no
   `mv profile set lean` if they're already on Full, etc.).
 - **Bootstrap memory at the end is mandatory.** It marks Day 0 +
-  enables `mv-doctor` to compute "you've been using this for X days."
+  enables `memory-doctor` to compute "you've been using this for X days."
 
-## After mv-setup completes
+## After memory-setup completes
 
 Tell the user:
 
@@ -672,7 +672,7 @@ Tell the user:
 > - **Tomorrow 1:??-2:?? AM**: heal + coverage + queue-router process it
 > - **Next Monday 2:?? AM**: weekly eval (you'll see trend tracking)
 >
-> Run `mv-doctor` anytime to check health. Run any per-source ingest
+> Run `memory-doctor` anytime to check health. Run any per-source ingest
 > manually if you don't want to wait until 6 AM.
 
 ## Anti-patterns

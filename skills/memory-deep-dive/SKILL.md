@@ -1,10 +1,10 @@
 ---
-name: mv-deep-dive
+name: memory-deep-dive
 tier: full
-description: For a thin-retrieval queue item, fetch richer content from the source's native MCP, synthesize into a properly-shaped memory, save it. Use when invoked by mv-queue-router for "deep-dive" classified actions — or when the user explicitly says "deep-dive this query" / "fetch X from Notion" / "go to source for Y". Layer-4a in the kit's decomposition. Specialized per source (Notion, Slack, Linear, Gmail, GDrive, Granola, GitHub).
+description: For a thin-retrieval queue item, fetch richer content from the source's native MCP, synthesize into a properly-shaped memory, save it. Use when invoked by memory-queue-router for "deep-dive" classified actions — or when the user explicitly says "deep-dive this query" / "fetch X from Notion" / "go to source for Y". Layer-4a in the kit's decomposition. Specialized per source (Notion, Slack, Linear, Gmail, GDrive, Granola, GitHub).
 ---
 
-# mv-deep-dive — escape to the source
+# memory-deep-dive — escape to the source
 
 Layer-4a agent. **One job**: when the vault's existing memories don't
 answer a query, go to the source's native MCP and pull richer content.
@@ -12,7 +12,7 @@ Synthesize that into a new memory the kit will retrieve next time.
 
 ## The input
 
-You receive (from `mv-queue-router` or the user directly):
+You receive (from `memory-queue-router` or the user directly):
 - A `query` (the original question that came back thin)
 - A `suggested_source` (which native MCP to query — inferred from the
   partial results' `parent_surface:` field)
@@ -83,7 +83,7 @@ This auto-marks items that the live vault can now answer.
 
 ## What you do NOT do
 
-- Enrich stub gap memories from session context (that's mv-stub-enricher)
+- Enrich stub gap memories from session context (that's memory-stub-enricher)
 - Process MULTIPLE queue items in one go — one deep-dive at a time;
   batch is the router's job
 - Fetch entire sources wholesale ("read everything in Notion") —
@@ -103,7 +103,7 @@ specialization can come later as the kit matures.
 
 ## When this is called
 
-- By `mv-queue-router` when classifying a queued thin-retrieval item
+- By `memory-queue-router` when classifying a queued thin-retrieval item
   as needing deep-dive
-- Manually: "Run mv-deep-dive on this query against Notion"
-- After a `mv-doctor` report shows many high-priority queue items
+- Manually: "Run memory-deep-dive on this query against Notion"
+- After a `memory-doctor` report shows many high-priority queue items

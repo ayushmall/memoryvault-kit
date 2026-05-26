@@ -1,10 +1,10 @@
 ---
-name: mv-master-ingest
+name: memory-master-ingest
 tier: full
-description: The wide-net source scourer — wakes up daily, iterates EVERY source the user has connected (defined in `<vault>/.mvkit/connected_sources.json`), invokes the right ingest, reports per-source status. THE most important Layer-1 agent. The source list is data-driven — different users have different sources connected, so this skill reads the config at runtime instead of hardcoding which MCPs to call. Use when scheduled (via `mv-schedule` after `mv-setup`) OR when the user says "ingest everything" / "pull fresh data" / "what's new".
+description: The wide-net source scourer — wakes up daily, iterates EVERY source the user has connected (defined in `<vault>/.mvkit/connected_sources.json`), invokes the right ingest, reports per-source status. THE most important Layer-1 agent. The source list is data-driven — different users have different sources connected, so this skill reads the config at runtime instead of hardcoding which MCPs to call. Use when scheduled (via `memory-schedule` after `memory-setup`) OR when the user says "ingest everything" / "pull fresh data" / "what's new".
 ---
 
-# mv-master-ingest — pull from whatever sources the user has connected
+# memory-master-ingest — pull from whatever sources the user has connected
 
 This is the kit's most-important Layer-1 agent. **It is data-driven**:
 each user has different MCPs installed (some use Linear, some Jira,
@@ -18,8 +18,8 @@ cat $HOME/MemoryVault/.mvkit/connected_sources.json
 ```
 
 If the file doesn't exist:
-- The user hasn't completed `mv-setup` yet
-- Report: "No connected_sources.json found — run /mv-setup to configure"
+- The user hasn't completed `memory-setup` yet
+- Report: "No connected_sources.json found — run /memory-setup to configure"
 - Don't try to ingest anything; stop here
 
 For each entry in `sources`, you'll see:
@@ -240,7 +240,7 @@ per the type playbooks.
 
 ### `slack` MCP
 **INGEST**: For each channel slug in `config.channels`, invoke the
-`mv-slack-channel-digest` skill. It handles classification +
+`slack-channel-digest` skill. It handles classification +
 `source_surface:` link to the surface entity.
 
 **DISCOVER** (if `discovery: "auto"` and due): call
@@ -346,7 +346,7 @@ Write the updated JSON back to `connected_sources.json`.
 Report TWO numbers per source — ingest count + discovery count:
 
 ```
-mv-master-ingest report — 2026-05-26 06:21
+memory-master-ingest report — 2026-05-26 06:21
   calendar  : 12 events ingested · discovery: 1 new shared calendar found
   gmail     : 3 substantive threads (16 filtered as noise)
   slack     : 4 channels digested (8 memories) · discovery: 2 new channels proposed
@@ -372,7 +372,7 @@ config (even disabled), show its line. Transparency over brevity.
 - First failure → set `skip_reason: "MCP <name> not responding (first-failure timestamp)"`
 - Stays skipped on subsequent runs — don't keep retrying
 - Surface in the report so the user can fix
-- If the user later installs the MCP, they (or `/mv-setup --reconfigure`)
+- If the user later installs the MCP, they (or `/memory-setup --reconfigure`)
   clear `skip_reason` to re-enable
 
 ## Why this matters
@@ -384,7 +384,7 @@ config. New connectors don't require code changes; users add them to
 
 ## When to call this skill
 
-- **Scheduled** — daily 6:?? AM via `mv-schedule` (auto-set-up by `mv-setup`)
+- **Scheduled** — daily 6:?? AM via `memory-schedule` (auto-set-up by `memory-setup`)
 - **On-demand** — user asks "ingest everything" / "pull fresh data" / "what's new"
 - **After config change** — user just enabled a new source
 

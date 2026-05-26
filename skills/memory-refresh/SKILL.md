@@ -1,7 +1,7 @@
 ---
 name: memory-refresh
 tier: any
-description: "The recurring entry point for an already-set-up MemoryVault. Triggers on 'refresh memory', 'pull fresh data', 'what is new', 'mv refresh', or just 'refresh' in any session where the kit is installed. Reads the vault state from .mvkit/, pulls deltas from every connected source, heals the graph, runs coverage detection, runs a soft eval, and reports what changed. Same skill works in any fresh chat because state lives in the vault, not the session. For first-time setup, invoke mv-setup instead."
+description: "The recurring entry point for an already-set-up MemoryVault. Triggers on 'refresh memory', 'pull fresh data', 'what is new', 'mv refresh', or just 'refresh' in any session where the kit is installed. Reads the vault state from .mvkit/, pulls deltas from every connected source, heals the graph, runs coverage detection, runs a soft eval, and reports what changed. Same skill works in any fresh chat because state lives in the vault, not the session. For first-time setup, invoke memory-setup instead."
 ---
 
 # memory-refresh — the recurring loop, user-triggered
@@ -15,12 +15,12 @@ user's own session so permissions are granted in-context.
 
 - Vault exists at `$MEMORYVAULT_ROOT` (default `~/MemoryVault`) with
   a `.mvkit/bootstrap_state.md` that shows setup completed. If not:
-  tell the user "no vault found, run /mv-setup first" and stop.
+  tell the user "no vault found, run /memory-setup first" and stop.
 - The kit's MCP server is registered (you should see
   `mcp__plugin_memoryvault-kit_memoryvault__memory_*` tools available).
 
 If either is missing, surface the exact gap. Don't try to be clever
-about partial setups, point at /mv-setup.
+about partial setups, point at /memory-setup.
 
 ## Step 1 — Read vault state (5-10 seconds, before any change)
 
@@ -35,7 +35,7 @@ head -30 $VAULT/.mvkit/mature_entities.md 2>/dev/null
 ```
 
 Read `last_refresh_at` from `refresh_state.json`. This is the
-authoritative "when did /mv-refresh last run" timestamp — separate
+authoritative "when did /memory-refresh last run" timestamp — separate
 from `last_ingest_per_source` (which tracks scheduled-or-manual
 ingest per source) and separate from individual memory mtimes
 (which track interaction-driven saves during normal conversations).
@@ -98,14 +98,14 @@ duplicates landing in the vault.
 Read `connected_sources.json`'s `last_ingest_per_source[<source>]`.
 For each enabled source, pull only what's new since that timestamp.
 
-Spawn parallel sub-agents per source (see mv-master-ingest skill for
+Spawn parallel sub-agents per source (see memory-master-ingest skill for
 per-source dispatch). Each sub-agent:
 
 - Reads `<vault>/.mvkit/mature_entities.md` first so it knows the
   existing entity landscape
 - Pulls deltas with `--since "<last_ingest_per_source[source]>"`
 - Calls `memory_search_entity` + `memory_ask` to dedupe BEFORE
-  `memory_save` (see Path B in mv-master-ingest skill)
+  `memory_save` (see Path B in memory-master-ingest skill)
 - Enforces per-source caps + the `_global_caps.max_share_per_run`
 - Reports per-source delta count
 
@@ -154,13 +154,13 @@ For each pending item, invoke the right sub-agent:
 
 | Queue item | Sub-agent | What it does |
 |---|---|---|
-| `mem_GAP_*` with `stub-enrich-me` | `mv-stub-enricher` | Read Evidence section, write grounded narrative, set `enriched: true` |
-| `query-replay` items in `authoring_queue/` | `mv-deep-dive` | Re-query via native MCP (Notion/Slack/Linear/etc.), save a new grounded memory |
-| `contradiction-pending` | `mv-contradiction-resolver` (deferred, not implemented yet — log + skip) | resolve conflicting memories |
+| `mem_GAP_*` with `stub-enrich-me` | `memory-stub-enricher` | Read Evidence section, write grounded narrative, set `enriched: true` |
+| `query-replay` items in `authoring_queue/` | `memory-deep-dive` | Re-query via native MCP (Notion/Slack/Linear/etc.), save a new grounded memory |
+| `contradiction-pending` | `memory-contradiction-resolver` (deferred, not implemented yet — log + skip) | resolve conflicting memories |
 
 Use `Agent({subagent_type: "..."})` or invoke via the Skill tool.
 Cap the work — drain up to 10 items per refresh run. Beyond that,
-the user can re-invoke `/mv-refresh` to drain more, or schedule the
+the user can re-invoke `/memory-refresh` to drain more, or schedule the
 queue-router task separately.
 
 Report what got drained and what remains:
@@ -182,6 +182,30 @@ Compare the soft coverage number to the previous run (from
 Only if the user explicitly asks for `--full`, run the three-pillar
 eval (fill_quality + pollution + Lean⊆Full). That takes longer and
 is overkill for a daily refresh.
+
+## Step 4c — Entity bootstrap when low-info entities get touched
+
+During Step 2's per-source ingest, sub-agents notice when they're
+linking a memory to an entity that's currently thin in the vault
+(< 5 memories) OR when they're about to CREATE a new entity for the
+first time. For each such case, invoke the `memory-entity-bootstrap`
+skill to deep-dive that entity across enabled source MCPs before
+moving on.
+
+```
+Skill({ skill: "memory-entity-bootstrap",
+        args: "<entity_name>" })
+```
+
+The bootstrap pulls source-specific content about that one entity,
+synthesizes a richer entity file + writes missing memories, then
+returns. This keeps new + low-info entities from becoming retrieval
+dead weight — they're properly anchored at the moment they're
+first noticed by the kit.
+
+Cap: bootstrap at most 5 entities per refresh run (it can be slow).
+Beyond that, queue them as `mem_GAP_low-info-entity-<slug>.md` for
+the next refresh.
 
 ## Step 5b — Tuning proposals (test-before-apply, never silent)
 
@@ -208,7 +232,7 @@ Either way, writes a `mem_QUALITY_auto-tune-*.md` so the user sees
 what was tried + outcome. The kit never modifies retrieval config
 silently — every change has a test-result trail.
 
-The bootstrap auto-tune (run during /mv-setup Step 12c) is the
+The bootstrap auto-tune (run during /memory-setup Step 12c) is the
 heavy version. The propose flow is the surgical version for
 specific tuning experiments after setup.
 
@@ -273,14 +297,14 @@ state_path.write_text(json.dumps(state, indent=2))
 "
 ```
 
-This is the source of truth for "when did /mv-refresh last run."
+This is the source of truth for "when did /memory-refresh last run."
 Per-source `last_ingest_per_source` tracks when each source was
 last pulled. Per-memory mtimes track interaction saves. Three
 different timestamps for three different events.
 
 ## What you do NOT do
 
-- Don't run mv-setup. If the vault is half-set-up, tell the user.
+- Don't run memory-setup. If the vault is half-set-up, tell the user.
 - Don't reconfigure sources. Sources are user-edited in
   `connected_sources.json`. This skill only reads it.
 - Don't run the full eval unless asked. Soft is the daily metric.
@@ -305,14 +329,14 @@ different timestamps for three different events.
 ## When this skill IS called
 
 - User says "refresh memory" / "pull fresh data" / "what is new" /
-  "/mv-refresh"
+  "/memory-refresh"
 - After installing a new source MCP (user wants to backfill it)
 - Before a meeting / deep work session, to make sure context is fresh
 - Manually by users who don't want scheduled tasks
 
 ## When this skill is NOT called
 
-- During /mv-setup itself (mv-setup does its own first ingest)
+- During /memory-setup itself (memory-setup does its own first ingest)
 - For a one-off ingest of a single source (call that source's
   ingest module directly)
 - When the user just wants to query the vault (use memory_ask)
@@ -329,12 +353,12 @@ re-register the MCP."
 
 ## The relationship to scheduled tasks
 
-mv-setup OPTIONALLY creates 5 scheduled tasks. Those tasks call into
+memory-setup OPTIONALLY creates 5 scheduled tasks. Those tasks call into
 the same mechanisms this skill calls. If both are set up, they're
-redundant. The advantage of /mv-refresh over scheduled tasks:
+redundant. The advantage of /memory-refresh over scheduled tasks:
 permissions already granted in the current session, user sees what's
 happening as it happens, OAuth failures caught in real time.
 
-The default in mv-setup is now manual (use /mv-refresh) not
+The default in memory-setup is now manual (use /memory-refresh) not
 scheduled. Users who want hands-off automation can still create the
 scheduled tasks.

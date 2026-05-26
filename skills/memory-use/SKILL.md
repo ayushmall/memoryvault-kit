@@ -28,7 +28,7 @@ memory_ask(question="<user's question, lightly cleaned>", k=5,
 
 **Always pass `context` when you have it.** It's not used for retrieval
 — it's persisted into the gap memory if the query comes back thin. The
-next /mv-refresh queue drain reads the context to inform its deep-dive
+next /memory-refresh queue drain reads the context to inform its deep-dive
 into native MCPs, so the agent doing the fill has more than just the
 bare query string to work with. Without context, that downstream agent
 is guessing at what you (the asker) actually wanted.

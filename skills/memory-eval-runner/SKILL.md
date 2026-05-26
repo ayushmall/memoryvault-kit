@@ -1,10 +1,10 @@
 ---
-name: mv-eval-runner
+name: memory-eval-runner
 tier: full
-description: Run the 3-eval suite (fill_quality, pollution, consistency) and track numbers over time. Use when the user says "run the eval", "check vault quality", "what are my numbers", or as a scheduled weekly routine via mv-schedule. Layer-5 in the kit's decomposition. Writes the eval output to a dated JSON file so drift is observable. If any number drops below threshold, surfaces it as a `mem_QUALITY_*` feedback memory.
+description: Run the 3-eval suite (fill_quality, pollution, consistency) and track numbers over time. Use when the user says "run the eval", "check vault quality", "what are my numbers", or as a scheduled weekly routine via memory-schedule. Layer-5 in the kit's decomposition. Writes the eval output to a dated JSON file so drift is observable. If any number drops below threshold, surfaces it as a `mem_QUALITY_*` feedback memory.
 ---
 
-# mv-eval-runner — measure and watch the trend
+# memory-eval-runner — measure and watch the trend
 
 Layer-5 agent. **One job**: run the eval suite + track its output over
 time + alert on drift.
@@ -98,7 +98,7 @@ weekly summary so the user knows the loops are working.
 
 ## When this is called
 
-- Weekly via `mv-schedule` (default Mon 3 AM)
+- Weekly via `memory-schedule` (default Mon 3 AM)
 - Manually when the user wants a status check
 - As a regression detector before committing changes to the kit code
 

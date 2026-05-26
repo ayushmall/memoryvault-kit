@@ -33,12 +33,12 @@ them as memories + entities.
 Linear ingest is agent-driven. The Python module is a writer that takes
 pre-fetched issues, projects, cycles and turns them into memory files —
 but the fetching happens through the Linear MCP which holds your auth.
-The natural invocation is to ask Claude in a `/mv-refresh` session.
+The natural invocation is to ask Claude in a `/memory-refresh` session.
 
 In Claude Code (with the kit installed as a plugin):
 
 ```
-/mv-refresh
+/memory-refresh
 ```
 
 If `linear` is enabled in `connected_sources.json` with `config.teams`

@@ -73,7 +73,7 @@ def maybe_log(
         context:  OPTIONAL surrounding conversation context — recent
                   messages, the user's stated intent, what they were
                   trying to do. Captured for the future agent that
-                  processes this gap during /mv-refresh's queue drain.
+                  processes this gap during /memory-refresh's queue drain.
                   Without this, the deep-dive sub-agent only has the
                   bare query string to work with, which is often
                   ambiguous out of context.
@@ -131,8 +131,8 @@ authoring session should look for source material that would answer
 this query, or (b) the canonical entities for this topic exist but
 aren't well-linked — run `mv graph heal` or extend the alias map.
 
-When /mv-refresh's Step 4b queue-drain processes this gap, the
-mv-deep-dive sub-agent should use the Conversation Context section
+When /memory-refresh's Step 4b queue-drain processes this gap, the
+memory-deep-dive sub-agent should use the Conversation Context section
 above (if present) to inform its native-MCP query, not just the
 bare query string.
 

@@ -56,9 +56,9 @@ claude plugin marketplace add /path/to/memoryvault-kit
 claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
-That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
+That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
 
-After setup, every recurring update happens through `/mv-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
+After setup, every recurring update happens through `/memory-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
 
 ### Why the agent does the source-pulling
 
@@ -68,7 +68,7 @@ Two sources are exceptions:
 - **GitHub PRs** — the kit shells out to `gh pr list`, no agent needed. Run `python3 -m memoryvault_kit.ingest.code_repo --repo acme/api --prs --apply` directly.
 - **Claude Code memory** — the kit reads `~/.claude/projects/*/memory/*.md` from disk. Run `python3 -m memoryvault_kit.ingest.claude_memory --apply` directly.
 
-For everything else, the right command is "in a Claude Code session with /mv-refresh, ask the kit to pull from Notion / Linear / etc." That's not a workaround, it's the design — agents are the bridge between MCP-gated source data and the markdown vault.
+For everything else, the right command is "in a Claude Code session with /memory-refresh, ask the kit to pull from Notion / Linear / etc." That's not a workaround, it's the design — agents are the bridge between MCP-gated source data and the markdown vault.
 
 ### Maintenance commands you can run standalone
 
@@ -130,11 +130,11 @@ A weekly job runs these and writes a summary memory. A nightly job re-runs the h
 | Tool | What it does | When to use |
 |---|---|---|
 | `mv eval` | Three-pillar score (fill_quality + pollution + consistency) | Weekly, regression check |
-| `mv eval --soft` | Coverage: % of questions returning ≥2 results scoring ≥5. No gold annotations required | During `/mv-refresh`, fast |
+| `mv eval --soft` | Coverage: % of questions returning ≥2 results scoring ≥5. No gold annotations required | During `/memory-refresh`, fast |
 | `mv eval init --from-vault` | Generate a starter eval set from your actual vault content | Day 0, after first ingest |
 | `mv doctor --eval-recovery` | 5 structural checks before the eval runs | Before you blame the retriever |
 | `mv doctor --signal-quality` | Per-source ingest-vs-retrieval noise ratio | Weekly, finds noisy sources |
-| `/mv-graph-audit` | Walks you through Obsidian's graph view to catch what code can't see | Weekly visual pass |
+| `/memory-graph-audit` | Walks you through Obsidian's graph view to catch what code can't see | Weekly visual pass |
 | `evals/retrieval/retrievers/*.py` | Run a specific retriever variant against the 482-Q hardened set | When you're testing a retrieval change |
 
 The combination matters. Soft coverage is fast but shallow. Three-pillar is rigorous but takes time. Doctor checks are structural. Graph audit is visual. Use them together — each catches things the others miss.
@@ -238,11 +238,11 @@ memoryvault-kit/
 ├── skills/                      Claude Code skills
 │   ├── memory-use/              the consumption contract
 │   ├── memory-save/             the save contract
-│   ├── mv-setup/                first-run onboarding
-│   ├── mv-schedule/             auto-schedule the loops
-│   ├── mv-master-ingest/        the daily wide-net pull
-│   ├── mv-heal-agent/           nightly graph maintenance
-│   ├── mv-eval-runner/          weekly quality check
+│   ├── memory-setup/                first-run onboarding
+│   ├── memory-schedule/             auto-schedule the loops
+│   ├── memory-master-ingest/        the daily wide-net pull
+│   ├── memory-heal-agent/           nightly graph maintenance
+│   ├── memory-eval-runner/          weekly quality check
 │   └── ...                      per-source helpers
 ├── docs/
 │   ├── schema.md                memory and entity file format

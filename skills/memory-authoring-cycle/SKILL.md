@@ -1,12 +1,12 @@
 ---
-name: mv-queue-router
+name: memory-queue-router
 tier: full
-description: "Read the authoring queue, classify each item by what it needs, dispatch to the right specialized agent (mv-deep-dive, mv-stub-enricher, mv-contradiction-resolver). Use when the user says \"drain the queue\", \"process pending\", \"run the queue router\", or when scheduled to run nightly (typically via mv-schedule, right after mv-heal-agent + mv-coverage-agent). Layer-3 in the kit's decomposition (see docs/agent-architecture.md). NO direct authoring — pure classification + dispatch. Auto-resolves items whose retrieval the live vault now answers."
+description: "Read the authoring queue, classify each item by what it needs, dispatch to the right specialized agent (memory-deep-dive, memory-stub-enricher, memory-contradiction-resolver). Use when the user says \"drain the queue\", \"process pending\", \"run the queue router\", or when scheduled to run nightly (typically via memory-schedule, right after memory-heal-agent + memory-coverage-agent). Layer-3 in the kit's decomposition (see docs/agent-architecture.md). NO direct authoring — pure classification + dispatch. Auto-resolves items whose retrieval the live vault now answers."
 ---
-> (This skill was previously named mv-authoring-cycle; renamed to reflect its actual role as a router after the agent decomposition.)
+> (This skill was previously named memory-authoring-cycle; renamed to reflect its actual role as a router after the agent decomposition.)
 
 
-# mv-queue-router — classify the queue, dispatch the work
+# memory-queue-router — classify the queue, dispatch the work
 
 This skill is the **router** in the kit's authoring decomposition. The
 queue (`<vault>/.mvkit/authoring_queue/<date>.jsonl`) collects every
@@ -16,9 +16,9 @@ weren't enriched inline, contradictions, open questions.
 You don't do the authoring yourself. You classify each item by what
 it needs and either:
 1. Auto-resolve it (the live vault now answers — heal/ingest already fixed it)
-2. Dispatch to **mv-deep-dive** (escape to a source MCP)
-3. Dispatch to **mv-stub-enricher** (write a grounded narrative from session context)
-4. Dispatch to **mv-contradiction-resolver** (surface for human review)
+2. Dispatch to **memory-deep-dive** (escape to a source MCP)
+3. Dispatch to **memory-stub-enricher** (write a grounded narrative from session context)
+4. Dispatch to **memory-contradiction-resolver** (surface for human review)
 
 When called, you:
 
@@ -64,7 +64,7 @@ When called, you:
 
 ## When to run
 
-- **Scheduled** — nightly via `mv-schedule` is the default
+- **Scheduled** — nightly via `memory-schedule` is the default
 - **On-demand** — when the user notices retrieval drift
   ("the kit's getting worse, can we fix it")
 - **After heavy ingest** — when a new source comes online, the queue

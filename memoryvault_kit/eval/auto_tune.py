@@ -4,12 +4,12 @@ Auto-tune retrieval config based on the vault's own eval set.
 
 Two modes:
 
-  --bootstrap   used during mv-setup after the first big ingest. Tries
+  --bootstrap   used during memory-setup after the first big ingest. Tries
                 a small grid of retrieval variants against the eval
                 set, picks the best by soft coverage, writes the
                 winning config to <vault>/.mvkit/retrieval_config.json.
 
-  --propose <key>=<value>   used during /mv-refresh when someone wants
+  --propose <key>=<value>   used during /memory-refresh when someone wants
                 to try a tuning change. Runs the eval with the CURRENT
                 config (baseline), then with the proposed change. Only
                 writes the new value if it improves soft coverage by

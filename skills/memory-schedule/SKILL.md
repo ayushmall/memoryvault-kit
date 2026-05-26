@@ -1,10 +1,10 @@
 ---
-name: mv-schedule
+name: memory-schedule
 tier: any
-description: "Schedule the kit's heal + eval to run automatically. Use when the user says \"set up the nightly job\", \"schedule the heal\", \"automate this\", \"I don't want to remember to run mv migrate\", or \"set up the routine\" — typically after mv-setup or whenever they want hands-off maintenance. Sets up TWO routines via Claude Code's schedule infrastructure: (1) nightly mv migrate --apply --quick at 2 AM local time, (2) weekly mv eval Monday 3 AM. Both run in the user's local Claude Code or via cloud routine depending on what they prefer."
+description: "Schedule the kit's heal + eval to run automatically. Use when the user says \"set up the nightly job\", \"schedule the heal\", \"automate this\", \"I don't want to remember to run mv migrate\", or \"set up the routine\" — typically after memory-setup or whenever they want hands-off maintenance. Sets up TWO routines via Claude Code's schedule infrastructure: (1) nightly mv migrate --apply --quick at 2 AM local time, (2) weekly mv eval Monday 3 AM. Both run in the user's local Claude Code or via cloud routine depending on what they prefer."
 ---
 
-# mv-schedule — set up routines for the kit
+# memory-schedule — set up routines for the kit
 
 The kit's quality compounds with use, but only if the heal chain runs
 regularly. This skill wires up automatic execution.
@@ -82,7 +82,7 @@ Claude exits.
 
 For each routine, call `mcp__scheduled-tasks__create_scheduled_task`
 with:
-- `taskId`: kebab-case (e.g. `mv-heal-nightly`)
+- `taskId`: kebab-case (e.g. `memory-heal-nightly`)
 - `description`: one-line summary
 - `cronExpression`: standard 5-field, **local time**, off-minute (avoid :00/:30 — see CronCreate's guidance about fleet load)
 - `prompt`: the FULL instructions. The task is run by a fresh Claude
@@ -98,12 +98,12 @@ Write to user's crontab. First confirm they want to add to their
 local cron:
 
 ```bash
-crontab -l > /tmp/mv-cron-backup-$(date +%s)
+crontab -l > /tmp/memory-cron-backup-$(date +%s)
 (crontab -l; echo "0 2 * * *  cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.migrate --apply --quick") | crontab -
 (crontab -l; echo "0 3 * * 1  cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval --json > \$HOME/MemoryVault/.mvkit/last-eval-\$(date +\\%Y\\%m\\%d).json") | crontab -
 ```
 
-Always back up first (`crontab -l > /tmp/mv-cron-backup-...`).
+Always back up first (`crontab -l > /tmp/memory-cron-backup-...`).
 
 ### Option C — macOS launchd
 
@@ -124,7 +124,7 @@ Tell them:
 
 ## When to call this skill
 
-- After `mv-setup` (it asks if the user wants the routine — yes → calls this)
+- After `memory-setup` (it asks if the user wants the routine — yes → calls this)
 - When the user explicitly asks "schedule this" / "automate this"
 - After `mv doctor` reports the vault is stale (no ingest in 7+ days)
 

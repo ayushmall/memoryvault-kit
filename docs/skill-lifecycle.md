@@ -13,8 +13,8 @@ into six phases.
 
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
-| `mv-setup` | User types `/mv-setup` or "set up memoryvault" or runs the kit for the first time | Walks through tier choice, org config, scaffolds vault, asks which sources you have, writes `.mvkit/connected_sources.json`, registers the MCP server, runs first ingest, writes `mem_BOOTSTRAP_<date>.md` audit memory |
-| `mv-schedule` | Called by `mv-setup` step 14, or user says "schedule the routines" | Creates 5 scheduled tasks via `mcp__scheduled-tasks__create_scheduled_task`: master-ingest-daily, heal-nightly, coverage-nightly, queue-router-nightly, eval-weekly. Confirms each via list_scheduled_tasks |
+| `memory-setup` | User types `/memory-setup` or "set up memoryvault" or runs the kit for the first time | Walks through tier choice, org config, scaffolds vault, asks which sources you have, writes `.mvkit/connected_sources.json`, registers the MCP server, runs first ingest, writes `mem_BOOTSTRAP_<date>.md` audit memory |
+| `memory-schedule` | Called by `memory-setup` step 14, or user says "schedule the routines" | Creates 5 scheduled tasks via `mcp__scheduled-tasks__create_scheduled_task`: master-ingest-daily, heal-nightly, coverage-nightly, queue-router-nightly, eval-weekly. Confirms each via list_scheduled_tasks |
 
 **Verification:** after Phase 1, check `~/.claude/scheduled-tasks/` has 5 task directories; `~/MemoryVault/.mvkit/connected_sources.json` exists; vault has at least 1 `mem_BOOTSTRAP_*` memory.
 
@@ -24,7 +24,7 @@ into six phases.
 
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
-| `mv-master-ingest` | The `mv-master-ingest-daily` scheduled task fires | Reads `connected_sources.json`, runs INGEST + DISCOVER passes per enabled source, enforces caps + activity-floor + recently-proposed back-off, writes new memories + `mem_DISCOVERY_*` proposals, updates state JSON, reports per-source counts |
+| `memory-master-ingest` | The `memory-master-ingest-daily` scheduled task fires | Reads `connected_sources.json`, runs INGEST + DISCOVER passes per enabled source, enforces caps + activity-floor + recently-proposed back-off, writes new memories + `mem_DISCOVERY_*` proposals, updates state JSON, reports per-source counts |
 | `slack-channel-digest` | Called by master-ingest for each enabled Slack channel | Pulls recent threads, classifies each, writes a memory per substantive thread with `parent_surface:` linking to the channel entity |
 | `granola-series-recap` | Called by master-ingest for each Granola folder (if more than 3 meetings cluster into a series) | Synthesizes a recap memory for the series, dedupes against existing meeting recaps |
 | `pylon-customer-history` | Called by master-ingest for each Pylon account in config | Pulls support thread history, writes one memory per substantive issue |
@@ -39,8 +39,8 @@ into six phases.
 
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
-| `mv-heal-agent` | The `mv-heal-nightly` scheduled task fires | Runs the migration chain (build_alias_map → connect_entities → split_mentions → in_degree → discover_surfaces → coverage_gaps → enrich_gaps), then calls `mv doctor --eval-recovery --json` and auto-applies safe fixes (alias_map rebuild, event_date backfill). Writes `mem_QUALITY_*` memories for unfixable issues |
-| `memory-heal` | User says "heal the graph" or "rebuild aliases" manually | Same as mv-heal-agent but interactive |
+| `memory-heal-agent` | The `memory-heal-nightly` scheduled task fires | Runs the migration chain (build_alias_map → connect_entities → split_mentions → in_degree → discover_surfaces → coverage_gaps → enrich_gaps), then calls `mv doctor --eval-recovery --json` and auto-applies safe fixes (alias_map rebuild, event_date backfill). Writes `mem_QUALITY_*` memories for unfixable issues |
+| `memory-heal` | User says "heal the graph" or "rebuild aliases" manually | Same as memory-heal-agent but interactive |
 
 **Verification:** `.alias_map.json` mtime updates; doctor's eval-recovery checks pass.
 
@@ -50,10 +50,10 @@ into six phases.
 
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
-| `mv-coverage-agent` | The `mv-coverage-nightly` scheduled task fires | Runs `coverage_gaps.py` + `enrich_gaps.py`, surfaces 11 gap classes, writes `mem_GAP_*` memories with auto-gathered Evidence |
-| `mv-authoring-cycle` | The `mv-queue-router-nightly` task fires, or user says "process the queue" | Drains the authoring queue: stub gaps go to mv-stub-enricher; deep-dive items go to mv-deep-dive; trivial heals auto-resolve |
-| `mv-stub-enricher` | Called by mv-authoring-cycle for memories matching `tags: stub-enrich-me` | Reads the auto-gathered Evidence section, fetches additional context from native MCPs if needed, replaces the templated narrative with a grounded one |
-| `mv-deep-dive` | Called by mv-authoring-cycle for items needing fresh-source fetch | Uses the source's MCP (Notion, Slack, Linear, etc.) to gather richer content, writes a new memory linked back to the originating query |
+| `memory-coverage-agent` | The `memory-coverage-nightly` scheduled task fires | Runs `coverage_gaps.py` + `enrich_gaps.py`, surfaces 11 gap classes, writes `mem_GAP_*` memories with auto-gathered Evidence |
+| `memory-authoring-cycle` | The `memory-queue-router-nightly` task fires, or user says "process the queue" | Drains the authoring queue: stub gaps go to memory-stub-enricher; deep-dive items go to memory-deep-dive; trivial heals auto-resolve |
+| `memory-stub-enricher` | Called by memory-authoring-cycle for memories matching `tags: stub-enrich-me` | Reads the auto-gathered Evidence section, fetches additional context from native MCPs if needed, replaces the templated narrative with a grounded one |
+| `memory-deep-dive` | Called by memory-authoring-cycle for items needing fresh-source fetch | Uses the source's MCP (Notion, Slack, Linear, etc.) to gather richer content, writes a new memory linked back to the originating query |
 
 **Verification:** `mem_GAP_*` count is non-zero; stub gaps from yesterday have `enriched: true` today.
 
@@ -77,8 +77,8 @@ into six phases.
 
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
-| `mv-eval-runner` | The `mv-eval-weekly` task fires Monday 2:58 AM | Runs `doctor --eval-recovery` + `doctor --signal-quality` + the three-pillar eval. Writes three JSON snapshots to `.mvkit/eval-history/`. Combines them into one `mem_WEEKLY_<ts>.md` summary memory the user actually reads |
-| `mv-graph-audit` | User says "audit my graph" / "check structure" or runs after a big ingest | Walks the user through 6 visual checks in Obsidian's graph view (owner centrality, orphan islands, duplicate entities, unexpected hubs, customer triad, root stubs). Captures observations as `mem_QUALITY_graph-audit-*` memories. Pairs visual pattern-matching with the code-based doctor checks |
+| `memory-eval-runner` | The `memory-eval-weekly` task fires Monday 2:58 AM | Runs `doctor --eval-recovery` + `doctor --signal-quality` + the three-pillar eval. Writes three JSON snapshots to `.mvkit/eval-history/`. Combines them into one `mem_WEEKLY_<ts>.md` summary memory the user actually reads |
+| `memory-graph-audit` | User says "audit my graph" / "check structure" or runs after a big ingest | Walks the user through 6 visual checks in Obsidian's graph view (owner centrality, orphan islands, duplicate entities, unexpected hubs, customer triad, root stubs). Captures observations as `mem_QUALITY_graph-audit-*` memories. Pairs visual pattern-matching with the code-based doctor checks |
 | `memoryvault-cowork` | User wants to use the kit from Anthropic's Cowork (cloud Claude) | Bridges the local kit's MCP server to a Cowork session via a tunnel |
 
 **Verification:** every Monday morning there's a fresh `mem_WEEKLY_*.md` memory with the current numbers + trend.
@@ -87,27 +87,27 @@ into six phases.
 
 ## Cold-test checklist (the "build the entire vault from scratch" run)
 
-Use this script when testing /mv-setup with a fresh vault. Each line is
+Use this script when testing /memory-setup with a fresh vault. Each line is
 something you should see happen at exactly that point. If a skill on
 this list doesn't fire when it should, that's a bug.
 
 ```
 # Phase 1
-[ ] /mv-setup invoked, asks about tier
-[ ] /mv-setup asks about org name + owner
-[ ] /mv-setup probes for installed MCPs
-[ ] /mv-setup asks which sources to enable
-[ ] /mv-setup writes connected_sources.json
-[ ] /mv-setup runs first per-source ingest (5+ memories appear)
-[ ] /mv-setup runs heal chain (mv migrate)
-[ ] /mv-setup runs baseline eval
-[ ] /mv-setup calls /mv-schedule
-[ ] /mv-schedule creates 5 scheduled tasks
-[ ] /mv-setup writes mem_BOOTSTRAP_<date>.md
-[ ] /mv-setup registers MCP server with claude mcp add
+[ ] /memory-setup invoked, asks about tier
+[ ] /memory-setup asks about org name + owner
+[ ] /memory-setup probes for installed MCPs
+[ ] /memory-setup asks which sources to enable
+[ ] /memory-setup writes connected_sources.json
+[ ] /memory-setup runs first per-source ingest (5+ memories appear)
+[ ] /memory-setup runs heal chain (mv migrate)
+[ ] /memory-setup runs baseline eval
+[ ] /memory-setup calls /memory-schedule
+[ ] /memory-schedule creates 5 scheduled tasks
+[ ] /memory-setup writes mem_BOOTSTRAP_<date>.md
+[ ] /memory-setup registers MCP server with claude mcp add
 
-# Phase 2 (run mv-master-ingest manually to verify)
-[ ] mv-master-ingest reads connected_sources.json
+# Phase 2 (run memory-master-ingest manually to verify)
+[ ] memory-master-ingest reads connected_sources.json
 [ ] It iterates only enabled sources
 [ ] For each multi-target source, runs INGEST + DISCOVER
 [ ] Discovery proposes top_n per source (default 5)
@@ -126,12 +126,12 @@ this list doesn't fire when it should, that's a bug.
 [ ] Safe fixes auto-apply
 [ ] Surfaced issues become mem_QUALITY_* memories
 
-# Phase 4 (run mv-coverage-agent + mv-authoring-cycle manually)
+# Phase 4 (run memory-coverage-agent + memory-authoring-cycle manually)
 [ ] coverage_gaps.py writes mem_GAP_* memories
 [ ] enrich_gaps.py adds Evidence sections
-[ ] mv-authoring-cycle drains the queue
-[ ] mv-stub-enricher fires on stub_gaps_in_results
-[ ] mv-deep-dive fires on items needing native-MCP fetch
+[ ] memory-authoring-cycle drains the queue
+[ ] memory-stub-enricher fires on stub_gaps_in_results
+[ ] memory-deep-dive fires on items needing native-MCP fetch
 
 # Phase 5 (ask the kit something)
 [ ] memory-use loaded automatically
@@ -141,7 +141,7 @@ this list doesn't fire when it should, that's a bug.
 [ ] memory_save or memory_annotate writes the finding back
 
 # Phase 6 (wait until Monday OR run eval-runner manually)
-[ ] mv-eval-runner runs doctor --eval-recovery first
+[ ] memory-eval-runner runs doctor --eval-recovery first
 [ ] Runs doctor --signal-quality
 [ ] Runs three-pillar eval
 [ ] Writes mem_WEEKLY_<ts>.md summary memory
@@ -170,7 +170,7 @@ The second installs that plugin from that marketplace.
 This makes Claude Code:
 - Auto-discover all 21 skills in `skills/`
 - Register the `memoryvault` MCP server from `.mcp.json`
-- Expose the kit's slash commands (`/mv-setup`, `/mv-schedule`, etc.)
+- Expose the kit's slash commands (`/memory-setup`, `/memory-schedule`, etc.)
 
 Restart the Claude Code session after install so the registration takes
 effect. Verify with `claude plugin list` — you should see
@@ -186,7 +186,7 @@ export MEMORYVAULT_ROOT=$(pwd)
 ```
 
 In the session, type either:
-- `/mv-setup` (explicit invocation), or
+- `/memory-setup` (explicit invocation), or
 - "set up memoryvault" (the skill should auto-fire on this phrasing)
 
 Then walk through. At each checkbox, verify the actual command ran (check

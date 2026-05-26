@@ -1,10 +1,10 @@
 ---
-name: mv-coverage-agent
+name: memory-coverage-agent
 tier: full
-description: Detect coverage gaps + write mem_GAP_* memories with auto-gathered Evidence. Use when the user says "find gaps", "what's missing", "show me coverage", "audit the vault", or as a scheduled nightly routine (typically right after mv-heal-agent). Runs coverage_gaps.py (11 workflow-grounded classes G1-G19) + enrich_gaps.py (programmatic narratives + false-positive detection). Pure local, no external MCP calls. Layer-3 in the kit's decomposition.
+description: Detect coverage gaps + write mem_GAP_* memories with auto-gathered Evidence. Use when the user says "find gaps", "what's missing", "show me coverage", "audit the vault", or as a scheduled nightly routine (typically right after memory-heal-agent). Runs coverage_gaps.py (11 workflow-grounded classes G1-G19) + enrich_gaps.py (programmatic narratives + false-positive detection). Pure local, no external MCP calls. Layer-3 in the kit's decomposition.
 ---
 
-# mv-coverage-agent — find what's missing
+# memory-coverage-agent — find what's missing
 
 Layer-3 agent. **One job**: walk the graph, identify structural gaps,
 write them as `mem_GAP_*` memories the queue + the Layer-4 agents can
@@ -69,15 +69,15 @@ Wrote: <vault>/.mvkit/coverage.md
 ## What you do NOT do
 
 - Fetch from external sources (that's deep-dive, Layer 4a)
-- Enrich stub gaps using session context (that's mv-stub-enricher, Layer 4b)
+- Enrich stub gaps using session context (that's memory-stub-enricher, Layer 4b)
 - Solve contradictions (Layer 4c)
-- Heal the graph (that's mv-heal-agent, must run first)
+- Heal the graph (that's memory-heal-agent, must run first)
 
 You produce the WORK that other agents do. You don't do it yourself.
 
 ## When this is called
 
-- Nightly via `mv-schedule`, AFTER `mv-heal-agent` (gaps reflect the
+- Nightly via `memory-schedule`, AFTER `memory-heal-agent` (gaps reflect the
   freshly-healed graph)
 - Manually after big ingest cycles ("did the new Notion ingest fill
   any old gaps?")

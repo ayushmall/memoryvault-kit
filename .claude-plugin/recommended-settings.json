@@ -1,5 +1,5 @@
 {
-  "_comment": "Recommended permission allowlist for the kit. mv-setup offers to merge these into the user's ~/.claude/settings.json so /mv-refresh and the scheduled tasks (if used) don't prompt for permissions on every run. Only includes kit-owned MCPs and specific kit CLI invocations — no arbitrary Bash, no third-party MCPs. Those stay user-grant per session for security.",
+  "_comment": "Recommended permission allowlist for the kit. memory-setup offers to merge these into the user's ~/.claude/settings.json so /memory-refresh and the scheduled tasks (if used) don't prompt for permissions on every run. Only includes kit-owned MCPs and specific kit CLI invocations — no arbitrary Bash, no third-party MCPs. Those stay user-grant per session for security.",
   "permissions": {
     "allow": [
       "mcp__plugin_memoryvault-kit_memoryvault__memory_ask",
