@@ -47,7 +47,9 @@ from pathlib import Path
 VAULT = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
 CLAUDE_PROJECTS = Path.home() / ".claude" / "projects"
 
-# 9 buckets the kit was tuned against. Generator should cover at least 6.
+# Buckets the kit was tuned against. Generator should cover at least 6.
+# "abstention" is the existing-set's name for negation/rejection questions
+# where the right answer is "I don't know" — both names are accepted.
 EVAL_BUCKETS = [
     "needle-in-haystack",    # specific fact in long body
     "multi-hop",             # answer requires joining 2+ memories
@@ -58,6 +60,7 @@ EVAL_BUCKETS = [
     "paraphrase",            # same question worded differently
     "temporal",              # recent/last week/before X
     "negation-rejection",    # what was rejected / not done
+    "abstention",            # answer should be "vault doesn't know"
 ]
 
 
@@ -249,16 +252,27 @@ def validate_questions(path: Path) -> dict:
             q["expected_memory_ids"] = []
         questions.append(q)
     buckets_seen = {q["bucket"] for q in questions}
-    has_placeholder = any(
-        "<" in q.get("question", "") or "[X]" in q.get("question", "")
-        for q in questions
+    # Placeholder detection — angle-bracket placeholders (<X>, <name>, etc.)
+    # signal the agent didn't ground in real entities. Skip [X]/[xxx] —
+    # square brackets are legitimate wikilink syntax in question text.
+    import re
+    placeholder_pat = re.compile(r"<[A-Za-z][^>]{0,30}>")
+    n_with_placeholder = sum(
+        1 for q in questions if placeholder_pat.search(q.get("question", ""))
     )
+    # Treat as a fail signal only if a meaningful fraction (>20%) of questions
+    # have placeholders — a handful is tolerable since the eval set might be
+    # mid-rewrite or contain meta-questions
+    too_many_placeholders = n_with_placeholder > len(questions) * 0.2
     return {
-        "ok": len(errors) == 0 and len(questions) >= 15 and len(buckets_seen) >= 6,
+        "ok": (len(errors) == 0
+               and len(questions) >= 15
+               and len(buckets_seen) >= 6
+               and not too_many_placeholders),
         "n_questions": len(questions),
         "buckets_covered": sorted(buckets_seen),
         "buckets_missing": sorted(set(EVAL_BUCKETS) - buckets_seen),
-        "has_placeholder_questions": has_placeholder,
+        "questions_with_placeholders": n_with_placeholder,
         "errors": errors,
     }
 
