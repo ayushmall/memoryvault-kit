@@ -22,8 +22,11 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+# Default install needs zero third-party deps — BM25 + graph-walk + entity
+# lookup are pure stdlib. Extras opt into heavier features.
 answer = ["anthropic>=0.30"]
 http = ["starlette>=0.37", "uvicorn>=0.30"]
+dense = ["numpy>=1.24", "sentence-transformers>=2.5"]
 dev = ["pytest", "ruff"]
 
 [project.scripts]

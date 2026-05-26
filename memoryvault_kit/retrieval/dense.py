@@ -25,7 +25,16 @@ import time
 from pathlib import Path
 from collections import defaultdict
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    raise ImportError(
+        "Dense retrieval requires numpy. Install it with:\n"
+        "    pip install numpy\n"
+        "Or install the optional dense-retrieval extras:\n"
+        "    pip install memoryvault-kit[dense]\n"
+        "BM25 + graph-walk retrieval (the default kit path) does NOT need numpy."
+    ) from None
 
 from memoryvault_kit.retrieval.bm25 import (
     build_index, load_memories, retrieve as bm25_retrieve, parse_memory,

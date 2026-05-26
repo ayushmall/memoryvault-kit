@@ -32,11 +32,38 @@ from collections import defaultdict
 
 # ─── Vault root + lazy retrieval imports ────────────────────────────
 
-VAULT = Path(os.environ.get("MEMORYVAULT_ROOT") or next(
-    (p for p in [Path(__file__).resolve(), *Path(__file__).resolve().parents]
-     if (p / "memories").is_dir() and (p / "entities").is_dir()),
-    Path.home() / "MemoryVault",
-))
+
+def _resolve_vault_root() -> Path:
+    """Find the vault directory.
+
+    Priority:
+      1. $MEMORYVAULT_ROOT if it's a real (non-literal) path
+      2. The first ancestor of this file that contains memories/ + entities/
+      3. ~/MemoryVault (auto-created if missing — safe default for new users)
+
+    Guards against the literal-${VAR} bug: some MCP loaders (incl. Claude
+    Code's plugin loader at one point) pass `"${MEMORYVAULT_ROOT}"` as the
+    env *value* — Python's os.environ then sees the literal string with the
+    dollar+braces, and naive Path() use creates `${MEMORYVAULT_ROOT}/` as a
+    real directory under cwd. Detect + ignore that.
+    """
+    raw = os.environ.get("MEMORYVAULT_ROOT")
+    if raw and "${" not in raw and "$(" not in raw:
+        return Path(raw).expanduser()
+
+    # Walk up from this file looking for a vault-shaped dir
+    here = Path(__file__).resolve()
+    for p in [here, *here.parents]:
+        if (p / "memories").is_dir() and (p / "entities").is_dir():
+            return p
+
+    # Default: ~/MemoryVault. Create on first use so a fresh install just works.
+    default = Path.home() / "MemoryVault"
+    default.mkdir(parents=True, exist_ok=True)
+    return default
+
+
+VAULT = _resolve_vault_root()
 KIT_ROOT = Path(__file__).resolve().parent
 
 _GRAPH_WALK = None
@@ -95,7 +122,7 @@ def tool_memory_annotate(synthesis: str, source_memory_ids: list[str],
     if not source_memory_ids:
         return {"error": "source_memory_ids required — annotations must link to memories"}
 
-    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    vault = _resolve_vault_root()
     mem_dir = vault / "memories" / "2026"
     mem_dir.mkdir(parents=True, exist_ok=True)
 
@@ -143,7 +170,7 @@ def tool_memory_get(memory_id: str) -> dict:
     """Fetch full body + frontmatter for a single memory."""
     from pathlib import Path
     import re
-    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    vault = _resolve_vault_root()
     path = vault / "memories" / "2026" / f"{memory_id}.md"
     if not path.exists():
         return {"id": memory_id, "error": "not_found"}
@@ -184,7 +211,7 @@ def tool_memory_update(memory_id: str, updates: dict) -> dict:
     """Partial update of a memory's frontmatter or body. Preserves id + created."""
     from pathlib import Path
     import re
-    vault = Path(os.environ.get("MEMORYVAULT_ROOT") or (Path.home() / "MemoryVault"))
+    vault = _resolve_vault_root()
     path = vault / "memories" / "2026" / f"{memory_id}.md"
     if not path.exists():
         return {"id": memory_id, "error": "not_found"}
