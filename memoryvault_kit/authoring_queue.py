@@ -168,7 +168,7 @@ def mark_processed(items: list[dict], resolution: str = "") -> int:
 
 
 def summarize() -> dict:
-    """Stats for `mv doctor`."""
+    """Stats for `memory doctor`."""
     pending = load_pending(days_back=30)
     from collections import Counter
     by_kind = Counter(item["kind"] for item in pending)

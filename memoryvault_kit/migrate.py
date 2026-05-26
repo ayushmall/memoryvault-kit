@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-`mv migrate` — idempotent backfill chain for existing vaults.
+`memory migrate` — idempotent backfill chain for existing vaults.
 
 For users who installed the kit before these features landed, this
 runs the full heal + enrichment chain in a single command. Each step
@@ -21,12 +21,12 @@ Steps (in order, each step depends on the previous):
 9. `coverage_gaps` — detect + write gap memories
 10. `enrich_gaps` — programmatic class-specific narratives
 
-After: runs `mv eval --quick` to report new baseline.
+After: runs `memory eval --quick` to report new baseline.
 
 Usage:
-    mv migrate                # dry-run: shows what each step would do
-    mv migrate --apply        # actually run the chain
-    mv migrate --apply --quick  # skip the slow eval at the end
+    memory migrate                # dry-run: shows what each step would do
+    memory migrate --apply        # actually run the chain
+    memory migrate --apply --quick  # skip the slow eval at the end
 """
 from __future__ import annotations
 
@@ -133,7 +133,7 @@ def main():
     args = ap.parse_args()
 
     print("=" * 65)
-    print(f"  mv migrate {'(--apply)' if args.apply else '(dry-run)'}")
+    print(f"  memory migrate {'(--apply)' if args.apply else '(dry-run)'}")
     print(f"  vault: {VAULT}")
     print("=" * 65)
 
@@ -166,7 +166,7 @@ def main():
 
     if args.apply and not args.quick and n_fail == 0:
         print("\n" + "=" * 65)
-        print("  Running mv eval to verify…")
+        print("  Running memory eval to verify…")
         print("=" * 65)
         subprocess.run([sys.executable, "-m", "memoryvault_kit.eval", "--quick"],
                        env={**os.environ, "MEMORYVAULT_ROOT": str(VAULT),

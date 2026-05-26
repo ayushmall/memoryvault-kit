@@ -17,9 +17,9 @@ contents without an explicit flag.
                 file in the repo root. Not implemented in v1.
 
 Usage:
-    mv ingest-code <repo_path_or_github_url> --prs --max 50
-    mv ingest-code . --metadata
-    mv ingest-code github.com/ayushmall/memoryvault-kit --prs
+    memory ingest-code <repo_path_or_github_url> --prs --max 50
+    memory ingest-code . --metadata
+    memory ingest-code github.com/ayushmall/memoryvault-kit --prs
 
 What gets written to the vault:
     entities/projects/<repo-slug>.md      — one entity per repo

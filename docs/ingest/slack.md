@@ -9,7 +9,7 @@ MCP and writes memories via `memory_save`. The kit ships
 
 - Slack MCP server installed in your client
 - The skill `slack-channel-digest` is loaded (auto with `--tier full`)
-- Vault has `entities/surfaces/` directory (created by `mv setup`)
+- Vault has `entities/surfaces/` directory (created by `memory setup`)
 
 ## What it captures
 

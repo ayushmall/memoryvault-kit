@@ -93,7 +93,7 @@ not wikilinked, and the graph walk can't bridge to them later.
 ✓ `entities: ["[[North River]]", "[[Lisa Chen]]"]`
 
 If an entity doesn't have a file yet, **create a stub** (the kit auto-handles
-this if you use `mv heal`). Don't drop the mention.
+this if you use `memory heal`). Don't drop the mention.
 
 ### 8. The "why this matters" — preserve significance
 
@@ -298,12 +298,12 @@ authored or reviewed by them), apply this rule only if their name
 appears in title or body. **Conservative:** wikilink only when their
 participation is clear, not when they're a possible bystander.
 
-The `mv heal-user` command runs this backfill on existing vaults that
+The `memory heal-user` command runs this backfill on existing vaults that
 were ingested before this rule.
 
 ### Rule 14 — When ingesting code, link PRs to the product (not just the repo)
 
-Code memories ingested via `mv ingest-code` should be classified into
+Code memories ingested via `memory ingest-code` should be classified into
 **product entities**, not just the repo entity. Configure the
 `<vault>/.mvkit/products/<repo>.json` mapping so PRs touching
 `agents/builder/*` link to `[[Agents]]` not just `[[<your-repo>]]`.

@@ -1,7 +1,7 @@
 ---
 name: memory-refresh
 tier: any
-description: "The recurring entry point for an already-set-up MemoryVault. Triggers on 'refresh memory', 'pull fresh data', 'what is new', 'mv refresh', or just 'refresh' in any session where the kit is installed. Reads the vault state from .mvkit/, pulls deltas from every connected source, heals the graph, runs coverage detection, runs a soft eval, and reports what changed. Same skill works in any fresh chat because state lives in the vault, not the session. For first-time setup, invoke memory-setup instead."
+description: "The recurring entry point for an already-set-up MemoryVault. Triggers on 'refresh memory', 'pull fresh data', 'what is new', 'memory refresh', or just 'refresh' in any session where the kit is installed. Reads the vault state from .mvkit/, pulls deltas from every connected source, heals the graph, runs coverage detection, runs a soft eval, and reports what changed. Same skill works in any fresh chat because state lives in the vault, not the session. For first-time setup, invoke memory-setup instead."
 ---
 
 # memory-refresh — the recurring loop, user-triggered

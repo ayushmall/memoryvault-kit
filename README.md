@@ -41,8 +41,8 @@ pip install -e .
 
 export MEMORYVAULT_ROOT=$(pwd)/examples/tiny_vault
 
-mv version
-mv ask "What does Acme need before they can go to production?"
+memory version
+memory ask "What does Acme need before they can go to production?"
 ```
 
 The example vault has 10 memories about two fictional customers. You should see the kit pull up the right one (SSO and audit logs are the blockers).
@@ -65,7 +65,7 @@ claude plugin install memoryvault-kit@memoryvault-kit
 
 That registers all 18 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, generates an eval set from your real context, and walks you through your first ingest. To keep the vault fresh, you re-invoke `/memory-refresh` whenever you want — there are no background routines (they were removed; see "How authoring works" below).
 
-**Using Cowork (cloud) instead of local Claude Code?** Cowork can't access local files or your installed plugins, so the local-plugin path above doesn't apply. The kit ships a separate skill, `memoryvault-cowork`, that uses Google Drive as the vault substrate. Drop it into your Cowork session as a skill and follow its prompts. The retrieval quality is lower than the local kit (Drive search vs BM25+graph) but it works without a local install. The eventual fix — a small local `mv bridge` that exposes the full kit to Cowork over HTTP — is sketched in [`docs/architecture-bridge.md`](docs/architecture-bridge.md) but not yet shipped.
+**Using Cowork (cloud) instead of local Claude Code?** Cowork can't access local files or your installed plugins, so the local-plugin path above doesn't apply. The kit ships a separate skill, `memoryvault-cowork`, that uses Google Drive as the vault substrate. Drop it into your Cowork session as a skill and follow its prompts. The retrieval quality is lower than the local kit (Drive search vs BM25+graph) but it works without a local install. The eventual fix — a small local `memory bridge` that exposes the full kit to Cowork over HTTP — is sketched in [`docs/architecture-bridge.md`](docs/architecture-bridge.md) but not yet shipped.
 
 After setup, every recurring update happens through `/memory-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
 
@@ -81,18 +81,18 @@ For everything else, the right command is "in a Claude Code session with /memory
 
 ### You probably don't need to know about the CLI
 
-For day-to-day use, `/memory-setup` and `/memory-refresh` cover everything. The slash commands call the CLI internally — `/memory-refresh` runs `mv migrate --apply --quick` (heal), `mv eval --soft` (eval), and the per-source ingest modules under the hood. You shouldn't need to touch any of this.
+For day-to-day use, `/memory-setup` and `/memory-refresh` cover everything. The slash commands call the CLI internally — `/memory-refresh` runs `memory migrate --apply --quick` (heal), `memory eval --soft` (eval), and the per-source ingest modules under the hood. You shouldn't need to touch any of this.
 
 The CLI exists for two cases:
 
-- **CI / scripts** — if you ever want to run a check from a non-Claude shell (cron-on-a-server, GitHub Actions on a vault repo), `mv eval --soft --json` and `mv doctor --json` give you machine-readable output.
-- **Debugging** — when something looks wrong and you want to bypass the agent layer to isolate the issue. `mv doctor` is the first stop; `mv migrate --apply --quick` rebuilds the alias map.
+- **CI / scripts** — if you ever want to run a check from a non-Claude shell (cron-on-a-server, GitHub Actions on a vault repo), `memory eval --soft --json` and `memory doctor --json` give you machine-readable output.
+- **Debugging** — when something looks wrong and you want to bypass the agent layer to isolate the issue. `memory doctor` is the first stop; `memory migrate --apply --quick` rebuilds the alias map.
 
 ```bash
-mv eval --soft           # retrieval coverage number
-mv doctor                # vault health check
-mv migrate --apply --quick   # rebuild alias map + heal links
-mv eval                  # the three-pillar suite (slower)
+memory eval --soft           # retrieval coverage number
+memory doctor                # vault health check
+memory migrate --apply --quick   # rebuild alias map + heal links
+memory eval                  # the three-pillar suite (slower)
 ```
 
 If you don't have any notes yet, run `/memory-setup` — that's the right entry point. The CLI's `python3 -m memoryvault_kit.setup` exists as an escape hatch only.
@@ -130,26 +130,26 @@ There's a coverage step inside `/memory-refresh` that watches the graph for stru
 Three numbers, one command:
 
 ```bash
-mv eval
+memory eval
 ```
 
 - `fill_quality` is a 0-1 score for how well memories are written (entities linked, dates exact, decisions named, etc.)
 - `pollution_rate` is the fraction of wikilinks that are peripheral mentions rather than structural participants
 - `consistency` checks that the lean retrieval tier returns a strict subset of what the full tier returns, so switching tiers doesn't change behavior unpredictably
 
-`/memory-refresh` runs the soft eval (`mv eval --soft`) inline at the end of every refresh so you see retrieval health each time you run it. The fuller three-pillar `mv eval` is on-demand — run when you suspect quality has shifted. The heal chain (rebuild alias map, connect entities, split mentions, in-degree) is also folded into every `/memory-refresh`, so a single user-present invocation does the lot. If retrieval quality drops, there's a playbook at `docs/eval-playbook.md` that lists the structural things to check before tuning anything.
+`/memory-refresh` runs the soft eval (`memory eval --soft`) inline at the end of every refresh so you see retrieval health each time you run it. The fuller three-pillar `memory eval` is on-demand — run when you suspect quality has shifted. The heal chain (rebuild alias map, connect entities, split mentions, in-degree) is also folded into every `/memory-refresh`, so a single user-present invocation does the lot. If retrieval quality drops, there's a playbook at `docs/eval-playbook.md` that lists the structural things to check before tuning anything.
 
-`mv doctor --eval-recovery` walks the same checks on demand.
+`memory doctor --eval-recovery` walks the same checks on demand.
 
 ### Eval strategies, in plain English
 
 | Tool | What it does | When to use |
 |---|---|---|
-| `mv eval` | Three-pillar score (fill_quality + pollution + consistency) | Weekly, regression check |
-| `mv eval --soft` | Coverage: % of questions returning ≥2 results scoring ≥5. No gold annotations required | During `/memory-refresh`, fast |
-| `mv eval init --from-vault` | Generate a starter eval set from your actual vault content | Day 0, after first ingest |
-| `mv doctor --eval-recovery` | 5 structural checks before the eval runs | Before you blame the retriever |
-| `mv doctor --signal-quality` | Per-source ingest-vs-retrieval noise ratio | Weekly, finds noisy sources |
+| `memory eval` | Three-pillar score (fill_quality + pollution + consistency) | Weekly, regression check |
+| `memory eval --soft` | Coverage: % of questions returning ≥2 results scoring ≥5. No gold annotations required | During `/memory-refresh`, fast |
+| `memory eval init --from-vault` | Generate a starter eval set from your actual vault content | Day 0, after first ingest |
+| `memory doctor --eval-recovery` | 5 structural checks before the eval runs | Before you blame the retriever |
+| `memory doctor --signal-quality` | Per-source ingest-vs-retrieval noise ratio | Weekly, finds noisy sources |
 | `/memory-graph-audit` | Walks you through Obsidian's graph view to catch what code can't see | Weekly visual pass |
 | `evals/retrieval/retrievers/*.py` | Run a specific retriever variant against the 482-Q hardened set | When you're testing a retrieval change |
 
@@ -161,9 +161,9 @@ The combination matters. Soft coverage is fast but shallow. Three-pillar is rigo
 
 ### Tuning without editing code
 
-If `mv eval` shows a weakness in some bucket and you want to try a fix, you have two paths:
+If `memory eval` shows a weakness in some bucket and you want to try a fix, you have two paths:
 
-**Config knobs first.** Copy `.mvkit/retrieval_config.example.json` to `.mvkit/retrieval_config.json` and edit. The retrieval modules read from there with fallbacks to code defaults. You can adjust BM25 weights, graph-walk boosts, the D7 canonical-first sort, soft-coverage thresholds, or switch retriever variants — all without touching Python. Re-run `mv eval` to see the effect.
+**Config knobs first.** Copy `.mvkit/retrieval_config.example.json` to `.mvkit/retrieval_config.json` and edit. The retrieval modules read from there with fallbacks to code defaults. You can adjust BM25 weights, graph-walk boosts, the D7 canonical-first sort, soft-coverage thresholds, or switch retriever variants — all without touching Python. Re-run `memory eval` to see the effect.
 
 **Code edits when the algorithm needs to change.** If the knob you need doesn't exist, the algorithm itself needs the change. Edit `memoryvault_kit/retrieval/*.py` directly. The kit's code is on your filesystem, you own it. Re-run eval to verify the change helped.
 
@@ -232,7 +232,7 @@ What I can say with confidence:
 
 What I cannot say:
 
-- Whether the kit will work as well on your vault. Generate your own eval set via `mv eval init --from-vault` and find out.
+- Whether the kit will work as well on your vault. Generate your own eval set via `memory eval init --from-vault` and find out.
 - Whether the eval set is unbiased. It isn't (see `docs/eval_methodology.md` for the explicit biases — vault-shape, question-writer, gold-label).
 
 Iterate on your own numbers, not the maintainer's.

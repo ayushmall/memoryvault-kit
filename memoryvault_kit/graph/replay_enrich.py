@@ -19,7 +19,7 @@ Run:
     python3 -m memoryvault_kit.graph.replay_enrich --json
     python3 -m memoryvault_kit.graph.replay_enrich --days 14
 
-The `mv doctor` command also picks up this summary if available.
+The `memory doctor` command also picks up this summary if available.
 """
 from __future__ import annotations
 

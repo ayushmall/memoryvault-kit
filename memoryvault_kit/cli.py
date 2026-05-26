@@ -56,7 +56,7 @@ def find_vault() -> Path:
         return fallback
 
     sys.stderr.write(
-        "error: no vault found. Run `mv init <path>` to create one, "
+        "error: no vault found. Run `memory init <path>` to create one, "
         "or `export MEMORYVAULT_ROOT=<path>` to point at an existing vault.\n"
     )
     sys.exit(2)
@@ -116,7 +116,7 @@ def cmd_init(args):
 def cmd_ask(args):
     """Retrieve memories for a question."""
     vault = find_vault()
-    # Lazy import so `mv init` works without the kit being fully wired
+    # Lazy import so `memory init` works without the kit being fully wired
     sys.path.insert(0, str(retrieval_dir()))
     sys.path.insert(0, str(graph_dir()))
 
@@ -350,12 +350,12 @@ def cmd_refresh(args):
         ).returncode
 
     # Fallback: clear instructions
-    print("`mv refresh` requires an agent runtime — either Claude Code CLI or a")
+    print("`memory refresh` requires an agent runtime — either Claude Code CLI or a")
     print("scheduled remote routine. Pick one:\n")
     print("  Option A (local cron + Claude Code):")
     print("     1. Install Claude Code: https://docs.claude.com/en/docs/claude-code")
     print("     2. Run: `mv schedule local --time 06:00 --write`")
-    print("     3. Re-run `mv refresh` — it'll now find the `claude` CLI\n")
+    print("     3. Re-run `memory refresh` — it'll now find the `claude` CLI\n")
     print("  Option B (Anthropic-hosted scheduled routine):")
     print("     `mv schedule remote` and follow the printed config\n")
     print("  Option C (manual — paste prompt into any Claude session):")
@@ -432,12 +432,22 @@ def cmd_mcp(args):
 
 
 def cmd_eval(args):
-    """Eval set management: init seeds a starter file, run scores it, add appends.
-    pipeline computes end-to-end quality = capture × fidelity × retrieval."""
+    """Eval: bare `memory eval` runs the three-pillar suite; `memory eval --soft`
+    runs only the soft-coverage measure. Subcommands (init/run/add/pipeline)
+    manage the eval set itself."""
     vault = find_vault()
     eval_dir = vault / "evals" / "retrieval"
     questions_path = eval_dir / "questions.jsonl"
     results_log = vault / "evals" / "results_log.jsonl"
+
+    # Bare `memory eval` / `memory eval --soft` → delegate to the eval module.
+    if args.action is None:
+        eval_args = []
+        if getattr(args, "soft", False): eval_args.append("--soft")
+        if getattr(args, "quick", False): eval_args.append("--quick")
+        if getattr(args, "quiet", False): eval_args.append("--quiet")
+        if getattr(args, "json", False): eval_args.append("--json")
+        return run_module(Path(__file__).parent / "eval" / "__main__.py", eval_args)
 
     if args.action == "pipeline":
         # Delegate to the pipeline module
@@ -473,7 +483,7 @@ def cmd_eval(args):
             for bucket, count in c.most_common():
                 print(f"  {bucket:<25} {count}")
             print()
-            print(f"Run `mv eval run` to score them against your retriever.")
+            print(f"Run `memory eval run` to score them against your retriever.")
             return 0
 
         # Default: placeholder templates (legacy)
@@ -495,13 +505,13 @@ def cmd_eval(args):
             for q in seed:
                 f.write(json.dumps(q) + "\n")
         print(f"Wrote 3 starter templates to {questions_path}")
-        print(f"Edit them, or run `mv eval init --from-vault` to auto-generate "
+        print(f"Edit them, or run `memory eval init --from-vault` to auto-generate "
               f"real questions from your memories.")
         return 0
 
     if args.action == "run":
         if not questions_path.exists():
-            sys.stderr.write(f"error: no eval set at {questions_path}. Run `mv eval init` first.\n")
+            sys.stderr.write(f"error: no eval set at {questions_path}. Run `memory eval init` first.\n")
             return 1
         # Build retriever output, then score
         retriever = args.retriever or "graph"
@@ -567,7 +577,7 @@ def cmd_eval(args):
     if args.action == "add":
         # Interactive add — keep it simple
         if not questions_path.exists():
-            sys.stderr.write(f"error: run `mv eval init` first\n"); return 1
+            sys.stderr.write(f"error: run `memory eval init` first\n"); return 1
         # Count existing to suggest next id
         existing = [json.loads(l) for l in questions_path.read_text().splitlines() if l.strip()]
         next_id = f"q{len(existing)+1:03d}"
@@ -757,7 +767,16 @@ def main():
     s.set_defaults(fn=cmd_mcp)
 
     s = sub.add_parser("eval", help="eval set tools")
-    s.add_argument("action", choices=["init", "run", "add", "pipeline"])
+    # action is the historical subcommand selector (init/run/add/pipeline);
+    # made optional so plain `memory eval` + `memory eval --soft` work as documented
+    s.add_argument("action", choices=["init", "run", "add", "pipeline"], nargs="?", default=None)
+    s.add_argument("--soft", action="store_true",
+                   help="run only the soft-coverage measure (no gold annotations required); "
+                        "equivalent to `python3 -m memoryvault_kit.eval --soft`")
+    s.add_argument("--quick", action="store_true",
+                   help="skip slow checks (consistency); used with the full suite")
+    s.add_argument("--quiet", action="store_true",
+                   help="suppress chatty output (for scripts)")
     s.add_argument("--retriever", choices=["bm25", "graph"], help="for `run`")
     s.add_argument("--log", action="store_true", help="for `run`: append to results_log.jsonl")
     # init-specific

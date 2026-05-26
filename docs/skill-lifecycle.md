@@ -15,11 +15,11 @@ Runs end-to-end:
 |---|---|---|
 | 1 | Read `connected_sources.json` + per-source last-ingest timestamps | — |
 | 2 | Pull deltas across every enabled source | `memory-master-ingest` (dispatches per source) |
-| 3 | Heal chain — rebuild alias map, connect entities, split mentions, in-degree, discover surfaces, coverage gaps | — (pure CLI: `mv migrate --apply --quick`) |
+| 3 | Heal chain — rebuild alias map, connect entities, split mentions, in-degree, discover surfaces, coverage gaps | — (pure CLI: `memory migrate --apply --quick`) |
 | 4 | Doctor checks — eval-recovery, signal-quality | — |
 | 4b | Drain the authoring queue — async signal from consumption (memory_ask, memory_get) | `memory-stub-enricher`, `memory-deep-dive` |
 | 4c | Bootstrap low-info entities touched by new activity | `memory-entity-bootstrap` |
-| 5 | Soft eval — soft-coverage number, trended against history | — (CLI: `mv eval --soft`) |
+| 5 | Soft eval — soft-coverage number, trended against history | — (CLI: `memory eval --soft`) |
 | 6 | Write `mem_REFRESH_<ts>.md` report | — |
 
 Cap on Step 4b: 10 items per refresh. Re-run `/memory-refresh` to drain more.
@@ -39,10 +39,10 @@ Cap on Step 4b: 10 items per refresh. Re-run `/memory-refresh` to drain more.
 These are the same operations exposed as bash, not slash commands. `/memory-refresh` wraps them.
 
 ```bash
-mv eval --soft                 # the soft-coverage measure
-mv migrate --apply --quick     # the heal chain
-mv doctor --eval-recovery      # diagnose-and-fix
-mv eval                        # the three-pillar suite
+memory eval --soft                 # the soft-coverage measure
+memory migrate --apply --quick     # the heal chain
+memory doctor --eval-recovery      # diagnose-and-fix
+memory eval                        # the three-pillar suite
 ```
 
 ## What's NOT here anymore

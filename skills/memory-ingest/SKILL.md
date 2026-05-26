@@ -10,9 +10,9 @@ For bulk import or one-off file ingestion, use the shell command rather than
 an MCP tool:
 
 ```bash
-mv ingest --folder ~/Documents/old-notes/ --dry-run     # preview
-mv ingest --folder ~/Documents/old-notes/               # actually write
-mv ingest --file ~/path/to/single-note.md
+memory ingest --folder ~/Documents/old-notes/ --dry-run     # preview
+memory ingest --folder ~/Documents/old-notes/               # actually write
+memory ingest --file ~/path/to/single-note.md
 ```
 
 ## What the kit does for each file

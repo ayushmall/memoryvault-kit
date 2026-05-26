@@ -27,11 +27,11 @@
       "Bash(python3 -m memoryvault_kit.graph.coverage_gaps *)",
       "Bash(python3 -m memoryvault_kit.graph.enrich_gaps *)",
 
-      "Bash(mv ask *)",
-      "Bash(mv doctor *)",
-      "Bash(mv eval *)",
-      "Bash(mv migrate *)",
-      "Bash(mv refresh *)"
+      "Bash(memory ask *)",
+      "Bash(memory doctor *)",
+      "Bash(memory eval *)",
+      "Bash(memory migrate *)",
+      "Bash(memory refresh *)"
     ]
   }
 }

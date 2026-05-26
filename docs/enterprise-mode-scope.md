@@ -1,4 +1,4 @@
-# `mv init --enterprise` — scoping doc
+# `memory init --enterprise` — scoping doc
 
 > Design proposal. NOT YET IMPLEMENTED. Required before any enterprise pitch.
 > Derived from `SECURITY_REVIEW.md` threat model.
@@ -21,7 +21,7 @@
 ## CLI surface
 
 ```bash
-mv init --enterprise ~/WorkVault
+memory init --enterprise ~/WorkVault
 
 # Refuses unless:
 #   - FileVault / BitLocker on
@@ -38,17 +38,17 @@ mv init --enterprise ~/WorkVault
 After init:
 
 ```bash
-mv refresh             # uses enterprise blocklist + redaction
-mv ask 'question'      # logged to audit.log; respects sensitivity restrictions
+memory refresh             # uses enterprise blocklist + redaction
+memory ask 'question'      # logged to audit.log; respects sensitivity restrictions
 mv purge --employer X  # at departure time, wipes employer-tagged memories
-mv audit-log show      # review retrievals
+memory audit-log show      # review retrievals
 ```
 
 ## Required engineering work
 
 | component | est. effort | rationale |
 |---|---|---|
-| `mv init --enterprise` mode flag + config | 4-6h | argparse + new config file format |
+| `memory init --enterprise` mode flag + config | 4-6h | argparse + new config file format |
 | FileVault / BitLocker detection | 2h | platform-specific shell commands |
 | Auto-sync path detection | 2h | check against `~/iCloud`, `~/Google Drive`, etc. |
 | PII redaction at ingest | 8-12h | regex patterns + tests; consider Microsoft Presidio for the hard cases |

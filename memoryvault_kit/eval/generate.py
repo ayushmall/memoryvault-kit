@@ -16,8 +16,8 @@ shipping the full 513-line reverse-design pipeline):
 Default: ~30 questions total. Configurable via `--n`.
 
 Run:
-    mv eval init --from-vault         # generates + writes
-    mv eval init --from-vault --n 50  # bigger starter set
+    memory eval init --from-vault         # generates + writes
+    memory eval init --from-vault --n 50  # bigger starter set
 """
 from __future__ import annotations
 
@@ -232,7 +232,7 @@ def main():
     for bucket, n in c.most_common():
         print(f"    {bucket:<25} {n}")
     print()
-    print(f"Run `mv eval run` to score them against your retriever.")
+    print(f"Run `memory eval run` to score them against your retriever.")
     return 0
 
 

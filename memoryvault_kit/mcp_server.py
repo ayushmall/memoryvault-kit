@@ -643,7 +643,7 @@ TOOLS = [
             "LIFECYCLE HINT: memories with `event_date: null` are stateful facts (references, "
             "relationships, user_facts) that don't appear in recency listings by design — "
             "use `memory_search_entity` or `memory_ask` to find those. If `memory_recent` "
-            "comes back sparser than expected, check `mv doctor` to see latest event_date per "
+            "comes back sparser than expected, check `memory doctor` to see latest event_date per "
             "source — a stalled ingest is the usual cause."
         ),
         "inputSchema": {
@@ -669,7 +669,7 @@ TOOLS = [
             "- Low pct_with_entities → ingest is silently dropping wikilinks; check the "
             "authoring rules in `docs/memory-playbooks/`\n"
             "For richer health info (per-source recency, coverage gaps, eval scores) use "
-            "`mv doctor` from the CLI."
+            "`memory doctor` from the CLI."
         ),
         "inputSchema": {"type": "object", "properties": {}},
     },

@@ -6,7 +6,7 @@
 ## Day-0: install and setup
 
 ```
-mv setup                    # interactive — picks tier, scaffolds vault, asks org
+memory setup                    # interactive — picks tier, scaffolds vault, asks org
 # (or)
 python3 -m memoryvault_kit.setup --tier full
 ```
@@ -24,7 +24,7 @@ What happens:
 Pick a source you have a working MCP for. Calendar is the easiest start:
 
 ```
-mv ingest calendar          # pulls events into mem_INGEST_CAL_*.md
+memory ingest calendar          # pulls events into mem_INGEST_CAL_*.md
 ```
 
 This creates memories. They link to people/companies/projects via wikilinks.
@@ -84,7 +84,7 @@ Once set up, the loop is:
 3. **Re-run coverage_gaps + enrich_gaps** (idempotent — new gaps surface, old ones stay)
 4. **Use the kit**: `memory_ask` for retrieval. When a query comes back thin, the MCP auto-logs a feedback memory. When you save a new memory that fills a gap, mark the gap superseded.
 
-Re-run `mv doctor` weekly to see metrics trend.
+Re-run `memory doctor` weekly to see metrics trend.
 
 ## The compounding-quality loop
 

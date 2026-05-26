@@ -62,7 +62,7 @@ def _set_nested(d: dict, dotted: str, value):
 
 
 def _measure_soft_coverage() -> float:
-    """Run mv eval --soft and return retrieval_coverage.
+    """Run memory eval --soft and return retrieval_coverage.
 
     Tuning targets `retrieval_coverage` (non-abstention questions) since
     that's what config changes actually move. Abstention discipline is

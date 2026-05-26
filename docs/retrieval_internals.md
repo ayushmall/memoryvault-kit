@@ -1,6 +1,6 @@
 # Retrieval internals
 
-How `mv ask` actually finds memories. Two stages — BM25 over the body text,
+How `memory ask` actually finds memories. Two stages — BM25 over the body text,
 then a graph walk over the entity edges to surface multi-hop neighbors.
 Importance multiplier on top. No vector embeddings (yet).
 
@@ -260,13 +260,13 @@ saved another 0.02 R@5.
 - **No abstention layer in retrieval.** My experiments showed both score-
   threshold abstainers and LLM judges are net-negative — they kill R@5 more
   than they help abstain rate. The abstention call belongs in the *answer*
-  layer (`mv ask --answer`), not retrieval.
+  layer (`memory ask --answer`), not retrieval.
 
 ---
 
 ## Reading the score breakdown
 
-`mv ask` prints `bm25=X.XX  graph=+Y.YY` for each result. Use it to debug
+`memory ask` prints `bm25=X.XX  graph=+Y.YY` for each result. Use it to debug
 unexpected rankings:
 
 ```
@@ -291,8 +291,8 @@ All the constants are at the top of `graph_walk.py:retrieve()`. To tune for
 your vault:
 
 1. **Build your eval set** (`docs/eval_methodology.md`)
-2. **Run baseline:** `mv eval run --retriever bm25` — sets the floor
-3. **Run current:** `mv eval run --retriever graph` — sets the ceiling
+2. **Run baseline:** `memory eval run --retriever bm25` — sets the floor
+3. **Run current:** `memory eval run --retriever graph` — sets the ceiling
 4. **Sweep one constant at a time.** Don't tune all three boosts together;
    you won't know what moved the metric.
 5. **Watch per-bucket scores, not just average.** A change that lifts average

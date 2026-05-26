@@ -29,7 +29,7 @@ Example::
     }
 
 A reference template ships at `.mvkit/org.example.json`. Users edit it
-during `mv setup`.
+during `memory setup`.
 """
 from __future__ import annotations
 

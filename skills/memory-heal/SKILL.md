@@ -17,11 +17,11 @@ Runs three operations against the vault, all idempotent:
 Tell the user you're going to heal, then ask if they want a dry-run first:
 
 ```
-I'm going to run mv heal to fix vault hygiene issues. Want a dry-run first
+I'm going to run memory heal to fix vault hygiene issues. Want a dry-run first
 to see what would change, or apply directly?
 ```
 
-Then run `mv heal` for dry-run or `mv heal --apply` to commit. This isn't an
+Then run `memory heal` for dry-run or `memory heal --apply` to commit. This isn't an
 MCP tool call — it's a shell command the user (or you, with their permission)
 should execute.
 

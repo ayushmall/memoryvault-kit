@@ -1,12 +1,12 @@
 ---
 name: memory-graph-audit
 tier: any
-description: "Walk the user through a visual audit of their vault using Obsidian's graph view. Triggers on 'audit my graph', 'check structure', 'walk through vault visually', 'find graph issues', 'mv graph audit'. Some structural problems (orphan entities, duplicate-spelling entities, broken clusters, missing champions, dead wikilinks) are visible at a glance in Obsidian but invisible to the eval set. This skill gives the user a checklist of what to look for, captures their observations as actionable feedback memories, and accepts screenshots if they want to flag something visual. Pairs the model's structural checks (mv doctor) with human visual pattern-matching."
+description: "Walk the user through a visual audit of their vault using Obsidian's graph view. Triggers on 'audit my graph', 'check structure', 'walk through vault visually', 'find graph issues', 'mv graph audit'. Some structural problems (orphan entities, duplicate-spelling entities, broken clusters, missing champions, dead wikilinks) are visible at a glance in Obsidian but invisible to the eval set. This skill gives the user a checklist of what to look for, captures their observations as actionable feedback memories, and accepts screenshots if they want to flag something visual. Pairs the model's structural checks (memory doctor) with human visual pattern-matching."
 ---
 
 # memory-graph-audit — pair the user's eyes with the doctor's checks
 
-`mv doctor` finds structural issues from code. `mv eval` measures
+`memory doctor` finds structural issues from code. `memory eval` measures
 retrieval quality from a question set. Neither catches what's obvious
 when you open the vault in Obsidian and just look:
 
@@ -89,7 +89,7 @@ input to `build_alias_map.py` — add the suspected alias as an
 > entity is somehow in the top 5 by edge count, something's
 > over-linking to it."
 
-What to capture: any surprising hub. Run `mv doctor --signal-quality`
+What to capture: any surprising hub. Run `memory doctor --signal-quality`
 to verify ingest balance, OR mark the hub for review with
 `mem_QUALITY_unexpected-hub-<slug>.md`.
 
@@ -153,8 +153,8 @@ the alias_map entries directly, want me to?
 
 ## What this skill is NOT for
 
-- Generating eval questions (use `mv eval init --from-vault`)
-- Computing structural metrics (use `mv doctor`)
+- Generating eval questions (use `memory eval init --from-vault`)
+- Computing structural metrics (use `memory doctor`)
 - Actually fixing things autonomously (this is a capture skill —
   fixes happen via memory_update, alias_map edits, or stub-enricher)
 

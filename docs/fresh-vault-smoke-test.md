@@ -8,11 +8,11 @@ and what should be fixed before a 1.0 cut.
 
 | Step | Result |
 |---|---|
-| `mv setup --non-interactive --tier full` | ✓ Created 9 directories + profile.json + alias_map.json + org.example.json template. Printed clear "what's next" with per-source ingest commands. |
+| `memory setup --non-interactive --tier full` | ✓ Created 9 directories + profile.json + alias_map.json + org.example.json template. Printed clear "what's next" with per-source ingest commands. |
 | Manual seed: 5 entities (1 vault owner + 1 teammate + 1 customer + 1 project + 1 team) + 6 memories (decision/event/relationship/project_fact ×2/preference) | ✓ |
-| `mv migrate --apply --quick` | ✓ 9/9 steps OK in <1s. backfill_event_date, fix_event_date_semantics, build_alias_map, connect_entities, split_mentions, in_degree, discover_surfaces, coverage_gaps, enrich_gaps all clean. |
-| `mv eval` | fill_quality **0.765** [B] · pollution **0.0%** [A] · Lean⊆Full **0/12** [A]. **2/3 evals at A grade**, fill_quality drops because the test set leans on preference/relationship types which score harder than decisions. |
-| `mv doctor --quick` | ✓ Inventory · profile=full · org=unset · 7 memories · 5 entity kinds · 0 hubs (correct for tiny vault) · 1 open gap · per-source recency dates. |
+| `memory migrate --apply --quick` | ✓ 9/9 steps OK in <1s. backfill_event_date, fix_event_date_semantics, build_alias_map, connect_entities, split_mentions, in_degree, discover_surfaces, coverage_gaps, enrich_gaps all clean. |
+| `memory eval` | fill_quality **0.765** [B] · pollution **0.0%** [A] · Lean⊆Full **0/12** [A]. **2/3 evals at A grade**, fill_quality drops because the test set leans on preference/relationship types which score harder than decisions. |
+| `memory doctor --quick` | ✓ Inventory · profile=full · org=unset · 7 memories · 5 entity kinds · 0 hubs (correct for tiny vault) · 1 open gap · per-source recency dates. |
 | Coverage analyzer | Correctly detected G4 ("Who leads Engineering Team?") — the team entity file lacks a "leads" body signal even though a relationship memory provides the answer. Real finding, not a false positive. |
 | Tree walk (`tree_walk children example-widgets`) | ✓ Returned 1 child memory (the PR memory linked via `parent_surface`). |
 
@@ -37,11 +37,11 @@ and what should be fixed before a 1.0 cut.
 
 **Cause:** the reranker model is slow to load + small corpus means BM25 alone picks suboptimal ranking. With more memories + reranker warmed, this would correct.
 
-**Fix:** in `mv setup` output, recommend Lean tier for the first ~50 memories (faster + same ordering invariant holds), upgrade to Full once vault grows past ~100 memories.
+**Fix:** in `memory setup` output, recommend Lean tier for the first ~50 memories (faster + same ordering invariant holds), upgrade to Full once vault grows past ~100 memories.
 
 ## What this validates
 
-- **The full lifecycle runs end-to-end on a fresh vault** without any manual fiddling. mv setup → seed → migrate → eval → doctor → mcp, zero errors across 9 lifecycle scripts + 3 evals + the MCP server.
+- **The full lifecycle runs end-to-end on a fresh vault** without any manual fiddling. memory setup → seed → migrate → eval → doctor → mcp, zero errors across 9 lifecycle scripts + 3 evals + the MCP server.
 - **Coverage gap detection works in a tiny vault** — the analyzer found 1 legitimate gap (Engineering Team leadership) with zero obvious false positives.
 - **Tree walk works** — `parent_surface:` set at memory-author time flows through to surface-anchored retrieval, even with one memory under one surface.
 - **Doctor + eval give a clean baseline immediately** — no need to wait for a heavily-used vault to start measuring.

@@ -140,12 +140,12 @@ queues but breaks down because:
 
 | Agent | Status | What it owns |
 |---|---|---|
-| `memory-heal-agent` | NEW | The heal chain (was inside `mv migrate`) — pure local; nightly |
+| `memory-heal-agent` | NEW | The heal chain (was inside `memory migrate`) — pure local; nightly |
 | `memory-coverage-agent` | NEW | `coverage_gaps.py` + `enrich_gaps.py` — gap detection + initial enrichment |
 | `memory-queue-router` | refactor of `memory-authoring-cycle` | Classify queue items, dispatch — no doing |
 | `memory-deep-dive` | NEW | Take a deep-dive task, call the right native MCP, synthesize |
 | `memory-stub-enricher` | NEW | Take an enrich-stub task, write grounded narrative |
-| `memory-eval-runner` | NEW (wraps existing `mv eval`) | Run the suite + track trend |
+| `memory-eval-runner` | NEW (wraps existing `memory eval`) | Run the suite + track trend |
 | `memory-ingest-*` | EXISTING | Per-source ingest (linear, notion, code) — already split this way |
 
 ### Optional / not yet built

@@ -3,7 +3,7 @@
 Pre-write quality checks for memories.
 
 The user-visible promise: every time a memory is created — by an LLM via the
-MCP `memory_save` tool, by `mv ingest`, or by the daily refresh agent — these
+MCP `memory_save` tool, by `memory ingest`, or by the daily refresh agent — these
 checks run BEFORE the file lands. Errors block; warnings inform.
 
 What each check guards against:

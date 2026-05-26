@@ -3,7 +3,7 @@
 Intelligent eval-set generation — uses the session's actual understanding
 of the user instead of sampling from the vault.
 
-The problem with `mv eval init --from-vault`:
+The problem with `memory eval init --from-vault`:
   Questions are generated FROM the vault's content. Retrieval is then
   measured against those questions. The questions are guaranteed
   answerable because they were derived from the answers. That's circular

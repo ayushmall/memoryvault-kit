@@ -197,7 +197,7 @@ This is the compounding-quality loop driven by *use*: queries that
 mattered get richer over time. The kit doesn't need to predict what
 you'll ask; the consuming agent fills the gap on demand.
 
-## When `mv doctor` matters mid-conversation
+## When `memory doctor` matters mid-conversation
 
 If retrievals are consistently weak across a session, call
 `memory_tree_walk` first to understand the vault's structure before

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-`mv setup` — guided first-run flow.
+`memory setup` — guided first-run flow.
 
 Encodes the implicit sequence a fresh user has no map for:
 
@@ -14,8 +14,8 @@ Designed to be safe to re-run (idempotent). Existing files are not
 overwritten.
 
 Usage:
-    mv setup                 # interactive
-    mv setup --non-interactive  # use defaults; minimal scaffolding only
+    memory setup                 # interactive
+    memory setup --non-interactive  # use defaults; minimal scaffolding only
 """
 from __future__ import annotations
 
@@ -125,12 +125,12 @@ def print_whats_next(tier: str, has_org: bool):
     print()
     print("     | source     | MCP needed                  | ingest module                          |")
     print("     |------------|-----------------------------|----------------------------------------|")
-    print("     | calendar   | google-calendar MCP         | mv ingest calendar                     |")
-    print("     | gmail      | gmail MCP                   | mv ingest gmail                        |")
-    print("     | granola    | granola MCP                 | mv ingest granola                      |")
-    print("     | linear     | linear MCP                  | mv ingest linear                       |")
-    print("     | notion     | notion MCP                  | mv ingest notion                       |")
-    print("     | slack      | slack MCP                   | mv ingest slack                        |")
+    print("     | calendar   | google-calendar MCP         | memory ingest calendar                     |")
+    print("     | gmail      | gmail MCP                   | memory ingest gmail                        |")
+    print("     | granola    | granola MCP                 | memory ingest granola                      |")
+    print("     | linear     | linear MCP                  | memory ingest linear                       |")
+    print("     | notion     | notion MCP                  | memory ingest notion                       |")
+    print("     | slack      | slack MCP                   | memory ingest slack                        |")
     print("     | code       | gh CLI + repo path          | python3 -m memoryvault_kit.ingest.code_repo")
     print()
     print("  2. After your first ingest, run the heal chain:")

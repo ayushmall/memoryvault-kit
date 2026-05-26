@@ -238,6 +238,6 @@ tag-recall metric uses your gold tags from the eval set.
 | Ambiguous first names | "Tom" wikilinks pick the wrong person | Use canonical `[[Tom Williams (your team)]]` to disambiguate, or rely on context to resolve |
 | Importance inflation | Everything at 0.9 → no signal | Reserve 0.9+ for vault-level facts only |
 | Tag explosion | 50 unique tags after 100 memories | Pick a vocabulary upfront; reuse it |
-| Missing aliases | Queries with shorthand don't resolve | Run `mv heal --apply` monthly |
+| Missing aliases | Queries with shorthand don't resolve | Run `memory heal --apply` monthly |
 | Orphan entities | Entity file exists, 0 memories link it | OK to leave as stub; `heal` marks them |
 | `related:` underuse | Graph walk has nothing to follow | Add `related:` cross-refs for non-obvious connections |

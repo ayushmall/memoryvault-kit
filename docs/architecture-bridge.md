@@ -1,4 +1,4 @@
-# Architecture: `mv bridge` — connecting cloud clients to the local kit
+# Architecture: `memory bridge` — connecting cloud clients to the local kit
 
 > **Status:** design proposal. Not yet implemented.
 >
@@ -34,7 +34,7 @@ closes that gap.
             (BM25 + reranker + graph)│
                 ↑                    │
    ┌────────────┴────────────┐       │
-   │   `mv bridge` process   │ ← only listens on localhost; nothing else
+   │   `memory bridge` process   │ ← only listens on localhost; nothing else
    │   • HTTPS endpoint      │
    │   • mTLS or bearer auth │
    │   • mounts MCP over HTTP│
@@ -70,7 +70,7 @@ It does NOT:
 User experience:
 
 ```bash
-$ mv bridge init
+$ memory bridge init
 ✓ Generated bearer token: mvb_kQpA2x9...rZ
   Saved to ~/.mvkit/bridge-token (chmod 600)
 
@@ -79,7 +79,7 @@ $ mv bridge init
 
   Or: cloudflared tunnel, ngrok, etc.
 
-$ mv bridge start
+$ memory bridge start
 ✓ MCP-over-HTTP server running on localhost:8765
 ✓ Token-auth enforced on every request
 ✓ Watching ~/.mvkit/bridge-token for changes
@@ -106,11 +106,11 @@ The bridge is conservative by design. Threats and mitigations:
 | threat | mitigation |
 |---|---|
 | Anyone on the internet hitting the endpoint | Tunnel + bearer token; without both, no access |
-| Token leaked in a screenshot | Token is rotatable: `mv bridge rotate` invalidates old, generates new |
+| Token leaked in a screenshot | Token is rotatable: `memory bridge rotate` invalidates old, generates new |
 | Tunnel provider sees the data in transit | TLS terminates at the user's laptop (the bridge process); tunnel provider only sees ciphertext if mTLS is enabled (recommended) |
-| Bridge process crashes silently | `mv bridge status` reports liveness; logs to `~/.mvkit/bridge.log`; optional `--watchdog` flag restarts on crash |
+| Bridge process crashes silently | `memory bridge status` reports liveness; logs to `~/.mvkit/bridge.log`; optional `--watchdog` flag restarts on crash |
 | Local malware hijacks the bridge | Token is filesystem-permission-protected (chmod 600); requests from non-localhost are dropped at the bridge layer |
-| Multi-user laptop misuse | The token belongs to the unix user that ran `mv bridge init`; other users on the same machine can't read it (chmod 600) |
+| Multi-user laptop misuse | The token belongs to the unix user that ran `memory bridge init`; other users on the same machine can't read it (chmod 600) |
 
 **Tunnel choice is left to the user.** The kit doesn't bundle a tunnel because:
 - Tunnel choice has security/privacy implications the user should make consciously
@@ -141,7 +141,7 @@ comes via stdio (local) or HTTP (bridge).
 
 To keep the surface tight, the bridge refuses:
 - Any operation that writes outside `MEMORYVAULT_ROOT` (no escape)
-- Shell execution (the kit's CLI subcommands like `mv lint`, `mv audit` are
+- Shell execution (the kit's CLI subcommands like `memory lint`, `memory audit` are
   exposed as MCP tools but they shell out only to vault-scoped operations)
 - Path traversal in any argument (validated server-side)
 - Operations on connected sources (Slack, Granola, etc.) — those use the
@@ -159,7 +159,7 @@ memoryvault_kit/bridge/
 ├── auth.py           # bearer-token middleware
 ├── mcp_handler.py    # translates HTTP/JSON-RPC ↔ stdio MCP
 ├── audit_log.py      # request log + token-use tracking
-└── cli.py            # `mv bridge init / start / status / rotate / stop`
+└── cli.py            # `memory bridge init / start / status / rotate / stop`
 ```
 
 Dependencies: `uvicorn`, `starlette` — already in the kit's optional
@@ -172,7 +172,7 @@ This is a v2 thing, not a v1:
 | milestone | what ships | when |
 |---|---|---|
 | **v1 (current)** | stdio MCP for local clients (Claude Code, Cursor) | done |
-| **v2** | `mv bridge` for cloud clients (Cowork, etc.) | sketch above; needs ~3-5 days |
+| **v2** | `memory bridge` for cloud clients (Cowork, etc.) | sketch above; needs ~3-5 days |
 | **v3** | Per-tool ACLs on the bridge (e.g. allow memory_ask but not memory_save) | follow-on |
 | **v4** | Multi-user bridge (different tokens → different vaults) | only if real demand |
 

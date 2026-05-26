@@ -30,6 +30,10 @@ dense = ["numpy>=1.24", "sentence-transformers>=2.5"]
 dev = ["pytest", "ruff"]
 
 [project.scripts]
+# Primary CLI: `memory <subcommand>` (e.g. `memory eval`, `memory heal`)
+memory = "memoryvault_kit.cli:main"
+# Deprecated alias kept for 1 release so existing scripts/docs don't break.
+# Shadows /bin/mv — prefer `memory` for new work. Removed in 0.2.x.
 mv = "memoryvault_kit.cli:main"
 
 [project.urls]

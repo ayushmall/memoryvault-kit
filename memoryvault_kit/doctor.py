@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-`mv doctor` — one-shot vault health diagnostic.
+`memory doctor` — one-shot vault health diagnostic.
 
 Reports on every dimension the kit cares about:
 
 - **Profile**: which tier is active (lean/full)
 - **Vault inventory**: memory count, entity count by kind, surfaces
-- **Quality metrics**: fill_quality, pollution_rate (re-uses `mv eval`)
+- **Quality metrics**: fill_quality, pollution_rate (re-uses `memory eval`)
 - **Coverage**: open gap count by class
 - **Mature entities**: hub/mature/growing/stub distribution
 - **Recency**: latest event_date per source
@@ -14,11 +14,11 @@ Reports on every dimension the kit cares about:
 Exit code is non-zero on any failure (so it can be wired into CI/cron).
 
 Usage:
-    mv doctor
-    mv doctor --json             # machine-readable
-    mv doctor --quick            # skip eval (just inventory + recency)
-    mv doctor --eval-recovery    # run the eval-playbook diagnostic checks
-    mv doctor --signal-quality   # flag noisy sources (high ingest, low retrieval-hit)
+    memory doctor
+    memory doctor --json             # machine-readable
+    memory doctor --quick            # skip eval (just inventory + recency)
+    memory doctor --eval-recovery    # run the eval-playbook diagnostic checks
+    memory doctor --signal-quality   # flag noisy sources (high ingest, low retrieval-hit)
 """
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def eval_recovery_checks() -> dict:
         "detail": f"vault has {n_mems} memories"
                   + (f" (last eval baselined on {last_eval_size}, growth={growth_factor:.2f}×)"
                      if last_eval_size else " (no prior eval-size baseline in results_log notes)"),
-        "fix": ("Re-baseline: run `mv eval` and note new vault size in the eval row's notes "
+        "fix": ("Re-baseline: run `memory eval` and note new vault size in the eval row's notes "
                 "field. Expect ~5-10pp R@5 drop per 2× growth — that's not a bug.")
                if growth_factor and growth_factor >= 1.5 else None,
     }
@@ -115,7 +115,7 @@ def eval_recovery_checks() -> dict:
     checks["event_date_population"] = {
         "ok": pct_event >= 0.6,
         "detail": f"{n_with_event}/{n_total} memories have event_date ({pct_event*100:.0f}%)",
-        "fix": "mv migrate --apply --quick (runs event_date backfill)" if pct_event < 0.6 else None,
+        "fix": "memory migrate --apply --quick (runs event_date backfill)" if pct_event < 0.6 else None,
     }
 
     # Check 5: related: edges populated
@@ -483,7 +483,7 @@ def main():
             print(json.dumps(sq, indent=2))
             return
         print("=" * 70)
-        print(f"  mv doctor --signal-quality  (last {sq['window_days']} days)")
+        print(f"  memory doctor --signal-quality  (last {sq['window_days']} days)")
         print("=" * 70)
         print(f"  {'source':<14} {'ingested':>10} {'retrieved':>10} {'ratio':>8}  suggestion")
         print(f"  {'-'*14:<14} {'-'*10:>10} {'-'*10:>10} {'-'*8:>8}  {'-'*40}")
@@ -507,7 +507,7 @@ def main():
             print(json.dumps(rec, indent=2))
             return
         print("=" * 60)
-        print("  mv doctor --eval-recovery")
+        print("  memory doctor --eval-recovery")
         print("=" * 60)
         any_fail = False
         for name, c in rec["checks"].items():
@@ -541,7 +541,7 @@ def main():
         return
 
     print("=" * 60)
-    print("  mv doctor — vault health")
+    print("  memory doctor — vault health")
     print("=" * 60)
     print(render_human(r))
     print("=" * 60)

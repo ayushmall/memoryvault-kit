@@ -20,7 +20,7 @@ you can query from anywhere.
 4. [Create meaningful entities](#4-create-meaningful-entities)
 5. [Add your first memories](#5-add-your-first-memories)
 6. [Lint, audit, heal — the quality loop](#6-lint-audit-heal--the-quality-loop)
-7. [Use it: `mv ask`, the dashboard](#7-use-it-mv-ask-the-dashboard)
+7. [Use it: `memory ask`, the dashboard](#7-use-it-mv-ask-the-dashboard)
 8. [Connect data sources (MCP)](#8-connect-data-sources-mcp)
 9. [Set up the daily refresh agent](#9-set-up-the-daily-refresh-agent)
 10. [Build your own eval set](#10-build-your-own-eval-set)
@@ -44,20 +44,20 @@ mv --help
 Requirements: Python 3.11+. No databases, no services. Everything is markdown
 files on disk.
 
-(Optional) If you want LLM-synthesized answers from `mv ask --answer`, set:
+(Optional) If you want LLM-synthesized answers from `memory ask --answer`, set:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Without this, `mv ask` still works — it returns the top-ranked memories, you read them.
+Without this, `memory ask` still works — it returns the top-ranked memories, you read them.
 
 ---
 
 ## 2. Initialize a vault
 
 ```bash
-mv init ~/MyVault
+memory init ~/MyVault
 cd ~/MyVault
 ```
 
@@ -215,7 +215,7 @@ Rules:
   `Role-Based Access Control`, `Column-Level Security`).
 - **Never** use words like "customer", "vendor", "founder" as aliases on a
   specific entity — those are *types* and the lint will reject them.
-- **Run `mv heal`** monthly. It will backfill safe first-name aliases for any
+- **Run `memory heal`** monthly. It will backfill safe first-name aliases for any
   person entity missing them.
 
 ### How many entities to create
@@ -230,7 +230,7 @@ overdone it; the entities aren't pulling weight as connectors.
 
 You have three paths into the vault, in order of fidelity:
 
-### Path A — `mv ingest --file path/to/note.md`
+### Path A — `memory ingest --file path/to/note.md`
 
 Drop a markdown file with optional frontmatter; the kit fills in defaults
 (today's date, an `id`, importance 0.5). It will warn if entities don't
@@ -239,7 +239,7 @@ resolve.
 ### Path B — Bulk import from a folder
 
 ```bash
-mv ingest --folder ~/Documents/old-notes/
+memory ingest --folder ~/Documents/old-notes/
 ```
 
 Each `.md` in the folder becomes a memory. The kit:
@@ -252,7 +252,7 @@ Use `--dry-run` first.
 
 ### Path C — Direct from a connector (recommended for ongoing use)
 
-Once you've connected MCP sources (section 8), `mv refresh` ingests the last
+Once you've connected MCP sources (section 8), `memory refresh` ingests the last
 24 hours of activity automatically. This is what the daily agent does.
 
 ### What a good first memory looks like
@@ -286,11 +286,11 @@ Jane + you starting the workstream Apr 22.
 The kit treats graph quality as a first-class metric. Three commands form a
 quality loop you should run after any batch of new memories.
 
-### `mv lint` — block bad data
+### `memory lint` — block bad data
 
 ```bash
-mv lint                            # whole vault
-mv lint memories/2026/mem_NEW.md   # specific files
+memory lint                            # whole vault
+memory lint memories/2026/mem_NEW.md   # specific files
 ```
 
 **Blocks** (exit code 1):
@@ -306,11 +306,11 @@ mv lint memories/2026/mem_NEW.md   # specific files
 
 Wire this into a pre-commit hook or CI if your vault is in git.
 
-### `mv heal` — auto-fix safe issues
+### `memory heal` — auto-fix safe issues
 
 ```bash
-mv heal               # dry-run preview
-mv heal --apply       # write changes
+memory heal               # dry-run preview
+memory heal --apply       # write changes
 ```
 
 What heal does (idempotent):
@@ -324,11 +324,11 @@ What heal does (idempotent):
 Heal will *not* delete entity files, merge entities, or rename things. Those
 are human decisions.
 
-### `mv audit` — the diagnostic
+### `memory audit` — the diagnostic
 
 ```bash
-mv audit               # human-readable report
-mv audit --json        # machine-readable
+memory audit               # human-readable report
+memory audit --json        # machine-readable
 ```
 
 Reports five lenses:
@@ -338,12 +338,12 @@ Reports five lenses:
 4. **Hygiene** — orphans, dead wikilinks, missing aliases, alias collisions
 5. **Earned value** — does the graph improve retrieval (vs BM25 alone)
 
-Run after any non-trivial batch of new memories. Track over time with `mv track`.
+Run after any non-trivial batch of new memories. Track over time with `memory track`.
 
-### `mv daily` — the full pipeline (lint → heal → lint → track → dashboard)
+### `memory daily` — the full pipeline (lint → heal → lint → track → dashboard)
 
 ```bash
-mv daily --note "post-Slack-batch"
+memory daily --note "post-Slack-batch"
 ```
 
 This is what the daily agent runs. It's the single command you run to "close"
@@ -351,12 +351,12 @@ an ingestion session.
 
 ---
 
-## 7. Use it: `mv ask`, the dashboard
+## 7. Use it: `memory ask`, the dashboard
 
 ### Asking questions
 
 ```bash
-mv ask "What did Acme request in April?"
+memory ask "What did Acme request in April?"
 ```
 
 Retrieves top-5 relevant memories using the BM25 + graph-walk pipeline and
@@ -369,7 +369,7 @@ prints them. Each result shows:
 For a synthesized answer (requires `ANTHROPIC_API_KEY`):
 
 ```bash
-mv ask "What did Acme request in April?" --answer
+memory ask "What did Acme request in April?" --answer
 ```
 
 This pipes top-5 memories + the question to Claude Sonnet for a one-paragraph
@@ -378,16 +378,16 @@ answer with citations.
 ### Other modes
 
 ```bash
-mv ask "..." --k 10                 # top 10 instead of top 5
-mv ask "..." --json                 # machine-readable output
-mv ask "..." --no-graph             # disable graph walk (BM25 only)
-mv ask "..."                        # if abstain confidence low, returns "I don't know"
+memory ask "..." --k 10                 # top 10 instead of top 5
+memory ask "..." --json                 # machine-readable output
+memory ask "..." --no-graph             # disable graph walk (BM25 only)
+memory ask "..."                        # if abstain confidence low, returns "I don't know"
 ```
 
 ### Dashboard
 
 ```bash
-mv dashboard
+memory dashboard
 ```
 
 Builds `.mvkit/dashboard.html` showing:
@@ -435,7 +435,7 @@ If you'd rather write your own ingest scripts (Python, shell, anything),
 they just need to produce markdown files matching the schema in section 3.
 The kit's lint will tell you if they're well-formed.
 
-Pattern: `mv ingest --file new-memory.md` after each write.
+Pattern: `memory ingest --file new-memory.md` after each write.
 
 ### What to ingest, what to skip
 
@@ -488,17 +488,17 @@ Output is the JSON body for an Anthropic scheduled routine. Steps:
 3. Connect the MCP servers at https://claude.ai/customize/connectors
 4. Use `/schedule` in Claude Code to create the routine with the printed config
 
-The agent clones the repo, ingests, runs `mv daily`, commits, pushes.
+The agent clones the repo, ingests, runs `memory daily`, commits, pushes.
 
 See [docs/remote_routine.md](docs/remote_routine.md) for the full walkthrough.
 
-### Option C — Manual `mv refresh`
+### Option C — Manual `memory refresh`
 
 Best if: you want full control and don't want a recurring job.
 
 ```bash
-mv refresh                          # ingests last 24h from connected sources
-mv refresh --since "3 days ago"
+memory refresh                          # ingests last 24h from connected sources
+memory refresh --since "3 days ago"
 ```
 
 Run whenever you sit down with your morning coffee. 30 seconds.
@@ -509,7 +509,7 @@ In all three options, the agent's daily ritual is:
 
 1. **Pull** — fetch yesterday's items from each connected source, dedup by `source_ref`
 2. **Write** — turn each into a memory file, resolving wikilinks against existing entities
-3. **Heal & lint** — run `mv daily` (the full quality pipeline)
+3. **Heal & lint** — run `memory daily` (the full quality pipeline)
 4. **Report** — DM a one-paragraph summary to you in Slack:
    ```
    📥 Daily ingest — 2026-04-30
@@ -532,10 +532,10 @@ Optional but **strongly recommended**. Without an eval set, you can't tell if
 a change made retrieval better or worse.
 
 ```bash
-mv eval init                        # creates evals/questions.jsonl with examples
-mv eval run                         # runs the current retriever, prints metrics
-mv eval run --retriever bm25        # compare against BM25 baseline
-mv eval add "What did Acme want?" # interactive: add a question with gold answer
+memory eval init                        # creates evals/questions.jsonl with examples
+memory eval run                         # runs the current retriever, prints metrics
+memory eval run --retriever bm25        # compare against BM25 baseline
+memory eval add "What did Acme want?" # interactive: add a question with gold answer
 ```
 
 The kit ships with a 10-bucket question taxonomy designed to surface
@@ -616,9 +616,9 @@ views:
 ### What you should NOT do in Obsidian
 
 - **Don't rename entity files** through Obsidian's UI. It will try to update
-  wikilinks but our `aliases:` field disambiguates separately. Use `mv heal`
+  wikilinks but our `aliases:` field disambiguates separately. Use `memory heal`
   for entity hygiene instead.
-- **Don't manually edit `INDEX.md`** — it's auto-regenerated by `mv daily`.
+- **Don't manually edit `INDEX.md`** — it's auto-regenerated by `memory daily`.
   Edit memories or entities instead.
 - **Don't add the kit's `evals/`, `.mvkit/` to Obsidian's index** — already
   in the kit's `userIgnoreFilters` config.
@@ -629,7 +629,7 @@ views:
 
 The whole kit is small Python. Override what you need:
 
-- **Retrieval params** — `mv ask --bm25-k1 1.7 --bm25-b 0.6 --graph-k-seed 7`
+- **Retrieval params** — `memory ask --bm25-k1 1.7 --bm25-b 0.6 --graph-k-seed 7`
 - **Importance multiplier** — edit `memoryvault_kit/retrieval/bm25.py` (`(0.7 + 0.6 * imp)`)
 - **Lint rules** — `memoryvault_kit/graph/lint.py` (add new check functions)
 - **Heal operations** — `memoryvault_kit/graph/heal.py` (extend `op4`, etc.)
@@ -647,11 +647,11 @@ heuristics, and bucket-specific retrieval improvements.
 - 30–60 entities, mostly populated (df ≥ 2)
 - `audit_log.jsonl` shows `dead_wikilinks` flat at 0
 - `entities_without_aliases` trending down
-- `mv ask` returns the right top-3 for ≥80% of natural questions you'd ask
+- `memory ask` returns the right top-3 for ≥80% of natural questions you'd ask
 - You've shipped at least one eval-set update reflecting things the system
   got wrong
 
-If those aren't true after 30 days, run `mv audit` and look at the per-bucket
+If those aren't true after 30 days, run `memory audit` and look at the per-bucket
 eval scores. The bottleneck is almost always graph hygiene, not the algorithm.
 
 ---

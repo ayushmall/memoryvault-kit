@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-`mv eval` — run the full eval suite in one shot.
+`memory eval` — run the full eval suite in one shot.
 
 Aggregates: fill_quality + pollution + consistency. Designed to be the
 single command a user (or CI) runs to know whether the vault is healthy.
@@ -225,7 +225,7 @@ def main():
         return
 
     if not args.quiet:
-        print("Running mv eval…")
+        print("Running memory eval…")
     results = run(quick=args.quick)
 
     if args.json:

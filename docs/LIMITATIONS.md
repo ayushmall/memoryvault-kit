@@ -10,7 +10,7 @@ consuming agent how to behave when it has access to the underlying
 data. The kit doesn't ship MCP transports for Slack / Pylon / Granola
 itself; those are separate MCP servers the user installs.
 
-What this means: a fresh install can't `mv ingest slack` until you've
+What this means: a fresh install can't `memory ingest slack` until you've
 connected a Slack MCP server in your Claude / Cursor / etc. client.
 
 ## Skill loader filter is documented but not enforced
@@ -69,7 +69,7 @@ and bulk-archive periodically, or raise the threshold in
 ## No automatic re-ingest scheduling
 
 The kit ships ingest *modules* but no scheduler. You're responsible
-for running `mv ingest <source>` regularly (or wiring it into cron /
+for running `memory ingest <source>` regularly (or wiring it into cron /
 launchd / GitHub Actions). The `docs/LIFECYCLE.md` doc has a
 recommended cron snippet.
 

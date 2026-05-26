@@ -19,13 +19,13 @@
    │  Step 2: ask user prefs     │  Where to put the vault? Which sources?
    │  + disambiguation           │  Workplace? Personal use only?
    ├─────────────────────────────┤
-   │  Step 3: scaffold           │  mv init <path> + MCP registration
+   │  Step 3: scaffold           │  memory init <path> + MCP registration
    ├─────────────────────────────┤
    │  Step 4: bootstrap memories │  Ingest a small batch from one source
    │  from a connected source    │  (or seed with demo memories)
    ├─────────────────────────────┤
-   │  Step 5: generate eval      │  mv eval init --from-vault
-   │  + run it                   │  mv eval run --retriever bm25
+   │  Step 5: generate eval      │  memory eval init --from-vault
+   │  + run it                   │  memory eval run --retriever bm25
    ├─────────────────────────────┤
    │  Step 6: report             │  "Your kit is ready. Coverage@10 = X%.
    │                             │   Here's how to ask it questions."
@@ -38,9 +38,9 @@ greeting message explaining what to do next.
 
 ## What's already shipped
 
-- ✅ `mv init` — scaffolding
-- ✅ `mv eval init --from-vault` — generates real questions from the user's vault
-- ✅ `mv eval run` — scores them
+- ✅ `memory init` — scaffolding
+- ✅ `memory eval init --from-vault` — generates real questions from the user's vault
+- ✅ `memory eval run` — scores them
 - ✅ All six core skills (`memory-ask`, `memory-save`, etc.)
 - ✅ Code-ingest skill (`memory-ingest-code`)
 - ✅ Cowork skill (parallel onboarding for non-engineers)
@@ -77,7 +77,7 @@ description: Walk a new user through setting up the kit end-to-end:
 - [ ] Ask: "Where should your vault live? Default: `~/MemoryVault`"
 - [ ] Confirm the path is NOT inside an auto-sync folder (iCloud, Google Drive, OneDrive)
 - [ ] Confirm disk encryption is on (FileVault/BitLocker)
-- [ ] Run `mv init <path>`
+- [ ] Run `memory init <path>`
 - [ ] Add `export MEMORYVAULT_ROOT=<path>` to user's shell rc
 
 ### Trust + scope decisions
@@ -100,15 +100,15 @@ description: Walk a new user through setting up the kit end-to-end:
 - [ ] Verify the MCP is reachable
 
 ### First ingest
-- [ ] Run `mv refresh --since=7d --max=20`
+- [ ] Run `memory refresh --since=7d --max=20`
 - [ ] Verify ~20 memories were written
 - [ ] If zero: troubleshoot connector access; ask user to provide one manually
 
 ### Eval setup
-- [ ] Run `mv eval init --from-vault --n 30`
-- [ ] Run `mv eval run --retriever bm25`
+- [ ] Run `memory eval init --from-vault --n 30`
+- [ ] Run `memory eval run --retriever bm25`
 - [ ] Show the user their numbers + per-bucket breakdown
-- [ ] Explain: "If alias bucket is low, your entity aliases need work. Run `mv heal`."
+- [ ] Explain: "If alias bucket is low, your entity aliases need work. Run `memory heal`."
 
 ### Schedule (optional)
 - [ ] Ask: "Run daily refresh automatically at 6am?"

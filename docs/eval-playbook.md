@@ -5,7 +5,7 @@ memories enlarge the haystack. Entity renames break alias resolution. New
 sources change the vocabulary. This is the playbook for **diagnosing the
 drop and pulling the right lever** instead of randomly tweaking weights.
 
-Run `mv doctor --eval-recovery` to get the structured diagnostic automatically.
+Run `memory doctor --eval-recovery` to get the structured diagnostic automatically.
 The sections below explain what each check means and what to do about it.
 
 > **One-line rule of thumb**: if R@5 dropped >5pp since the last baseline,
@@ -114,7 +114,7 @@ grep -c "^related: \[mem_" ~/MemoryVault/memories/2026/mem_*.md | \
   awk -F: '$2>0' | wc -l
 ```
 
-**Lever**: `mv migrate --apply --quick` (runs connect_entities).
+**Lever**: `memory migrate --apply --quick` (runs connect_entities).
 
 ---
 
@@ -137,7 +137,7 @@ If the structural checks pass and a specific bucket is still weak:
 1. Aggregate Qs ("which customers did we talk about this quarter") want a SET, not a top-1
 2. Top-K retrieval will always struggle here without a set-retrieval branch
 3. Lever: D11 structured-attribute retrieval (already in `entity_lookup.py`) — make sure D7's pattern catches "which X did we Y"
-4. Longer-term: a `mv ask --aggregate` mode that does multi-pass retrieval
+4. Longer-term: a `memory ask --aggregate` mode that does multi-pass retrieval
 
 ### multi-hop weak (R@5 < 0.7)
 1. Check `related:` edges are populated (Step 2, Check 5)
@@ -235,7 +235,7 @@ patterns rather than tuning the retriever around them.
 
 Under-consumption shows up as "I never wrote down that conversation." Over-consumption shows up as "retrieval got slower, R@5 dropped, and the right memory is buried under twenty similar ones."
 
-Run `mv doctor --signal-quality` weekly. It reports per-source ingest volume vs retrieval-hit rate from the query log:
+Run `memory doctor --signal-quality` weekly. It reports per-source ingest volume vs retrieval-hit rate from the query log:
 
 ```
 source           ingested  retrieved    ratio  suggestion

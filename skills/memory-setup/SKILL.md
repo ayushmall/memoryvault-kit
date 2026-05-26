@@ -36,7 +36,7 @@ fill in gaps.
        exhausted OR hard cap hit. This is the BIGGEST ingest the kit
        will ever do — not 5-10 items, but enough to make the eval
        questions answerable.
-[ ] 13. Run heal chain (`mv migrate --apply --quick`)
+[ ] 13. Run heal chain (`memory migrate --apply --quick`)
 [ ] 14. Run FINAL eval — report the coverage number we hit. This is
        the baseline future weeks trend against.
 [ ] 15. Confirm with the user that /memory-refresh is their one entry
@@ -363,7 +363,7 @@ I'd ask my vault that."
 
 #### Why this is honest
 
-`mv eval init --from-vault` samples memories AFTER ingest and
+`memory eval init --from-vault` samples memories AFTER ingest and
 generates questions from their content. That's a circular test:
 questions derived from content → retrieval finds the content →
 "works." Doesn't measure whether the kit pulls the right source
@@ -416,8 +416,8 @@ while True:
     - reports back: memories written, items examined, source state
 
   after all sub-agents return:
-    - run `mv migrate --apply --quick` (heal so eval has alias_map etc.)
-    - run `mv eval --soft --quiet` against questions.jsonl
+    - run `memory migrate --apply --quick` (heal so eval has alias_map etc.)
+    - run `memory eval --soft --quiet` against questions.jsonl
     - parse soft coverage (questions with ≥2 results scoring >=5)
     - print progress:
         Ingested 142 memories (linear: 47, slack: 38, notion: 22,
@@ -610,7 +610,7 @@ clients" section.
 
 ```bash
 # Via the kit's CLI or via the MCP from a fresh session:
-mv ask "what did I do yesterday"
+memory ask "what did I do yesterday"
 # Or memory_ask("...") if invoking via MCP
 ```
 

@@ -21,8 +21,8 @@ decomposition (capture loss / authoring loss / retrieval loss) tells you
 where to invest engineering effort.
 
 Run:
-    mv eval pipeline                 # uses defaults
-    mv eval pipeline --json
+    memory eval pipeline                 # uses defaults
+    memory eval pipeline --json
 """
 from __future__ import annotations
 
@@ -121,12 +121,12 @@ def measure_retrieval_r5(args) -> tuple[float, dict]:
                     return r5, {"source_file": str(c), "n_questions": data.get("summary", {}).get("n_questions")}
             except Exception:
                 continue
-    return None, {"error": "no graph R@5 score file found; run `mv eval run --retriever graph` first"}
+    return None, {"error": "no graph R@5 score file found; run `memory eval run --retriever graph` first"}
 
 
 def main():
     import argparse
-    p = argparse.ArgumentParser(prog="mv eval pipeline")
+    p = argparse.ArgumentParser(prog="memory eval pipeline")
     p.add_argument("--captured", type=int, help="number of memories captured in the time window")
     p.add_argument("--total-events", type=int, help="total real-world events in the window (Granola meetings, etc.)")
     p.add_argument("--window-days", type=int, default=60, help="capture window for auto-counting")

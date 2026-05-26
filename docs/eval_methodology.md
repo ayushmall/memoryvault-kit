@@ -39,8 +39,8 @@ already does well), but it's still not unbiased in a generalizable sense.
    exhaustively reviewed by a second human.
 
 4. **Reproduction tells you about the kit on YOUR vault.** Running
-   `mv eval` on your own vault uses YOUR questions (you build them
-   via `mv eval init --from-vault`). The kit's shipped numbers tell you
+   `memory eval` on your own vault uses YOUR questions (you build them
+   via `memory eval init --from-vault`). The kit's shipped numbers tell you
    the retriever works on one specific vault. They do not predict your
    numbers.
 
@@ -59,7 +59,7 @@ python3 -m memoryvault_kit.eval.init --from-vault --n-questions 100
 
 This samples memories from your vault and asks Claude to write
 questions about them. You review and accept/reject. The result is at
-`<vault>/evals/retrieval/questions.jsonl` and `mv eval` uses it.
+`<vault>/evals/retrieval/questions.jsonl` and `memory eval` uses it.
 
 Your generated set will have all the same biases listed above relative
 to your vault. That's fine for iterating on your kit, not fine for
@@ -220,7 +220,7 @@ For paraphrase:
 
 ## Metrics computed
 
-`mv eval run` computes:
+`memory eval run` computes:
 
 | metric | what it measures | when it matters |
 |---|---|---|
@@ -244,7 +244,7 @@ helped one failure mode.
 Abstention is the hardest bucket. Two approaches:
 
 1. **Score threshold** — return `[]` if top-1 score is below some `T`. Easy to
-   implement (`mv ask` does this with `--abstain-threshold`). The tricky part
+   implement (`memory ask` does this with `--abstain-threshold`). The tricky part
    is picking `T`: too high and you abstain on real questions; too low and you
    answer when you shouldn't.
 
@@ -260,7 +260,7 @@ Abstention is the hardest bucket. Two approaches:
    negative.
 
 A working alternative: **don't abstain at retrieval time**; let the answer
-synthesis layer (`mv ask --answer`) be the one that says "I don't know." That
+synthesis layer (`memory ask --answer`) be the one that says "I don't know." That
 way retrieval stays optimistic and the LLM does the final filtering.
 
 ---
@@ -288,8 +288,8 @@ Don't try to write 220 questions in one sitting. Pattern that works:
 Before relying on it, sanity-check:
 
 ```bash
-mv eval run --retriever bm25     # baseline
-mv eval run --retriever graph    # current
+memory eval run --retriever bm25     # baseline
+memory eval run --retriever graph    # current
 ```
 
 Look for:

@@ -17,23 +17,23 @@
 > ingest. The point of this document is to make sure the *journey* from
 > zero → useful is encoded.
 
-## Self-evaluation by area (with evidence from `mv eval` + `mv doctor`)
+## Self-evaluation by area (with evidence from `memory eval` + `memory doctor`)
 
 | # | Area | Grade | Evidence | Remaining gap |
 |---|---|:-:|---|---|
-| 1 | Mature entities (in-degree) | **B+** | hub=65, mature=69, growing=117 (per `mv doctor`) | First-run is empty; need bootstrap-on-ingest |
+| 1 | Mature entities (in-degree) | **B+** | hub=65, mature=69, growing=117 (per `memory doctor`) | First-run is empty; need bootstrap-on-ingest |
 | 2 | Code-ingest module | **B** | --metadata + --prs modes; products/<owner>.json works | No automated re-ingest |
-| 3 | Org structure modeling | **A-** | `org.py` + `org.example.json` + `mv org init` interactive; modules read from config | Need to ship a "mv setup" wrapper |
+| 3 | Org structure modeling | **A-** | `org.py` + `org.example.json` + `mv org init` interactive; modules read from config | Need to ship a "memory setup" wrapper |
 | 4 | Leak cleanup | **A-** | Major refs scrubbed; zero org-specific identifiers in shipped artifacts | Residual in initial commit (user-accepted) |
 | 5 | Token-budget tiers | **A-** | profile.py + retrieval_config() wired into combined.py; CLI works; SKILL.md tagged | Skill loader still client-dependent |
 | 6 | event_date everywhere | **B-** | 99.7% backfilled; temporal filter works | Ingest modules don't write native yet |
 | 7 | Mentions split (Rule 17) | **A-** | 2,342 links demoted; pollution **0.0%** (measured) | Re-split needed on each ingest run; document cron |
 | 8 | Gap lifecycle | **A-** | 75 gap memories enriched; Snowflake demo + Rule 18 detector-fix-in-loop | SUBSTRATES blocklist is config-driven now but needs org-specific seeding |
-| 9 | Skill goals + per-skill eval | **B+** | `mv eval` suite runs (fill_quality + pollution + consistency) | Per-skill EVAL.md generator unbuilt |
+| 9 | Skill goals + per-skill eval | **B+** | `memory eval` suite runs (fill_quality + pollution + consistency) | Per-skill EVAL.md generator unbuilt |
 | 10 | Surface skills | **B-** | Slack live with 7 surface entities; Pylon/Granola spec'd | Pylon/Granola/Gmail need MCP bridge code |
-| 11 | Retrieval consistency | **A** | 42/42 invariant holds; profile-tier-aware (`mv eval` verified) | None |
+| 11 | Retrieval consistency | **A** | 42/42 invariant holds; profile-tier-aware (`memory eval` verified) | None |
 | 12 | Per-type playbooks | **A-** | 8 playbooks; R/R/E/M shape; placeholder examples | Not consumed by MCP descriptions yet |
-| 13 | Fill-quality eval | **A-** | **0.860 mean** [A-] (per `mv eval`); per-source breakdown | title_specificity weak for Notion (0.49) |
+| 13 | Fill-quality eval | **A-** | **0.860 mean** [A-] (per `memory eval`); per-source breakdown | title_specificity weak for Notion (0.49) |
 | 14 | MCP tool descriptions carry lifecycle | **A** | 7 tools, smoke-tested end-to-end; `enrichment_hint` in `memory_get` + `memory_ask` responses | None |
 | 15 | Consumption-side enrichment | **A** | Auto-evidence + memory_update lifecycle proven | None |
 | 16 | Genericity / org-agnostic | **A** | Zero org-specific identifiers in shipped artifacts; `.mvkit/org.json` config | None |
@@ -43,7 +43,7 @@
 - `pollution_rate` **0.0%** [A]
 - `Lean⊆Full invariant` **0 violations / 42 queries** [A]
 
-The fresh-install gap (mv setup) is now the main blocker.
+The fresh-install gap (memory setup) is now the main blocker.
 
 ## What I haven't done well (honest)
 
@@ -53,7 +53,7 @@ The fresh-install gap (mv setup) is now the main blocker.
 4. **Surface skills are spec-only** — `pylon-customer-history` and `granola-series-recap` are SKILL.md files, but the actual MCP bridge to Pylon/Granola data lives in *external* MCPs the user has to install separately. The SKILL.md tells the agent how to behave, but doesn't ship the wires.
 5. **Wrote too much doc when shorter would do** — playbooks total ~25K of markdown; not every section is load-bearing.
 6. **MCP server changes not smoke-tested end-to-end** — added memory_get / memory_update handlers but haven't restarted the actual MCP process to confirm.
-7. **Per-source ingest re-runs** — never built a `mv ingest --refresh-all` that re-pulls everything; current state requires manual per-source commands.
+7. **Per-source ingest re-runs** — never built a `memory ingest --refresh-all` that re-pulls everything; current state requires manual per-source commands.
 
 ---
 
@@ -61,7 +61,7 @@ The fresh-install gap (mv setup) is now the main blocker.
 
 ### P0 — blocks launch (ALL SHIPPED)
 
-- [x] **`mv setup` first-run command** — single guided flow:
+- [x] **`memory setup` first-run command** — single guided flow:
   - Ask tier (Lean / Full) with explanation
   - Create vault skeleton (`memories/`, `entities/*/`, `.mvkit/`)
   - Walk through connecting first source (default: Calendar)
@@ -70,7 +70,7 @@ The fresh-install gap (mv setup) is now the main blocker.
   - Run `coverage_gaps` for the first time
   - Run `fill_quality` baseline + show the number
   - Print "what's next" with specific suggested actions
-- [x] **`mv doctor` health command** — one-shot diagnostic:
+- [x] **`memory doctor` health command** — one-shot diagnostic:
   - Fill quality per source (with red/yellow/green vs targets)
   - Pollution rate (with trend if previous runs)
   - Coverage gap count by class
@@ -80,27 +80,27 @@ The fresh-install gap (mv setup) is now the main blocker.
 - [x] **Native `event_date:` in every ingest module** — not just backfill. Today only the backfill script writes it. Fresh ingest skips it. Critical for "last month" queries.
 - [x] **README rewrite for users** — current README is dev-oriented. Replace with:
   - 30-sec pitch (vault = your work memory the model can actually use)
-  - 5-min quickstart with `mv setup`
+  - 5-min quickstart with `memory setup`
   - Honest performance numbers (Cov@5, p50 latency, pollution rate)
   - Link to per-source ingest guides
 - [x] **Smoke-test the MCP server start** — restart the kit's MCP and verify all 7 tools register, especially the new `memory_get` + `memory_update`.
-- [x] **Per-source `mv ingest <source>` documentation** — one doc per source (calendar, gmail, granola, slack, notion, linear, gdrive, github-pr, code) with: prerequisites (which MCP / API key), what it captures at Lean vs Full, dedup behavior, troubleshooting.
+- [x] **Per-source `memory ingest <source>` documentation** — one doc per source (calendar, gmail, granola, slack, notion, linear, gdrive, github-pr, code) with: prerequisites (which MCP / API key), what it captures at Lean vs Full, dedup behavior, troubleshooting.
 - [x] **`.mvkit/org_roster.example.json`** — shipped template. Fresh user clones, edits names.
 - [x] **Tier flow at MCP start** — when MCP server starts and no `profile.json` exists, log a one-liner to stderr suggesting `mv profile set`.
 
 ### P1 — strongly recommended before launch
 
-- [x] **`mv eval init --from-vault` shipped** — auto-generate a 30-question eval set from the user's own memories so they can benchmark their install. Already on the task list; not built.
-- [x] **`mv eval` runs the suite** — fill_quality + pollution + consistency + (optionally) coverage in one command, output a single summary line + detail.
+- [x] **`memory eval init --from-vault` shipped** — auto-generate a 30-question eval set from the user's own memories so they can benchmark their install. Already on the task list; not built.
+- [x] **`memory eval` runs the suite** — fill_quality + pollution + consistency + (optionally) coverage in one command, output a single summary line + detail.
 - [x] **Nightly job spec** — document a cron / launchd / systemd snippet for: incremental ingest + heal + split_mentions + coverage_gaps. Without it, the kit drifts.
 - [x] **First-run "encode the journey" doc** — `docs/LIFECYCLE.md` that explains the order of operations a serious user should run:
-  1. `mv setup`
+  1. `memory setup`
   2. Ingest all sources you have
   3. `build_alias_map` → `connect_entities --apply` → `split_mentions --apply` → `in_degree --write` → `coverage_gaps --apply` → `enrich_gaps --apply`
-  4. `mv doctor` — baseline
+  4. `memory doctor` — baseline
   5. Use the kit for a week
-  6. Re-run the heal chain → `mv doctor` — see numbers move
-- [x] **`mv migrate` command** — for users who installed before these features landed: runs the full backfill chain (event_date → mentions → in_degree → coverage_gaps → enrich_gaps) idempotently. Single command.
+  6. Re-run the heal chain → `memory doctor` — see numbers move
+- [x] **`memory migrate` command** — for users who installed before these features landed: runs the full backfill chain (event_date → mentions → in_degree → coverage_gaps → enrich_gaps) idempotently. Single command.
 - [x] **Honest LIMITATIONS.md** — what doesn't work yet:
   - Slack / Pylon / Granola / Gmail surface skills require external MCP servers (the kit doesn't ship credentials or transports)
   - Skill-loader filter (`tier:` frontmatter) is documented but not enforced by any client
@@ -114,7 +114,7 @@ The fresh-install gap (mv setup) is now the main blocker.
 - [ ] **Per-skill `EVAL.md` files** — every SKILL ships with a 10-question eval grounded in placeholder content. User runs `mv skill-eval <name>` for their vault-specific check.
 - [ ] **Improve Notion title synthesis** — Notion ingest takes raw page titles, often vague. Synthesize from first paragraph instead (saves a Claude call per page in Full).
 - [ ] **Surface-discovery for non-Slack sources** — extend `discover_surfaces.py` to detect pylon-account, gmail-thread, granola-series, gdrive-folder, notion-space patterns from existing memories.
-- [ ] **Example vault bundled in repo** — `examples/example-vault/` with 50 sanitized memories so a user can `mv eval` immediately without ingest.
+- [ ] **Example vault bundled in repo** — `examples/example-vault/` with 50 sanitized memories so a user can `memory eval` immediately without ingest.
 - [ ] **Convert the `tier:` skill convention into a real MCP-level filter** — when skill loader exists, respect it.
 - [ ] **Better gap enrichment heuristics for G1/G5** — current versions are templated. G1 should call Claude when co-occurrence signal is ambiguous; G5 should call GitHub search for the PR.
 
@@ -184,15 +184,15 @@ Your fear is exactly right: **a fresh install ships with great code and an empty
 
 Today that sequence is implicit. We discovered it by iteration. A fresh user has no map.
 
-**The launch unlock is encoding the sequence as a single command**: `mv setup` for first-time users + `mv migrate` for upgraders + `mv doctor` for ongoing health. With those three, every step we ran by hand becomes reproducible.
+**The launch unlock is encoding the sequence as a single command**: `memory setup` for first-time users + `memory migrate` for upgraders + `memory doctor` for ongoing health. With those three, every step we ran by hand becomes reproducible.
 
 Concretely: every improvement that made *your* vault better is sitting in this repo as a module. The launch readiness gap is **not** technical — it's that the modules don't compose into a journey yet.
 
 ## Recommended sequence
 
-1. Build `mv setup` (P0)
-2. Build `mv migrate` (P1) — guarantee idempotency
-3. Build `mv doctor` (P0)
+1. Build `memory setup` (P0)
+2. Build `memory migrate` (P1) — guarantee idempotency
+3. Build `memory doctor` (P0)
 4. Add native event_date to ingest modules (P0)
 5. Smoke-test MCP (P0)
 6. README rewrite (P0)

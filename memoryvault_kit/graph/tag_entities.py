@@ -269,7 +269,7 @@ def main():
     if not apply:
         print(f"\nDry run. Re-run with --apply to write changes.")
     else:
-        print(f"\nApplied. Run `mv audit` to verify, `mv coverage` to see improved coverage.")
+        print(f"\nApplied. Run `memory audit` to verify, `mv coverage` to see improved coverage.")
 
 
 if __name__ == "__main__":
