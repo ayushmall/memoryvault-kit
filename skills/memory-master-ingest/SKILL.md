@@ -1,7 +1,7 @@
 ---
 name: memory-master-ingest
 tier: full
-description: The wide-net source scourer — wakes up daily, iterates EVERY source the user has connected (defined in `<vault>/.mvkit/connected_sources.json`), invokes the right ingest, reports per-source status. THE most important Layer-1 agent. The source list is data-driven — different users have different sources connected, so this skill reads the config at runtime instead of hardcoding which MCPs to call. Use when scheduled (via `memory-schedule` after `memory-setup`) OR when the user says "ingest everything" / "pull fresh data" / "what's new".
+description: The wide-net source scourer — iterates EVERY source the user has connected (defined in `<vault>/.mvkit/connected_sources.json`), invokes the right ingest, reports per-source status. THE most important Layer-1 agent. Called from /memory-refresh (Step 2), or directly when the user says "ingest everything" / "pull fresh data" / "what's new". The source list is data-driven — different users have different sources connected, so this skill reads the config at runtime instead of hardcoding which MCPs to call.
 ---
 
 # memory-master-ingest — pull from whatever sources the user has connected
@@ -402,7 +402,7 @@ config. New connectors don't require code changes; users add them to
 
 ## When to call this skill
 
-- **Scheduled** — daily 6:?? AM via `memory-schedule` (auto-set-up by `memory-setup`)
+- **From /memory-refresh Step 2** — the primary call site, runs every refresh
 - **On-demand** — user asks "ingest everything" / "pull fresh data" / "what's new"
 - **After config change** — user just enabled a new source
 

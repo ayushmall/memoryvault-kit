@@ -1,5 +1,21 @@
 # Agent architecture: who does what
 
+> **Historical note.** This doc was written when the kit had 5 scheduled
+> cron-wrapper agents (`memory-heal-agent`, `memory-coverage-agent`,
+> `memory-eval-runner`, `memory-authoring-cycle`, `memory-schedule`).
+> Those were removed because source MCPs need interactive auth that
+> cron can't grant. The kit now runs all of this work inside one
+> user-present `/memory-refresh` call — see
+> [skill-lifecycle.md](./skill-lifecycle.md) for the current model.
+>
+> The decomposition described below still maps to the **steps inside
+> /memory-refresh** — heal, coverage, queue drain, eval — they're just
+> sequential steps now, not separate scheduled tasks. Useful as
+> background reading on _why_ each step exists; not authoritative on
+> _how_ the kit invokes them.
+
+---
+
 > Decomposing the kit's authoring work into specialized agents instead of
 > one monolithic wake-up agent. Each agent has a tight scope, runs on its
 > own cadence, and fails independently.

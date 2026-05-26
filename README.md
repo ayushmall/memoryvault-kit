@@ -109,7 +109,7 @@ The vault writes itself in two ways, and **both happen in a session you're in** 
 
 There's a coverage step inside `/memory-refresh` that watches the graph for structural holes (customer without a champion, project without an owner, hub entity with no decisions) and surfaces them as `mem_GAP_*` memories. The next session that has context on one of those gaps can fill it through `memory_update`. Failed queries also become gap memories, so the vault literally remembers what it failed to answer.
 
-> **Aren't there scheduled routines?** There's a `memory-schedule` skill that wires up cron-style routines via Claude Code's schedule infrastructure. It exists for users who want it, but in practice background routines fail when permissions aren't pre-granted or MCP auth tokens expire silently. The recommended pattern is user-present `/memory-refresh`.
+> **No scheduled routines.** Earlier versions of the kit shipped 5 cron-wrapper skills (`memory-schedule`, `memory-heal-agent`, `memory-coverage-agent`, `memory-eval-runner`, `memory-authoring-cycle`). They've been removed: routines failed in practice because source-MCP auth needs a human, tokens expired, permissions weren't pre-granted, and the routines silently no-op'd. Everything they did is now folded INTO `/memory-refresh` (heal chain → coverage scan → queue drain → soft eval). One command, you in the loop. Use `/loop 6h /memory-refresh` inside a Claude Code session if you want repeat passes.
 
 ## How it stays useful
 
@@ -237,15 +237,18 @@ memoryvault-kit/
 │   ├── graph/                   heal, link, surface, coverage, gaps
 │   ├── ingest/                  Linear, Notion, GitHub PRs
 │   └── eval/                    fill_quality, pollution, consistency
-├── skills/                      Claude Code skills
-│   ├── memory-use/              the consumption contract
-│   ├── memory-save/             the save contract
-│   ├── memory-setup/                first-run onboarding
-│   ├── memory-schedule/             opt-in cron routines (brittle; prefer user-present)
-│   ├── memory-master-ingest/        the daily wide-net pull
-│   ├── memory-heal-agent/           graph maintenance (folded into /memory-refresh)
-│   ├── memory-eval-runner/          weekly quality check
-│   └── ...                      per-source helpers
+├── skills/                      Claude Code skills (one entry point: /memory-refresh)
+│   ├── memory-setup/                first-run onboarding (one-time)
+│   ├── memory-refresh/              the recurring command — heal + ingest + queue + eval
+│   ├── memory-use/                  consumption contract (loaded automatically)
+│   ├── memory-save/                 save contract
+│   ├── memory-ask/                  ask the vault
+│   ├── memory-master-ingest/        per-source dispatcher (called by /memory-refresh)
+│   ├── memory-deep-dive/            called by /memory-refresh to fill thin retrievals
+│   ├── memory-stub-enricher/        called by /memory-refresh to enrich gap stubs
+│   ├── memory-entity-bootstrap/     called by /memory-refresh for low-info entities
+│   ├── memory-graph-audit/          on-demand visual graph check
+│   └── ...                          per-source helpers (granola, pylon, slack)
 ├── docs/
 │   ├── schema.md                memory and entity file format
 │   ├── eval-playbook.md         what to do when numbers drop
@@ -261,7 +264,7 @@ memoryvault-kit/
 This is alpha software running on one person's vault. Specifically:
 
 - No semantic search by default. "Q1 wins" won't match "first quarter successes" unless an alias bridges them. The kit handles a lot of this through alias maps, but pure semantic gaps still exist.
-- Ingest is a user-present skill (`/memory-refresh`) — not a background daemon. Background scheduling exists (`memory-schedule`) but is opt-in and brittle because source-MCP auth requires a human.
+- Ingest is a user-present skill (`/memory-refresh`) — not a background daemon. Earlier versions shipped cron-wrapper skills; they were removed because source-MCP auth requires a human and the routines silently no-op'd. One slash command, you in the loop.
 - Not on PyPI yet. Install is from source.
 - Tested on macOS and Linux. Should work on Windows, untested.
 - English stopwords only. Multilingual notes work but the token filter only knows English.

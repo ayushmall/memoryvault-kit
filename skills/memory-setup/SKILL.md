@@ -39,8 +39,9 @@ fill in gaps.
 [ ] 13. Run heal chain (`mv migrate --apply --quick`)
 [ ] 14. Run FINAL eval — report the coverage number we hit. This is
        the baseline future weeks trend against.
-[ ] 15. OFFER (do not auto-create) cron routines via memory-schedule —
-       see Step 14 below. Default is manual /memory-refresh.
+[ ] 15. Confirm with the user that /memory-refresh is their one entry
+       point. No background routines — they invoke when they want fresh
+       data. Mention `/loop 6h /memory-refresh` for in-session repeats.
 [ ] 16. Register the MCP server (vault-aware — see Step 16 below)
 [ ] 17. Verify memory_ask round-trip works against the right vault
 [ ] 18. Write mem_BOOTSTRAP_<date>.md with the eval set + coverage
@@ -546,52 +547,24 @@ If yes (or after they review and approve), merge the contents of
 array into `~/.claude/settings.json`'s `permissions.allow`. Don't
 overwrite existing entries — append + dedupe.
 
-### Step 14 — Scheduling (now optional, manual is the default)
+### Step 14 — Tell the user about /memory-refresh
 
-**Default is /memory-refresh manual.** Setting up scheduled tasks is
-opt-in. Ask via `AskUserQuestion`:
+The kit has ONE recurring entry point: `/memory-refresh`. It runs
+heal + ingest + queue-drain + soft-eval in one user-present pass.
+No background routines, no cron, no scheduled tasks. The earlier
+5-task scheduled-routine layer was removed because source-MCP auth
+needs a human and routines silently no-op when tokens expire.
 
-> How do you want to keep your vault fresh?
->
-> [1] Manual via /memory-refresh (Recommended)
->     Press a button when you want fresh data. No permission
->     prompts (Step 14a already handled that). You see what runs.
-> [2] Scheduled auto-runs
->     Five scheduled tasks: master-ingest 6 AM, heal 1 AM,
->     coverage 2 AM, queue-router 2:30 AM, eval Monday 3 AM.
->     If you pick this, I'll run each task once now so its
->     permissions warm up before the first scheduled fire.
-> [3] Both
->     Scheduled for hands-off automation, manual /memory-refresh
->     anytime in between.
+Tell the user explicitly:
 
-If [1] (default): skip task creation, tell the user
-"come back anytime with /memory-refresh". Continue to Step 16.
+> You're set up. From now on, just run `/memory-refresh` whenever you
+> want fresh data — once a morning, once a week, whatever cadence
+> matches your work. Inside a Claude Code session you can also use
+> `/loop 6h /memory-refresh` to have me self-pace repeat passes
+> while you're working.
 
-If [2] or [3]: call `mcp__scheduled-tasks__create_scheduled_task` FIVE times:
-
-1. `memory-master-ingest-daily` at 6:?? AM — prompt should reference
-   `connected_sources.json` (so it iterates only what the user enabled).
-   The prompt is NOT a hardcoded source list — it tells the runtime
-   to read the file.
-2. `memory-heal-nightly` at 1:?? AM — `mv migrate --apply --quick`
-3. `memory-coverage-nightly` at 2:?? AM — coverage_gaps + enrich_gaps
-4. `memory-queue-router-nightly` at 2:?? AM — authoring_cycle --apply
-5. `memory-eval-weekly` at Mon 2:?? AM — eval suite + history archive
-
-Use off-minute times (NOT :00 or :30). Confirm all 5 are listed via
-`mcp__scheduled-tasks__list_scheduled_tasks`.
-
-**Pre-warm each task's permissions immediately.** Right after
-creating, call `mcp__scheduled-tasks__run_now` on each task in
-sequence (or invoke the equivalent "Run now" action). The user is
-right here, paying attention — they grant the permission prompts
-once during setup so future scheduled fires never block on auth.
-
-This is the entire reason we offer auto-scheduling alongside the
-permissions step (14a): together they make scheduled tasks actually
-work at 6 AM tomorrow. Skip the pre-warm and the first scheduled
-fire will block on permission prompts with no human to approve.
+No task creation. No `mcp__scheduled-tasks__*` calls. Continue to
+Step 15.
 
 ### Step 15 — Register the MCP server (vault-aware)
 

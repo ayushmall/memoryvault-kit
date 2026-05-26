@@ -10,10 +10,12 @@ scattered, no ordering, no priority.
 
 This module gives the kit a real queue: a persistent JSONL list of
 "things the authoring agent should look at next time it wakes up,"
-ordered + priorityed. The wake-up agent (memory-authoring-cycle skill +
-memoryvault_kit.graph.authoring_cycle module) reads the queue in
-batch, processes each item with full context, fills gaps, writes new
-memories, and marks items processed.
+ordered + priorityed. /memory-refresh Step 4b drains the queue
+(reads the JSONL, dispatches each item to memory-deep-dive /
+memory-stub-enricher, marks items processed). The queue is the
+async channel from consumption (memory_ask, memory_get) → authoring
+(/memory-refresh) — every retrieval failure or stub touch becomes
+work for the next refresh to pick up.
 
 What gets enqueued:
 
