@@ -25,10 +25,14 @@ Runs against the Linear MCP server (the kit's mcp client side). The
 caller must have Linear MCP authenticated.
 
 Usage:
-    python3 -m memoryvault_kit.ingest.linear --awareness --max-issues 100
-    python3 -m memoryvault_kit.ingest.linear --initiatives
-    python3 -m memoryvault_kit.ingest.linear --issues --max-issues 50
-    python3 -m memoryvault_kit.ingest.linear --cycles --team Engineering
+    This module is invoked by an agent that has Linear MCP available.
+    The agent calls list_issues / list_teams / list_cycles via MCP,
+    then passes the pre-fetched data into the writer functions here
+    (ingest_issues, ingest_initiatives, ingest_cycles).
+
+    The module's own `main()` prints docstring + state — it does not
+    invoke the Linear MCP itself, because that requires the agent's
+    auth context.
 """
 from __future__ import annotations
 
