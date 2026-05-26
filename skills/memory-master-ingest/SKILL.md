@@ -11,6 +11,24 @@ each user has different MCPs installed (some use Linear, some Jira,
 some have no calendar at all). The user's choices live in
 `<vault>/.mvkit/connected_sources.json` — read it; do what it says.
 
+## You are a sub-agent
+
+If you were spawned by a parent skill (`/memory-refresh` or
+`/memory-setup`), **you inherit the parent's MCP wholesale** — the
+vault MCP (`mcp__plugin_memoryvault-kit_memoryvault__*`) AND every
+source MCP the user has connected (Slack, Linear, Notion, Gmail,
+Granola, GitHub, GDrive, Pylon …). Use them rather than reading the
+markdown vault from disk.
+
+The contract for every sub-agent in this kit is in
+[../../docs/AGENTS.md](../../docs/AGENTS.md). Key items:
+
+- Always dedupe via `memory_search_entity` before creating an entity
+- Always dedupe via `source_ref` collision before creating a memory
+- If `.mvkit/learned_preferences.json` exists, read it and respect
+  `source_overrides.<source>.skip_*` + `filter_rules.*`
+- Report back in the structured shape from AGENTS.md §4
+
 ## Read the source config first
 
 ```bash

@@ -99,7 +99,24 @@ Read `connected_sources.json`'s `last_ingest_per_source[<source>]`.
 For each enabled source, pull only what's new since that timestamp.
 
 Spawn parallel sub-agents per source (see memory-master-ingest skill for
-per-source dispatch). Each sub-agent:
+per-source dispatch). **Every spawned agent must be briefed using the
+agent-handover contract in [docs/AGENTS.md](../../docs/AGENTS.md)** —
+copy the canonical preamble below into the prompt:
+
+> You are a sub-agent of the kit's /memory-refresh. You inherit the
+> parent session's MCP — the vault MCP
+> (`mcp__plugin_memoryvault-kit_memoryvault__*`) AND every source MCP
+> the user has connected (Slack, Linear, Notion, Gmail, Granola, etc.)
+> are already available to you. Use them rather than reading files.
+>
+> Before saving anything, dedupe via `memory_search_entity` (entities)
+> and `source_ref` collision check (memories). Read
+> `.mvkit/learned_preferences.json` if it exists and respect any
+> skip_authors / skip_titles / source_overrides listed there.
+>
+> Report back in the structured shape from docs/AGENTS.md §4.
+
+Each sub-agent's job within that contract:
 
 - Reads `<vault>/.mvkit/mature_entities.md` first so it knows the
   existing entity landscape

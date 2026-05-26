@@ -328,6 +328,12 @@ prompt is the contents of `/tmp/eval-ctx.md` PLUS the current chat
 session's understanding of the user (the sub-agent inherits whatever
 you've gathered about them through conversation).
 
+**Brief the sub-agent using the contract in [docs/AGENTS.md](../../docs/AGENTS.md):**
+the child inherits the parent's MCP — including the kit's vault MCP
+(memory_search_entity, memory_recent) — and should use it to ground
+questions in REAL entities rather than synthesize names. Pass the
+canonical preamble from docs/AGENTS.md §1-§2 as the prompt header.
+
 The agent's job:
 - Write ~30 questions covering at least 6 of the 9 buckets
 - Every question references REAL entities (people / products /
