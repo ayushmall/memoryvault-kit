@@ -125,6 +125,41 @@ A weekly job runs these and writes a summary memory. A nightly job re-runs the h
 
 `mv doctor --eval-recovery` walks the same checks on demand.
 
+### Eval strategies, in plain English
+
+| Tool | What it does | When to use |
+|---|---|---|
+| `mv eval` | Three-pillar score (fill_quality + pollution + consistency) | Weekly, regression check |
+| `mv eval --soft` | Coverage: % of questions returning ≥2 results scoring ≥5. No gold annotations required | During `/mv-refresh`, fast |
+| `mv eval init --from-vault` | Generate a starter eval set from your actual vault content | Day 0, after first ingest |
+| `mv doctor --eval-recovery` | 5 structural checks before the eval runs | Before you blame the retriever |
+| `mv doctor --signal-quality` | Per-source ingest-vs-retrieval noise ratio | Weekly, finds noisy sources |
+| `/mv-graph-audit` | Walks you through Obsidian's graph view to catch what code can't see | Weekly visual pass |
+| `evals/retrieval/retrievers/*.py` | Run a specific retriever variant against the 482-Q hardened set | When you're testing a retrieval change |
+
+The combination matters. Soft coverage is fast but shallow. Three-pillar is rigorous but takes time. Doctor checks are structural. Graph audit is visual. Use them together — each catches things the others miss.
+
+### The dashboard
+
+`memoryvault_kit/dashboard/build.py` generates a self-contained HTML page showing eval scores over time, audit history, and per-bucket retrieval performance. Open it in any browser. Useful when you want trend lines, not just the latest number.
+
+## Running Claude Code from the vault directory
+
+You can run Claude Code from anywhere — the MCP server reads `MEMORYVAULT_ROOT` to find your vault regardless. But there's a useful option: **launch Claude Code with `cwd = $MEMORYVAULT_ROOT`**. Then Claude has direct read/write access to your memory files via its Read/Edit/Write tools, on top of the MCP layer.
+
+What this enables:
+
+- You can ask "fix the typo in mem_INGEST_LINEAR_xxx" and Claude edits the file directly
+- You can ask "show me all my customer entities" and Claude can `ls entities/companies/` instead of going through `memory_search_entity`
+- The session naturally feels like working IN your vault, not THROUGH a tool
+
+The MCP layer still works (memory_ask, memory_save, etc.) — direct file access is additive. If you don't need it, just don't launch from the vault dir.
+
+```bash
+cd ~/MemoryVault
+claude   # or: cursor . / continue
+```
+
 ## Working with other AI clients
 
 Claude Code is the primary target because that's where skills are richest. Everything else gets the same vault access through MCP, with the differences mostly in how skills translate.

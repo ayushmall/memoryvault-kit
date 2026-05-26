@@ -78,6 +78,7 @@ into six phases.
 | Skill | Triggered by | Expected behavior |
 |---|---|---|
 | `mv-eval-runner` | The `mv-eval-weekly` task fires Monday 2:58 AM | Runs `doctor --eval-recovery` + `doctor --signal-quality` + the three-pillar eval. Writes three JSON snapshots to `.mvkit/eval-history/`. Combines them into one `mem_WEEKLY_<ts>.md` summary memory the user actually reads |
+| `mv-graph-audit` | User says "audit my graph" / "check structure" or runs after a big ingest | Walks the user through 6 visual checks in Obsidian's graph view (owner centrality, orphan islands, duplicate entities, unexpected hubs, customer triad, root stubs). Captures observations as `mem_QUALITY_graph-audit-*` memories. Pairs visual pattern-matching with the code-based doctor checks |
 | `memoryvault-cowork` | User wants to use the kit from Anthropic's Cowork (cloud Claude) | Bridges the local kit's MCP server to a Cowork session via a tunnel |
 
 **Verification:** every Monday morning there's a fresh `mem_WEEKLY_*.md` memory with the current numbers + trend.
