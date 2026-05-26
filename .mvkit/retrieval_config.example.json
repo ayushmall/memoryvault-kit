@@ -1,0 +1,60 @@
+{
+  "_comment": "Vault-local retrieval tuning. Lives at <vault>/.mvkit/retrieval_config.json (NOT committed). The kit's retrieval modules read defaults from this file; missing keys fall back to module-level constants. Edit + re-run mv eval to see the effect — no code changes required.",
+
+  "_schema_version": 1,
+
+  "active_retriever": {
+    "_doc": "Which retriever variant runs when memory_ask / mv ask is called. Options: 'combined_graph' (default — BM25 + graph walk + D7 entity short-circuit), 'combined_lean' (just D7 + BM25, lighter), 'bm25_only' (pure BM25 baseline for debugging), 'grep' (worst-case floor).",
+    "name": "combined_graph"
+  },
+
+  "bm25": {
+    "_doc": "Classic BM25 hyperparameters. k1 controls term-frequency saturation (higher = more weight to repeated terms). b controls length normalization (1.0 = full normalization, 0.0 = none).",
+    "k1": 1.5,
+    "b": 0.75,
+    "_importance_lever_doc": "BM25 score multiplied by (0.7 + 0.6 * importance). Adjust these to weight importance more or less.",
+    "importance_floor": 0.7,
+    "importance_scale": 0.6
+  },
+
+  "graph_walk": {
+    "_doc": "How aggressively graph walk boosts BM25 candidates. Higher boost values mean graph signal dominates more vs BM25's content score.",
+    "k_seed": 5,
+    "entity_df_cap": 20,
+    "boost_distinctive": 0.8,
+    "boost_related": 3.0,
+    "boost_q_entity": 1.5
+  },
+
+  "entity_lookup": {
+    "_doc": "D7 entity-mediated retrieval. canonical_first puts type=relationship/reference/user_fact with importance>=0.7 ahead of pure recency in retrieve_by_entity. Set to false to revert to pure-recency sort.",
+    "canonical_first": true,
+    "canonical_min_importance": 0.7
+  },
+
+  "thin_retrieval": {
+    "_doc": "When to auto-log a mem_GAP_retrieval-thin-* memory. score_floor: top BM25 score below this triggers thin. min_results: returning fewer than this also triggers.",
+    "score_floor": 5.0,
+    "min_results": 3
+  },
+
+  "soft_coverage": {
+    "_doc": "Soft eval threshold — a question is 'answerable' if it returns at least min_results scoring at or above score_floor. coverage_target is what mv-setup's ingest loop aims for during bootstrap.",
+    "score_floor": 5.0,
+    "min_results": 2,
+    "coverage_target": 0.6
+  },
+
+  "tier_overrides": {
+    "_doc": "Per-tier overrides. profile.json's `tier` field (lean|full) picks which override block applies. Empty {} means use the values above.",
+    "lean": {
+      "k": 3,
+      "use_reranker": false
+    },
+    "full": {
+      "k": 5,
+      "use_reranker": false,
+      "_reranker_doc": "Set use_reranker=true to enable BGE cross-encoder. Tested on dev vault — train +3.4pp / blind -2.5pp. Default off."
+    }
+  }
+}
