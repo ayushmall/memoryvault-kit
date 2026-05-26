@@ -26,13 +26,31 @@ memories.
 
 ## Running it
 
-```bash
-# Provide a search query or page list
-python3 -m memoryvault_kit.ingest.notion --search "agents" --apply
+Notion ingest is agent-driven. The Python module is a writer that takes
+pre-fetched Notion pages and turns them into memory files — but the
+fetching itself happens through the Notion MCP, which lives behind the
+user's auth. The natural invocation is to ask Claude in a `/mv-refresh`
+session.
+
+In Claude Code (with the kit installed as a plugin):
+
+```
+/mv-refresh
 ```
 
+If `notion` is enabled in `connected_sources.json`, refresh will:
+1. Call `notion-search` via the Notion MCP for each topic in `config.topics`
+2. Fetch page bodies via `notion-fetch` for substantive matches
+3. Hand the fetched pages to the kit's notion writer, which produces
+   memory files with proper frontmatter, dedup, and entity linking
+
+Or ask explicitly:
+
+> Pull Notion pages matching "agents" into the vault.
+
 Idempotent: dedupes on `notion_id` from frontmatter. State in
-`.mvkit/notion_state.json` tracks `last_edited_time` per page.
+`.mvkit/notion_state.json` tracks `last_edited_time` per page so
+re-running only writes pages that changed since the last ingest.
 
 ## Known weakness
 

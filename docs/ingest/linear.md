@@ -30,18 +30,34 @@ them as memories + entities.
 
 ## Running it
 
-```bash
-# Set the team(s) you care about
-export LINEAR_TEAMS="ENG,PROD"
+Linear ingest is agent-driven. The Python module is a writer that takes
+pre-fetched issues, projects, cycles and turns them into memory files —
+but the fetching happens through the Linear MCP which holds your auth.
+The natural invocation is to ask Claude in a `/mv-refresh` session.
 
-# Run the ingest
-python3 -m memoryvault_kit.ingest.linear --teams ENG PROD --apply
+In Claude Code (with the kit installed as a plugin):
+
 ```
+/mv-refresh
+```
+
+If `linear` is enabled in `connected_sources.json` with `config.teams`
+populated, refresh will:
+1. Call `list_issues` per team via the Linear MCP (since
+   `last_ingest_per_source.linear`)
+2. Apply per-issue quality gates from `config.per_issue_quality`
+   (skip Backlog/Triage by default)
+3. Hand the issue data to the kit's linear writer, which produces
+   issue + cycle + initiative + team entity files
+
+Or ask explicitly:
+
+> Pull recent Linear issues from the ENG team into the vault.
 
 Idempotent: re-running updates existing memories where `linear_id`
 matches; doesn't create duplicates. Delta state lives in
-`.mvkit/linear_state.json` — tracks the last `updatedAt` per team to
-make subsequent runs incremental.
+`.mvkit/linear_state.json` — tracks the last `updatedAt` per team so
+subsequent runs are incremental.
 
 ## Tagging conventions
 

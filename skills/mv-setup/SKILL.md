@@ -386,15 +386,21 @@ while True:
     - else: increase backfill window (e.g., +30 days) and loop again
 ```
 
-Per-source ingest commands inside each sub-agent (with backfill
-windows, not 5-10 caps):
+Per-source flow inside each sub-agent (60-day backfill window):
 
-- **Linear**: `python3 -m memoryvault_kit.ingest.linear --teams <X>
-  --apply --since "60 days ago"`
-- **Notion**: `python3 -m memoryvault_kit.ingest.notion --search
-  "<topic>" --apply --since "60 days ago"`
-- **GitHub PRs**: `python3 -m memoryvault_kit.ingest.code_repo --repo
-  <X> --prs --apply --since "60 days ago"`
+- **Linear**: agent calls Linear MCP `list_issues` per team since 60d
+  ago, applies per-issue quality gates, then passes the pre-fetched
+  issue list to `memoryvault_kit.ingest.linear.ingest_issues()` for
+  proper memory + cycle + initiative wiring.
+- **Notion**: agent calls Notion MCP `notion-search` per topic, fetches
+  bodies via `notion-fetch`, passes the page list to
+  `memoryvault_kit.ingest.notion.ingest_pages()`.
+- **GitHub PRs** (truly standalone): `python3 -m
+  memoryvault_kit.ingest.code_repo --repo <X> --prs --apply --since "60
+  days ago"`. Shells out to `gh pr list`, no agent needed.
+- **Claude Code memory** (truly standalone): `python3 -m
+  memoryvault_kit.ingest.claude_memory --apply`. Reads filesystem, no
+  agent needed.
 - **Slack**: invoke `slack-channel-digest` on EACH channel in
   `config.channels`, scanning the last 60 days
 - **Calendar**: pull all events from `config.calendars` in [-60 days,

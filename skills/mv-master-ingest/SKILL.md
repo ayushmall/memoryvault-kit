@@ -42,10 +42,18 @@ For each entry in `sources`, you'll see:
 Every ingest path must check the existing vault before writing. There
 are two paths, and the dedupe story differs:
 
-### Path A — native ingest modules (Bash-invoked)
+### Path A — truly standalone modules (no agent needed)
 
-For `python3 -m memoryvault_kit.ingest.linear --apply` and friends.
-You don't dedupe — the module handles it internally via:
+Two ingest modules are fully self-contained because their sources don't
+require LLM-mediated auth:
+
+- `python3 -m memoryvault_kit.ingest.code_repo --repo <X> --prs --apply` —
+  shells out to `gh pr list`. The `gh` CLI on the user's machine holds
+  the auth, no MCP, no agent.
+- `python3 -m memoryvault_kit.ingest.claude_memory --apply` — reads
+  `~/.claude/projects/*/memory/*.md` from disk. No auth at all.
+
+You can invoke these directly from Bash. They handle dedupe internally via:
 
 - `source_ref` exact match (re-running ingest on the same Linear
   issue rewrites in place, never creates a duplicate)
@@ -244,12 +252,22 @@ purpose, member count, last activity. The user accepts it (moves into
 `config.channels`) via the next queue-router pass.
 
 ### `linear` MCP / module
-**INGEST**:
-```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
-  python3 -m memoryvault_kit.ingest.linear --teams <config.teams as space-list> --apply
-```
-The module handles delta via `.mvkit/linear_state.json`.
+**INGEST**: Linear's Python writer takes pre-fetched data — the agent
+does the MCP fetching. For each team in `config.teams`:
+
+1. Call `list_issues` on the Linear MCP since `last_ingest_per_source.linear`
+2. Apply per-issue quality gates (`skip_states`, `min_priority`)
+3. Pass the resulting issue list to the Linear writer via Python:
+   ```bash
+   cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+     python3 -c "from memoryvault_kit.ingest.linear import ingest_issues; \
+                 ingest_issues(<pre-fetched issues as JSON>)"
+   ```
+   Or invoke memory_save MCP per issue directly if Python wiring is awkward.
+
+The Linear writer handles delta via `.mvkit/linear_state.json` and
+ensures each issue resolves to its correct cycle / initiative / team
+entity.
 
 **DISCOVER**: call Linear MCP `list_teams` (or
 `mcp__288705fc-...__list_teams`). For each team key NOT in `config.teams`
@@ -271,11 +289,18 @@ For each repo not in `config.repos`, not archived, with recent activity
 `discovery_orgs` is empty.
 
 ### `notion` MCP / module
-**INGEST**: For each search query in `config.topics`:
-```bash
-cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
-  python3 -m memoryvault_kit.ingest.notion --search "<topic>" --apply
-```
+**INGEST**: Notion's Python writer takes pre-fetched pages — the agent
+does the MCP fetching. For each search query in `config.topics`:
+
+1. Call `notion-search` on the Notion MCP with the topic as query
+2. For each substantive result, call `notion-fetch` for the body
+3. Pass the resulting page list to the Notion writer via Python:
+   ```bash
+   cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+     python3 -c "from memoryvault_kit.ingest.notion import ingest_pages; \
+                 ingest_pages(<pre-fetched pages as JSON>)"
+   ```
+   Or call memory_save MCP per page directly if Python wiring is awkward.
 
 **DISCOVER**: call `notion-search` with an empty filter (or
 `notion-get-teams` for workspace scope) to enumerate top-level pages

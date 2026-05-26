@@ -49,32 +49,37 @@ The example vault has 10 memories about two fictional customers. You should see 
 
 ## Five minutes to point it at your own life
 
-If you're on Claude Code, install the kit as a plugin so the session knows about it. Two commands from your terminal:
+The intended path is Claude Code with the kit installed as a plugin. Two commands from your terminal:
 
 ```bash
 claude plugin marketplace add /path/to/memoryvault-kit
 claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
-That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Restart Claude Code so the registration takes effect. Then type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
+That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/mv-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
 
-If you'd rather use the CLI without the plugin:
+After setup, every recurring update happens through `/mv-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
+
+### Why the agent does the source-pulling
+
+Most sources (Notion, Linear, Slack, Gmail, Granola, Drive, Pylon, Calendar) live behind MCP servers that hold your auth. The agent is what calls those MCP tools, gets the page/issue/thread back, decides if it's substantive enough to save, synthesizes a fact-carrying title, and writes the memory. The kit ships Python writers that take pre-fetched data and turn it into properly-shaped memory files, but the fetching itself is agent-driven because that's where the auth + judgment live.
+
+Two sources are exceptions:
+- **GitHub PRs** — the kit shells out to `gh pr list`, no agent needed. Run `python3 -m memoryvault_kit.ingest.code_repo --repo acme/api --prs --apply` directly.
+- **Claude Code memory** — the kit reads `~/.claude/projects/*/memory/*.md` from disk. Run `python3 -m memoryvault_kit.ingest.claude_memory --apply` directly.
+
+For everything else, the right command is "in a Claude Code session with /mv-refresh, ask the kit to pull from Notion / Linear / etc." That's not a workaround, it's the design — agents are the bridge between MCP-gated source data and the markdown vault.
+
+### Maintenance commands you can run standalone
+
+These don't need an agent:
 
 ```bash
-python3 -m memoryvault_kit.setup        # scaffold the vault
-export MEMORYVAULT_ROOT=~/MemoryVault
-
-# pull from a source
-python3 -m memoryvault_kit.ingest.linear --teams ENG --apply
-python3 -m memoryvault_kit.ingest.notion --search "Strategy" --apply
-python3 -m memoryvault_kit.ingest.code_repo --repo acme/api --prs --apply
-
-# heal the graph and check health
-python3 -m memoryvault_kit.migrate --apply
-python3 -m memoryvault_kit.doctor
+python3 -m memoryvault_kit.setup        # scaffold an empty vault
+python3 -m memoryvault_kit.migrate --apply --quick   # heal the graph
+python3 -m memoryvault_kit.doctor       # check vault health
+python3 -m memoryvault_kit.eval --soft  # measure retrieval coverage
 ```
-
-Calendar, gmail, slack, granola, and drive ingests go through the authoring agent (it reads via the source's MCP and saves through the kit's `memory_save` tool). Per-source notes are in `docs/ingest/`.
 
 If you don't have any notes yet, write five by hand using the schema in `docs/schema.md`. Even a tiny vault is enough to start working with the loops.
 
