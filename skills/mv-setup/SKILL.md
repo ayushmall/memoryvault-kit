@@ -285,60 +285,100 @@ then update each source's `enabled` + `config` based on user answers.
 
 Verify the file is valid JSON.
 
-### Step 11 — Build the eval set FIRST (before any ingest)
+### Step 11 — Build the eval set FIRST (intelligent, before any ingest)
 
-This is the kit's core ideology and it has to happen before ingest:
-**you can't measure coverage of an empty vault, so define what coverage
-*means* for this user first.** The eval set is the acceptance criterion
-the bootstrap ingest is trying to satisfy.
+This is the kit's core ideology. You can't measure coverage of an
+empty vault, so define what coverage *means* for this user first.
+The eval set is the acceptance criterion the bootstrap ingest is
+trying to satisfy.
 
-The eval set comes from Claude's existing understanding of the user
-gathered in THIS session — their role, org, sources, recent context,
-the people and projects they've mentioned, the kinds of things they'd
-naturally ask their work memory. Not from a vault that doesn't exist
-yet.
+**Critical**: the eval set must NOT be generated FROM the vault.
+That's circular — questions derived from existing content are
+guaranteed answerable from that content. Doesn't test retrieval, just
+proves the content exists. We want questions generated from
+**context the model already has about the user** so retrieval has to
+actually work to satisfy them.
 
-**Spawn a sub-agent to generate the questions.** Pass it:
+The kit ships a code path for this. Three phases:
 
-- The user's name + role + org (from Steps 4/6 + org.json)
-- The list of enabled sources from connected_sources.json
-- A short summary of relevant context from this conversation (the
-  entities, projects, customers, products you've heard about)
-- The 9 question buckets from `docs/eval_methodology.md`: needle,
-  multi-hop, alias, disambiguation, aggregate, lateral, paraphrase,
-  temporal, negation-rejection
+#### Phase A — code prepares a context bundle
 
-Sub-agent prompt template:
-
-```
-You are generating a starter eval set for [name]'s memoryvault.
-They work at [org] as [role]. They've connected: [source list].
-Recent context from their session suggests these matter to them:
-[entities + projects + customers, distilled].
-
-Write 30 questions they'd naturally ask their work memory.
-Cover at least 6 of the 9 buckets. Each question must:
-  - Reference real entities (people, products, customers) by name
-  - Be answerable from ingested source data (no hypotheticals)
-  - Have a `bucket:` tag from the 9-bucket taxonomy
-  - Have `expected_memory_ids: []` (vault is empty — gold IDs get
-    annotated later by the user or by future eval-runner passes)
-
-Output JSONL, one question per line. Schema:
-  {"id": "q001", "question": "...", "bucket": "needle",
-   "expected_entities": ["[[Jane Doe]]"], "expected_memory_ids": []}
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.eval.intelligent_init --bundle > /tmp/eval-ctx.md
 ```
 
-Write the output to `<vault>/evals/retrieval/questions.jsonl`. Show
-the user the first 10, ask for any edits/removals/additions. They
-own this — they should be able to read each question and think "yes,
+The module gathers structured context from what's already known
+BEFORE the big ingest:
+- `<vault>/.mvkit/org.json` (name, role, org from setup interview)
+- `<vault>/.mvkit/connected_sources.json` (which sources will be ingested)
+- `~/.claude/projects/*/memory/*.md` (Claude Code's distilled facts
+  about this user across all prior sessions — high-signal)
+- Pre-existing canonical entities in `<vault>/entities/` (skips
+  auto-created stubs)
+
+Writes a markdown bundle: who the user is, what sources they'll
+have, what Claude already knows about them, what real entities
+exist. THIS is the only thing the question-generation agent sees.
+
+#### Phase B — spawn a sub-agent to generate questions
+
+Use the Agent tool with `subagent_type: "general-purpose"`. The
+prompt is the contents of `/tmp/eval-ctx.md` PLUS the current chat
+session's understanding of the user (the sub-agent inherits whatever
+you've gathered about them through conversation).
+
+The agent's job:
+- Write ~30 questions covering at least 6 of the 9 buckets
+- Every question references REAL entities (people / products /
+  customers / projects) from the bundle — no placeholders
+- Schema: `{"id": "q001", "question": "...", "bucket": "needle-in-haystack",
+  "expected_entities": ["[[Real Name]]"], "expected_memory_ids": []}`
+- One JSON object per line, written to
+  `<vault>/evals/retrieval/questions.jsonl`
+
+#### Phase C — validate the agent's output
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.eval.intelligent_init \
+    --validate $HOME/MemoryVault/evals/retrieval/questions.jsonl
+```
+
+Checks: ≥15 questions, ≥6 buckets covered, no `<X>` or `[X]`
+placeholder text (would signal the agent didn't ground in real
+entities), valid JSON, valid bucket tags. If validation fails,
+re-spawn the agent with feedback on what was missing.
+
+Show the user the first 10 questions. Ask if any are off or missing.
+They own this set — they should read each question and think "yes,
 I'd ask my vault that."
 
-**The questions don't need gold IDs yet.** The bootstrap ingest uses
-*soft coverage* — "did the retriever return >=2 results with score
->=5" — which works on an empty-gold eval set. Gold IDs get backfilled
-later by the user reviewing top results, or auto-suggested by the
-weekly eval-runner.
+#### Why this is honest
+
+`mv eval init --from-vault` samples memories AFTER ingest and
+generates questions from their content. That's a circular test:
+questions derived from content → retrieval finds the content →
+"works." Doesn't measure whether the kit pulls the right source
+data, just whether retrieval can match strings it has.
+
+The intelligent path tests whether the bootstrap ingest actually
+satisfies questions coming from OUTSIDE the vault (the user's real
+needs, distilled by Claude over time). Different vault would produce
+different questions, different retrieval challenges, more honest
+numbers.
+
+Use `--from-vault` later as a maintenance path — sample new memories
+weekly, augment the eval set. But the initial acceptance criterion
+comes from the user's pre-existing context, not the kit's output.
+
+#### Gold IDs come later
+
+The questions don't need `expected_memory_ids` populated yet. The
+bootstrap ingest uses *soft coverage* — "did the retriever return ≥2
+results scoring ≥5" — which works on an empty-gold eval set. Gold
+IDs get backfilled later by the user reviewing top results or by the
+weekly eval-runner auto-suggesting them.
 
 ### Step 12 — Ingest loop until coverage threshold (THIS is the biggest ingest)
 
