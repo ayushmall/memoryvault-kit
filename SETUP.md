@@ -20,7 +20,7 @@ you can query from anywhere.
 4. [Create meaningful entities](#4-create-meaningful-entities)
 5. [Add your first memories](#5-add-your-first-memories)
 6. [Lint, audit, heal — the quality loop](#6-lint-audit-heal--the-quality-loop)
-7. [Use it: `memory ask`, the dashboard](#7-use-it-mv-ask-the-dashboard)
+7. [Use it: `memory ask`, the dashboard](#7-use-it-memory-ask-the-dashboard)
 8. [Connect data sources (MCP)](#8-connect-data-sources-mcp)
 9. [Set up the daily refresh agent](#9-set-up-the-daily-refresh-agent)
 10. [Build your own eval set](#10-build-your-own-eval-set)
@@ -37,8 +37,8 @@ pip install memoryvault-kit
 Verify:
 
 ```bash
-mv --version
-mv --help
+memory --version
+memory --help
 ```
 
 Requirements: Python 3.11+. No databases, no services. Everything is markdown
@@ -462,10 +462,10 @@ Best if: your laptop is on most mornings, you already use Claude Code locally.
 
 ```bash
 # Generate the launchd plist
-mv schedule local --time 06:00
+memory schedule local --time 06:00
 
 # Or for Linux, generate a crontab line
-mv schedule cron --time 06:00
+memory schedule cron --time 06:00
 ```
 
 This installs a launchd job that runs each morning. It calls
@@ -479,7 +479,7 @@ vault in a private GitHub repo.
 
 ```bash
 # Print the routine config that you'll create in Claude Code's /schedule UI
-mv schedule remote --print-config
+memory schedule remote --print-config
 ```
 
 Output is the JSON body for an Anthropic scheduled routine. Steps:

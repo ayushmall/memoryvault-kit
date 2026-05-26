@@ -1,7 +1,7 @@
 ---
 name: memory-graph-audit
 tier: any
-description: "Walk the user through a visual audit of their vault using Obsidian's graph view. Triggers on 'audit my graph', 'check structure', 'walk through vault visually', 'find graph issues', 'mv graph audit'. Some structural problems (orphan entities, duplicate-spelling entities, broken clusters, missing champions, dead wikilinks) are visible at a glance in Obsidian but invisible to the eval set. This skill gives the user a checklist of what to look for, captures their observations as actionable feedback memories, and accepts screenshots if they want to flag something visual. Pairs the model's structural checks (memory doctor) with human visual pattern-matching."
+description: "Walk the user through a visual audit of their vault using Obsidian's graph view. Triggers on 'audit my graph', 'check structure', 'walk through vault visually', 'find graph issues', 'memory graph audit'. Some structural problems (orphan entities, duplicate-spelling entities, broken clusters, missing champions, dead wikilinks) are visible at a glance in Obsidian but invisible to the eval set. This skill gives the user a checklist of what to look for, captures their observations as actionable feedback memories, and accepts screenshots if they want to flag something visual. Pairs the model's structural checks (memory doctor) with human visual pattern-matching."
 ---
 
 # memory-graph-audit — pair the user's eyes with the doctor's checks

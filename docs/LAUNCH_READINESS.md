@@ -23,7 +23,7 @@
 |---|---|:-:|---|---|
 | 1 | Mature entities (in-degree) | **B+** | hub=65, mature=69, growing=117 (per `memory doctor`) | First-run is empty; need bootstrap-on-ingest |
 | 2 | Code-ingest module | **B** | --metadata + --prs modes; products/<owner>.json works | No automated re-ingest |
-| 3 | Org structure modeling | **A-** | `org.py` + `org.example.json` + `mv org init` interactive; modules read from config | Need to ship a "memory setup" wrapper |
+| 3 | Org structure modeling | **A-** | `org.py` + `org.example.json` + `memory org init` interactive; modules read from config | Need to ship a "memory setup" wrapper |
 | 4 | Leak cleanup | **A-** | Major refs scrubbed; zero org-specific identifiers in shipped artifacts | Residual in initial commit (user-accepted) |
 | 5 | Token-budget tiers | **A-** | profile.py + retrieval_config() wired into combined.py; CLI works; SKILL.md tagged | Skill loader still client-dependent |
 | 6 | event_date everywhere | **B-** | 99.7% backfilled; temporal filter works | Ingest modules don't write native yet |
@@ -86,7 +86,7 @@ The fresh-install gap (memory setup) is now the main blocker.
 - [x] **Smoke-test the MCP server start** — restart the kit's MCP and verify all 7 tools register, especially the new `memory_get` + `memory_update`.
 - [x] **Per-source `memory ingest <source>` documentation** — one doc per source (calendar, gmail, granola, slack, notion, linear, gdrive, github-pr, code) with: prerequisites (which MCP / API key), what it captures at Lean vs Full, dedup behavior, troubleshooting.
 - [x] **`.mvkit/org_roster.example.json`** — shipped template. Fresh user clones, edits names.
-- [x] **Tier flow at MCP start** — when MCP server starts and no `profile.json` exists, log a one-liner to stderr suggesting `mv profile set`.
+- [x] **Tier flow at MCP start** — when MCP server starts and no `profile.json` exists, log a one-liner to stderr suggesting `memory profile set`.
 
 ### P1 — strongly recommended before launch
 
@@ -111,7 +111,7 @@ The fresh-install gap (memory setup) is now the main blocker.
 
 ### P2 — quality polish
 
-- [ ] **Per-skill `EVAL.md` files** — every SKILL ships with a 10-question eval grounded in placeholder content. User runs `mv skill-eval <name>` for their vault-specific check.
+- [ ] **Per-skill `EVAL.md` files** — every SKILL ships with a 10-question eval grounded in placeholder content. User runs `memory skill-eval <name>` for their vault-specific check.
 - [ ] **Improve Notion title synthesis** — Notion ingest takes raw page titles, often vague. Synthesize from first paragraph instead (saves a Claude call per page in Full).
 - [ ] **Surface-discovery for non-Slack sources** — extend `discover_surfaces.py` to detect pylon-account, gmail-thread, granola-series, gdrive-folder, notion-space patterns from existing memories.
 - [ ] **Example vault bundled in repo** — `examples/example-vault/` with 50 sanitized memories so a user can `memory eval` immediately without ingest.

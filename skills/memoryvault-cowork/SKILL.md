@@ -223,7 +223,7 @@ Be honest with the user about what's not in this version:
 | Latency | 3-8s per query (drive search + read) | <100ms (local BM25) |
 | Coverage @ k=10 | ~85% (estimated, no formal eval yet) | 93.2% (measured) |
 | Code source ingest | metadata + PRs only | metadata + PRs (source mode is enterprise-only) |
-| Daily refresh automation | manual or "set a reminder" | `mv schedule --daily 6am` |
+| Daily refresh automation | manual or "set a reminder" | `memory schedule --daily 6am` |
 | Custom retrieval tuning | not exposed | full Python access |
 
 For most users, the Cowork skill is plenty. If they hit precision/latency walls

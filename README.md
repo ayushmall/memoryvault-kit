@@ -18,7 +18,7 @@ gmail        ──ingest─▶ mem_*.md      ──MCP──▶   Cursor
 slack                 entities/                  Continue
 linear                  people/*.md              OpenAI SDK
 notion                  products/*.md            Gemini
-github                  teams/*.md               or the mv CLI
+github                  teams/*.md               or the memory CLI
 granola               
 drive                 (Obsidian-readable)
 ```
@@ -243,7 +243,7 @@ Iterate on your own numbers, not the maintainer's.
 memoryvault-kit/
 ├── README.md                    you are here
 ├── memoryvault_kit/
-│   ├── cli.py                   the `mv` command
+│   ├── cli.py                   the `memory` command
 │   ├── mcp_server.py            MCP server, talks to AI clients
 │   ├── doctor.py                health and eval-recovery checks
 │   ├── migrate.py               the heal chain

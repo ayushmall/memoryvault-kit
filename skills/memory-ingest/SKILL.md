@@ -36,7 +36,7 @@ Recommend the user run `memory-refresh`-style sweeps over them:
 
 OR use the LLM-assisted entity tagger (if available) to do this in batch:
 ```bash
-mv tag-entities --since "2026-01-01"   # not yet implemented
+memory tag-entities --since "2026-01-01"   # not yet implemented
 ```
 
 ## When NOT to use

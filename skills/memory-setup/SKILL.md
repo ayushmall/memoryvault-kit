@@ -637,7 +637,7 @@ This is the audit trail. `memory-doctor` will reference it later.
 - **Don't silently retry on errors.** If a step fails, surface it
   and offer a fix.
 - **Never run something destructive** without confirmation (no
-  `mv profile set lean` if they're already on Full, etc.).
+  `memory profile set lean` if they're already on Full, etc.).
 - **Bootstrap memory at the end is mandatory.** It marks Day 0 +
   enables `memory-doctor` to compute "you've been using this for X days."
 

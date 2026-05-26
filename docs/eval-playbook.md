@@ -257,7 +257,7 @@ What to do when a source is flagged noisy:
 
 3. **The global share cap is the real circuit breaker.** `_global_caps.max_share_per_run: 0.3` means no single source can produce more than 30% of one run's memories. If GitHub is firehoseing, the cap kicks in mid-run and reports truncation, regardless of any per-source config.
 
-4. **Last resort, prune.** A source that's over-ingested for months has dead weight in the vault. Plan: `mv prune --source <name> --max-age 90 --min-retrievals 0` to archive memories never retrieved (not shipped yet, manual cleanup for now).
+4. **Last resort, prune.** A source that's over-ingested for months has dead weight in the vault. Plan: `memory prune --source <name> --max-age 90 --min-retrievals 0` to archive memories never retrieved (not shipped yet, manual cleanup for now).
 
 ## When discovery proposes too much
 

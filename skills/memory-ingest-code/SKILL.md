@@ -108,7 +108,7 @@ After initial ingest, schedule periodic refresh to capture new PRs:
 
 ```bash
 # Daily, only new PRs since last ingest
-mv schedule --daily --code-ingest <repo>
+memory schedule --daily --code-ingest <repo>
 ```
 
 (This needs delta-ingest support in the module — see TODO below.)
@@ -162,6 +162,6 @@ Be honest with the user about what the kit does NOT pull:
 ## TODO (not yet built)
 
 - [ ] Delta-ingest: only new PRs since last run (need state file per repo)
-- [ ] Per-repo `mv schedule --code-ingest` integration
+- [ ] Per-repo `memory schedule --code-ingest` integration
 - [ ] PR comment ingestion (low priority; high noise)
 - [ ] Closed-PR ingestion option (for "decision history" use cases)

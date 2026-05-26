@@ -51,8 +51,8 @@ greeting message explaining what to do next.
 - ❌ `skills/onboarding/SKILL.md` — the orchestration skill the agent reads first
 - ❌ Preference-asking flow (Slack vs personal? Encrypted disk? Work or personal data?)
 - ❌ Disambiguation helper (entity merge prompts during ingest)
-- ❌ `mv mcp install` — auto-registers MCP with Claude Code
-- ❌ `mv skills install` — symlinks skills to `~/.claude/skills/`
+- ❌ `memory mcp install` — auto-registers MCP with Claude Code
+- ❌ `memory skills install` — symlinks skills to `~/.claude/skills/`
 - ❌ Greeting flow at the end ("here's what you can do next")
 
 ## The orchestration skill (proposal)
@@ -87,7 +87,7 @@ description: Walk a new user through setting up the kit end-to-end:
 
 ### MCP registration
 - [ ] Detect Claude Code installation
-- [ ] If installed: run `mv mcp install` (auto-edits Claude Code config)
+- [ ] If installed: run `memory mcp install` (auto-edits Claude Code config)
 - [ ] If not: explain how to register manually
 
 ### Skill installation
@@ -112,7 +112,7 @@ description: Walk a new user through setting up the kit end-to-end:
 
 ### Schedule (optional)
 - [ ] Ask: "Run daily refresh automatically at 6am?"
-- [ ] If yes: `mv schedule --daily 6am`
+- [ ] If yes: `memory schedule --daily 6am`
 
 ### Final greeting
 - [ ] Print: vault stats, eval scores, next-step suggestions
@@ -173,8 +173,8 @@ This is real work, not just config:
 | step | effort |
 |---|---|
 | Write `skills/onboarding/SKILL.md` | 1 hour — design + writing |
-| Build `mv mcp install` | 2 hours — edit Claude Code config safely |
-| Build `mv skills install` | 1 hour — symlink mgmt + idempotency |
+| Build `memory mcp install` | 2 hours — edit Claude Code config safely |
+| Build `memory skills install` | 1 hour — symlink mgmt + idempotency |
 | Build disambiguation helpers | 4-8 hours — needs UX iteration |
 | Cost-tracking instrumentation | 2 hours — wrap LLM calls with token counters |
 | End-to-end test | 2 hours — fresh-install test x3 |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mv — the MemoryVault CLI.
+memory — the MemoryVault CLI. (Also installed as `mv` for backward compat.)
 
 Subcommands:
   init      Create a new vault directory structure
@@ -354,10 +354,10 @@ def cmd_refresh(args):
     print("scheduled remote routine. Pick one:\n")
     print("  Option A (local cron + Claude Code):")
     print("     1. Install Claude Code: https://docs.claude.com/en/docs/claude-code")
-    print("     2. Run: `mv schedule local --time 06:00 --write`")
+    print("     2. Run: `memory schedule local --time 06:00 --write`")
     print("     3. Re-run `memory refresh` — it'll now find the `claude` CLI\n")
     print("  Option B (Anthropic-hosted scheduled routine):")
-    print("     `mv schedule remote` and follow the printed config\n")
+    print("     `memory schedule remote` and follow the printed config\n")
     print("  Option C (manual — paste prompt into any Claude session):")
     print(f"     cat {agent_prompt}\n")
     return 1
@@ -697,7 +697,7 @@ def cmd_version(args):
 
 
 def main():
-    p = argparse.ArgumentParser(prog="mv", description="MemoryVault Kit CLI")
+    p = argparse.ArgumentParser(prog="memory", description="MemoryVault Kit CLI")
     sub = p.add_subparsers(dest="cmd")
 
     s = sub.add_parser("init", help="initialize a new vault")

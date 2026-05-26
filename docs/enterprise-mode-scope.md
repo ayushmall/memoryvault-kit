@@ -15,7 +15,7 @@
 | Code source ingest | gated by `MVKIT_ENTERPRISE=1` | gated by sensitivity tag + per-repo `.kitignore` |
 | Audit log | optional | always-on: every retrieval logged with timestamp, query, returned IDs |
 | MCP transport | stdio + optional HTTP | stdio-only; HTTP refused |
-| Departure command | doesn't exist | `mv purge --employer X` wipes employer-tagged memories |
+| Departure command | doesn't exist | `memory purge --employer X` wipes employer-tagged memories |
 | First-run warning | none | loud banner: "this kit sends retrieved content to your LLM; ensure auth" |
 
 ## CLI surface
@@ -40,7 +40,7 @@ After init:
 ```bash
 memory refresh             # uses enterprise blocklist + redaction
 memory ask 'question'      # logged to audit.log; respects sensitivity restrictions
-mv purge --employer X  # at departure time, wipes employer-tagged memories
+memory purge --employer X  # at departure time, wipes employer-tagged memories
 memory audit-log show      # review retrievals
 ```
 
@@ -55,7 +55,7 @@ memory audit-log show      # review retrievals
 | Sensitivity tagging schema + enforcement | 4h | frontmatter field + validation in lint |
 | Source allowlist/blocklist in refresh | 4h | wire into each ingest source's filter |
 | Audit log + viewer | 4h | append-only JSONL + simple `audit-log show` command |
-| `mv purge --employer` | 4h | filter memories by tag, confirm + delete |
+| `memory purge --employer` | 4h | filter memories by tag, confirm + delete |
 | First-run banner + acknowledgment | 1h | TUI prompt |
 | End-to-end test | 4-8h | fresh install with each safeguard |
 

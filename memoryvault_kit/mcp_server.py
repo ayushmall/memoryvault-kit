@@ -1009,7 +1009,7 @@ def serve_http(host: str, port: int, bearer_token: str | None):
 
 def main():
     import argparse
-    p = argparse.ArgumentParser(prog="mv mcp")
+    p = argparse.ArgumentParser(prog="memory mcp")
     p.add_argument("--http", action="store_true", help="serve over HTTP instead of stdio")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8080)

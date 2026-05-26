@@ -147,7 +147,7 @@ def main():
                 ORG_PATH.write_text(example.read_text())
                 print(f"  ✓ Seeded {ORG_PATH} from example. Edit it next.")
             else:
-                print(f"  Run `mv org init` interactively to fill in.")
+                print(f"  Run `memory org init` interactively to fill in.")
             return
         print("Org setup (3 questions):")
         org_name = input("  Your org's display name (e.g. 'Acme Corp'): ").strip()

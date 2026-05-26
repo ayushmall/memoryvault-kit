@@ -549,7 +549,7 @@ def main():
         print()
         print("  ✓ Awareness ingest complete.")
         print(f"    For ongoing updates, re-run with --prs (delta mode kicks in automatically).")
-        print(f"    Or schedule: mv schedule --code-refresh {args.repo}")
+        print(f"    Or schedule: memory schedule --code-refresh {args.repo}")
         return
 
     flags = [args.metadata, args.prs, args.source]

@@ -26,7 +26,7 @@ but works for most users.
 | user profile | path | what they get |
 |---|---|---|
 | Non-engineer / no terminal | Cowork → Add skill "MemoryVault" → connect Drive | Zero install. Drive-backed vault. Full skill flow. ~85% coverage estimated. |
-| Engineer / wants the best retrieval | Clone kit → `pip install -e .` → `mv mcp install` | Local install. Local vault. BM25+graph+reranker. 93.2% measured coverage. <100ms latency. |
+| Engineer / wants the best retrieval | Clone kit → `pip install -e .` → `memory mcp install` | Local install. Local vault. BM25+graph+reranker. 93.2% measured coverage. <100ms latency. |
 | Both (hybrid) | Use Cowork skill, then run `memory bridge` to expose local kit | Best of both: Cowork UI + full kit retrieval. (Bridge is the next milestone.) |
 
 ## What to publish to make the Cowork path real

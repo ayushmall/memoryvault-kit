@@ -129,7 +129,7 @@ Retrieval returned: {reason}.
 Either (a) the vault is missing content on this topic — the next
 authoring session should look for source material that would answer
 this query, or (b) the canonical entities for this topic exist but
-aren't well-linked — run `mv graph heal` or extend the alias map.
+aren't well-linked — run `memory heal` or extend the alias map.
 
 When /memory-refresh's Step 4b queue-drain processes this gap, the
 memory-deep-dive sub-agent should use the Conversation Context section

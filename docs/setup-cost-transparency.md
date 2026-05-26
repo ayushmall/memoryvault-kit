@@ -13,8 +13,8 @@
 | `memory ingest` your first batch (50 items) | ~3-5 min | Claude reads each source item, writes a structured memory |
 | `memory eval init --from-vault` | <1s | scans your vault, generates ~30 starter questions |
 | `memory eval run` | ~5-10s | BM25 over the eval set |
-| `mv mcp install` (register with Claude Code) | ~5s | edits Claude Code config |
-| `mv schedule --daily 6am` | ~2s | writes a launchd / cron file |
+| `memory mcp install` (register with Claude Code) | ~5s | edits Claude Code config |
+| `memory schedule --daily 6am` | ~2s | writes a launchd / cron file |
 | **Total for working setup** | **~15 min** | **including reading the README** |
 
 After initial setup, daily use:

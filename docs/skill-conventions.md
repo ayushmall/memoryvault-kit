@@ -129,7 +129,7 @@ To be clear about scope:
   hooks, no dependency declarations. If a skill needs an external thing,
   that requirement lives in the skill's setup checklist as a `- [ ]` item.
 - **Not a workflow engine.** Skills are documents the agent reads; they don't
-  execute themselves on a schedule. Scheduling is separate (`mv schedule`).
+  execute themselves on a schedule. Scheduling is separate (`memory schedule`).
 - **Not a state machine.** There's no enforced state transitions. The
   "state" is whatever the markdown currently looks like.
 
