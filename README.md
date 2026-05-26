@@ -143,6 +143,16 @@ The combination matters. Soft coverage is fast but shallow. Three-pillar is rigo
 
 `memoryvault_kit/dashboard/build.py` generates a self-contained HTML page showing eval scores over time, audit history, and per-bucket retrieval performance. Open it in any browser. Useful when you want trend lines, not just the latest number.
 
+### Tuning without editing code
+
+If `mv eval` shows a weakness in some bucket and you want to try a fix, you have two paths:
+
+**Config knobs first.** Copy `.mvkit/retrieval_config.example.json` to `.mvkit/retrieval_config.json` and edit. The retrieval modules read from there with fallbacks to code defaults. You can adjust BM25 weights, graph-walk boosts, the D7 canonical-first sort, soft-coverage thresholds, or switch retriever variants — all without touching Python. Re-run `mv eval` to see the effect.
+
+**Code edits when the algorithm needs to change.** If the knob you need doesn't exist, the algorithm itself needs the change. Edit `memoryvault_kit/retrieval/*.py` directly. The kit's code is on your filesystem, you own it. Re-run eval to verify the change helped.
+
+The split: config for tuning, code for new logic. Both stay local — neither gets committed to the public repo unless you fork.
+
 ## Running Claude Code from the vault directory
 
 You can run Claude Code from anywhere — the MCP server reads `MEMORYVAULT_ROOT` to find your vault regardless. But there's a useful option: **launch Claude Code with `cwd = $MEMORYVAULT_ROOT`**. Then Claude has direct read/write access to your memory files via its Read/Edit/Write tools, on top of the MCP layer.
