@@ -44,13 +44,22 @@ What to put in `context`:
 Keep it to 500-1500 chars. Not a transcript paste — a distilled summary.
 
 **Response shape to expect:**
-- `results`: list of memories with score + entities + snippet
+- `results`: list of memories with score + entities + snippet **+ citation triad: `source` (slack/notion/granola/linear/gmail/gdrive/gcal/…), `source_ref` (permalink or canonical id), `event_date`**
 - `gap_logged`: id if the response was thin and the kit auto-logged a gap
 - `stub_gaps_in_results`: ids of stub gap memories you should enrich
 - `enrichment_hint`: structured prompt telling you what to enrich
 
-**How to answer:**
-- Cite mem_ ids in your answer ("per mem_INGEST_GRANOLA_50ec2a17")
+**How to answer (with citations):**
+- **Surface the source link** when the user might want to dig deeper. Format:
+  `"per [<source>](<source_ref>) on <event_date>"` — e.g. "per
+  [Slack thread](https://workspace.slack.com/...) on 2026-05-26".
+  If the source is an opaque id (granola, gcal), just show the
+  platform name; the kit's downstream tools can resolve it.
+- The link is **provenance, not load-bearing** — if the user doesn't
+  have access to that platform, the snippet still carries the
+  substance. Don't gate the answer on the link being clickable for them.
+- Cite mem_ ids alongside ("per mem_INGEST_GRANOLA_50ec2a17") when the
+  user might want to re-query the kit itself for related memories.
 - Don't paraphrase silently — quote the snippet when the user wants detail
 - Flag low confidence — if top score < 5 OR no result is on-topic, say so
 - **Don't hallucinate** — if a fact isn't in retrieved memories, it isn't in the vault. Say "I don't have that in your memory" rather than guessing.

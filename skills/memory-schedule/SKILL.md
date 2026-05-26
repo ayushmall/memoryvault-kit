@@ -1,10 +1,24 @@
 ---
 name: memory-schedule
 tier: any
-description: "Schedule the kit's heal + eval to run automatically. Use when the user says \"set up the nightly job\", \"schedule the heal\", \"automate this\", \"I don't want to remember to run mv migrate\", or \"set up the routine\" — typically after memory-setup or whenever they want hands-off maintenance. Sets up TWO routines via Claude Code's schedule infrastructure: (1) nightly mv migrate --apply --quick at 2 AM local time, (2) weekly mv eval Monday 3 AM. Both run in the user's local Claude Code or via cloud routine depending on what they prefer."
+description: "OPT-IN ADVANCED. Schedule the kit's heal + eval to run automatically via cron. Brittle in practice: background routines fail when MCP auth tokens expire or permissions weren't pre-granted. The recommended pattern is user-present /memory-refresh — that's what most users should reach for. Only invoke this skill when the user explicitly says they want to automate via cron AND understands the limitations."
 ---
 
-# memory-schedule — set up routines for the kit
+# memory-schedule — set up routines for the kit (advanced, opt-in)
+
+> ⚠️ **Most users should NOT invoke this skill.** Background routines
+> fail in practice — every source MCP (Slack, Notion, Linear, Gmail,
+> Granola, GDrive …) needs interactive auth that a cron job can't
+> request. Tokens expire, permissions get revoked, and the routine
+> silently no-ops. The recommended pattern is user-present
+> `/memory-refresh` — it folds heal + ingest + eval into one
+> human-in-the-loop call. Run it whenever you want; trigger
+> `/loop 6h /memory-refresh` inside a Claude Code session if you want
+> repeat passes while you're working.
+
+If you've read the above and still want cron-based routines for the
+heal chain (which doesn't touch source MCPs and so doesn't have the
+auth problem), continue below.
 
 The kit's quality compounds with use, but only if the heal chain runs
 regularly. This skill wires up automatic execution.

@@ -39,8 +39,8 @@ fill in gaps.
 [ ] 13. Run heal chain (`mv migrate --apply --quick`)
 [ ] 14. Run FINAL eval — report the coverage number we hit. This is
        the baseline future weeks trend against.
-[ ] 15. Generate 5 scheduled tasks (master-ingest-daily, heal-nightly,
-       coverage-nightly, queue-router-nightly, eval-weekly)
+[ ] 15. OFFER (do not auto-create) cron routines via memory-schedule —
+       see Step 14 below. Default is manual /memory-refresh.
 [ ] 16. Register the MCP server (vault-aware — see Step 16 below)
 [ ] 17. Verify memory_ask round-trip works against the right vault
 [ ] 18. Write mem_BOOTSTRAP_<date>.md with the eval set + coverage

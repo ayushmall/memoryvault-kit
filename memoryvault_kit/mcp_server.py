@@ -275,6 +275,10 @@ def tool_memory_ask(question: str, k: int = 5, context: str | None = None) -> di
     out = []
     for r in results:
         m = cache["full_by_id"].get(r["id"], {})
+        # Citation fields: source_ref points back to the original (Slack
+        # permalink, Notion URL, Granola id, Linear issue, Gmail thread,
+        # GDrive file id …). Consumers should surface these so users can
+        # verify or read more. See docs/AGENTS.md §4 and skills/memory-use.
         out.append({
             "id": r["id"],
             "title": r["title"],
@@ -285,6 +289,10 @@ def tool_memory_ask(question: str, k: int = 5, context: str | None = None) -> di
             "tags": m.get("tags", []),
             "importance": m.get("importance"),
             "snippet": (m.get("body") or "")[:400],
+            # Citation triad
+            "source": m.get("source") or m.get("source_host"),
+            "source_ref": m.get("source_ref"),
+            "event_date": m.get("event_date"),
         })
     # Auto-log a coverage-gap feedback memory if the retrieval came back thin.
     # The future /memory-refresh queue-drain reads these to figure out what to fill.
@@ -565,7 +573,14 @@ TOOLS = [
             "answer, then call `memory_save` (or `memory_annotate` for lighter additions) "
             "to feed it back. Look at the `parent_surface` field on partial results — it "
             "tells you which native source owns the full content. This deep-dive-on-demand "
-            "loop is how the vault gets richer with use."
+            "loop is how the vault gets richer with use.\n\n"
+            "CITE YOUR SOURCES: every result includes `source` (platform — slack/notion/granola/"
+            "linear/gmail/gdrive/gcal/pylon/github/…), `source_ref` (the permalink/id back to the "
+            "original — Slack permalink, Notion page URL, Granola meeting id, Linear issue, etc.), "
+            "and `event_date`. When you synthesize an answer for the user, surface these as "
+            "citations (e.g. \"per [Slack thread](<source_ref>), 2026-05-26\"). If the user lacks "
+            "access to a source, that's fine — the snippet still carries the substance; the link "
+            "is just provenance for verification."
         ),
         "inputSchema": {
             "type": "object",

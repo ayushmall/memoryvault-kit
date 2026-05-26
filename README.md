@@ -56,7 +56,7 @@ claude plugin marketplace add /path/to/memoryvault-kit
 claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
-That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, schedules the maintenance loops, and walks you through your first ingest.
+That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, generates an eval set from your real context, and walks you through your first ingest. To keep the vault fresh, you re-invoke `/memory-refresh` whenever you want — background scheduling is optional and unreliable in practice; user-present runs are the recommended pattern.
 
 After setup, every recurring update happens through `/memory-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
 
@@ -101,13 +101,15 @@ The headline is: every variant where the LLM touched the ranker regressed. Intel
 
 ## How authoring works
 
-The vault writes itself in two ways:
+The vault writes itself in two ways, and **both happen in a session you're in** — not on background cron. The kit's source MCPs (Slack, Linear, Notion, Gmail, Granola, GitHub, GDrive, Pylon, …) need interactive auth and per-tool permission grants that background routines can't reliably get. So the model is: **user-present `/memory-refresh`**, however often you want it.
 
-**Daily.** A scheduled agent wakes up, reads the sources you've connected, and writes one memory per substantive thing it finds. Each source has its own logic. Linear pulls issues by team and uses state-change as the event date. GitHub maps PRs to product entities by file path. Granola clusters recurring meetings into series. Slack runs per channel, classifies thread types, and writes a digest. Notion searches your pinned topics. Calendar pulls events with two-plus attendees. Gmail filters noise and synthesizes a real title from the body.
+**When you run `/memory-refresh`.** One slash command reads the sources you've connected, pulls deltas since the last refresh, writes one memory per substantive thing, then heals the graph + runs a fast soft eval. Each source has its own logic. Linear pulls issues by team and uses state-change as the event date. GitHub maps PRs to product entities by file path. Granola clusters recurring meetings into series. Slack runs per channel, classifies thread types, and writes a digest. Notion searches your pinned topics. Calendar pulls events with two-plus attendees. Gmail filters noise and synthesizes a real title from the body. Run it once a morning, or once a week, or trigger with `/loop 6h /memory-refresh` if you want it to keep going while you're in a Claude Code session.
 
 **On the fly.** When you ask the vault something and the answer is thin, the consuming agent (Claude, whichever) is told to reach back into the source MCPs you have, fetch what's missing, answer the question, and write the new finding back as a memory. So the next time you or anyone asks something similar, the vault has it.
 
-There's a coverage agent that watches the graph for structural holes (customer without a champion, project without an owner, hub entity with no decisions) and surfaces them as `mem_GAP_*` memories. The next session that has context on one of those gaps can fill it through `memory_update`. Failed queries also become gap memories, so the vault literally remembers what it failed to answer.
+There's a coverage step inside `/memory-refresh` that watches the graph for structural holes (customer without a champion, project without an owner, hub entity with no decisions) and surfaces them as `mem_GAP_*` memories. The next session that has context on one of those gaps can fill it through `memory_update`. Failed queries also become gap memories, so the vault literally remembers what it failed to answer.
+
+> **Aren't there scheduled routines?** There's a `memory-schedule` skill that wires up cron-style routines via Claude Code's schedule infrastructure. It exists for users who want it, but in practice background routines fail when permissions aren't pre-granted or MCP auth tokens expire silently. The recommended pattern is user-present `/memory-refresh`.
 
 ## How it stays useful
 
@@ -121,7 +123,7 @@ mv eval
 - `pollution_rate` is the fraction of wikilinks that are peripheral mentions rather than structural participants
 - `consistency` checks that the lean retrieval tier returns a strict subset of what the full tier returns, so switching tiers doesn't change behavior unpredictably
 
-A weekly job runs these and writes a summary memory. A nightly job re-runs the heal chain, rebuilds the alias map, and applies safe fixes when it sees something off. If retrieval quality drops, there's a playbook at `docs/eval-playbook.md` that lists the structural things to check before tuning anything.
+`/memory-refresh` runs the soft eval (`mv eval --soft`) inline at the end of every refresh so you see retrieval health each time you run it. The fuller three-pillar `mv eval` is on-demand — run when you suspect quality has shifted. The heal chain (rebuild alias map, connect entities, split mentions, in-degree) is also folded into every `/memory-refresh`, so a single user-present invocation does the lot. If retrieval quality drops, there's a playbook at `docs/eval-playbook.md` that lists the structural things to check before tuning anything.
 
 `mv doctor --eval-recovery` walks the same checks on demand.
 
@@ -174,11 +176,11 @@ claude   # or: cursor . / continue
 
 Claude Code is the primary target because that's where skills are richest. Everything else gets the same vault access through MCP, with the differences mostly in how skills translate.
 
-In Cursor, add the kit's MCP server to `~/.cursor/mcp.json`. Skills don't auto-load there, so paste `skills/memory-use/SKILL.md` into the Rules for AI section. Use local cron for the scheduled jobs.
+In Cursor, add the kit's MCP server to `~/.cursor/mcp.json`. Skills don't auto-load there, so paste `skills/memory-use/SKILL.md` into the Rules for AI section. Re-run the refresh manually in each session (background cron has the same permission-grant problems everywhere — user-present is the safe default).
 
-In Continue or Cline, register the MCP server in their config. They don't have a skill system, so rely on the tool descriptions the kit ships (they're written for exactly this case). Use cron.
+In Continue or Cline, register the MCP server in their config. They don't have a skill system, so rely on the tool descriptions the kit ships (they're written for exactly this case). Trigger refresh from a user-present session.
 
-In OpenAI's Agents SDK, register through OpenAI's MCP support. Paste the memory-use skill into the agent's system prompt. Use cron.
+In OpenAI's Agents SDK, register through OpenAI's MCP support. Paste the memory-use skill into the agent's system prompt. Trigger refresh from a user-present session.
 
 For Gemini or anything talking to the Anthropic API directly without MCP, wrap the kit's commands as function-call tools yourself (one wrapper per tool). The tool descriptions in `memoryvault_kit/mcp_server.py` are the source of truth.
 
@@ -239,9 +241,9 @@ memoryvault-kit/
 │   ├── memory-use/              the consumption contract
 │   ├── memory-save/             the save contract
 │   ├── memory-setup/                first-run onboarding
-│   ├── memory-schedule/             auto-schedule the loops
+│   ├── memory-schedule/             opt-in cron routines (brittle; prefer user-present)
 │   ├── memory-master-ingest/        the daily wide-net pull
-│   ├── memory-heal-agent/           nightly graph maintenance
+│   ├── memory-heal-agent/           graph maintenance (folded into /memory-refresh)
 │   ├── memory-eval-runner/          weekly quality check
 │   └── ...                      per-source helpers
 ├── docs/
@@ -259,7 +261,7 @@ memoryvault-kit/
 This is alpha software running on one person's vault. Specifically:
 
 - No semantic search by default. "Q1 wins" won't match "first quarter successes" unless an alias bridges them. The kit handles a lot of this through alias maps, but pure semantic gaps still exist.
-- Daily ingest is a scheduled skill that runs through Claude Code's scheduled tasks. It works, but it's not a standalone service.
+- Ingest is a user-present skill (`/memory-refresh`) — not a background daemon. Background scheduling exists (`memory-schedule`) but is opt-in and brittle because source-MCP auth requires a human.
 - Not on PyPI yet. Install is from source.
 - Tested on macOS and Linux. Should work on Windows, untested.
 - English stopwords only. Multilingual notes work but the token filter only knows English.

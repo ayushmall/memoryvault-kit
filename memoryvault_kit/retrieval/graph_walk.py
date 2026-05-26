@@ -54,6 +54,11 @@ def parse_memory_full(path):
         "importance": importance,
         "body": body,
         "related": related,
+        # Citation triad — surfaced by memory_ask so consumers can cite back
+        # to the original Slack thread / Notion page / Granola meeting etc.
+        "source": (fm.get("source") or fm.get("source_host", "")).strip().strip('"').strip("'") or None,
+        "source_ref": fm.get("source_ref", "").strip().strip('"').strip("'") or None,
+        "event_date": fm.get("event_date", "").strip().strip('"').strip("'") or None,
     }
 
 
