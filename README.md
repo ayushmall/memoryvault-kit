@@ -52,11 +52,20 @@ The example vault has 10 memories about two fictional customers. You should see 
 The intended path is Claude Code with the kit installed as a plugin. Two commands from your terminal:
 
 ```bash
-claude plugin marketplace add /path/to/memoryvault-kit
+# 1. Clone the repo somewhere (anywhere — the path doesn't matter,
+#    it just has to exist)
+git clone https://github.com/ayushmall/memoryvault-kit ~/memoryvault-kit
+
+# 2. Register it with Claude Code (the second arg is the path you cloned to)
+claude plugin marketplace add ~/memoryvault-kit
 claude plugin install memoryvault-kit@memoryvault-kit
 ```
 
-That registers all 21 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, generates an eval set from your real context, and walks you through your first ingest. To keep the vault fresh, you re-invoke `/memory-refresh` whenever you want — background scheduling is optional and unreliable in practice; user-present runs are the recommended pattern.
+`~/memoryvault-kit` is whatever path you cloned to in step 1. Claude Code reads the plugin manifest from `<that-path>/.claude-plugin/` and registers everything. After running both commands, restart Claude Code once so it picks up the new MCP server.
+
+That registers all 18 skills, the `memoryvault` MCP server, and the slash commands. Then in any Claude Code session, type `/memory-setup` (or "set up memoryvault" and the skill should fire). It asks what sources you have, scaffolds the vault, generates an eval set from your real context, and walks you through your first ingest. To keep the vault fresh, you re-invoke `/memory-refresh` whenever you want — there are no background routines (they were removed; see "How authoring works" below).
+
+**Using Cowork (cloud) instead of local Claude Code?** Cowork can't access local files or your installed plugins, so the local-plugin path above doesn't apply. The kit ships a separate skill, `memoryvault-cowork`, that uses Google Drive as the vault substrate. Drop it into your Cowork session as a skill and follow its prompts. The retrieval quality is lower than the local kit (Drive search vs BM25+graph) but it works without a local install. The eventual fix — a small local `mv bridge` that exposes the full kit to Cowork over HTTP — is sketched in [`docs/architecture-bridge.md`](docs/architecture-bridge.md) but not yet shipped.
 
 After setup, every recurring update happens through `/memory-refresh` — invoke it whenever you want fresh data. Claude reads your connected source MCPs (Slack, Linear, Notion, etc.), pulls deltas, writes memories, heals the graph, runs a quick eval.
 
@@ -70,18 +79,23 @@ Two sources are exceptions:
 
 For everything else, the right command is "in a Claude Code session with /memory-refresh, ask the kit to pull from Notion / Linear / etc." That's not a workaround, it's the design — agents are the bridge between MCP-gated source data and the markdown vault.
 
-### Maintenance commands you can run standalone
+### You probably don't need to know about the CLI
 
-These don't need an agent:
+For day-to-day use, `/memory-setup` and `/memory-refresh` cover everything. The slash commands call the CLI internally — `/memory-refresh` runs `mv migrate --apply --quick` (heal), `mv eval --soft` (eval), and the per-source ingest modules under the hood. You shouldn't need to touch any of this.
+
+The CLI exists for two cases:
+
+- **CI / scripts** — if you ever want to run a check from a non-Claude shell (cron-on-a-server, GitHub Actions on a vault repo), `mv eval --soft --json` and `mv doctor --json` give you machine-readable output.
+- **Debugging** — when something looks wrong and you want to bypass the agent layer to isolate the issue. `mv doctor` is the first stop; `mv migrate --apply --quick` rebuilds the alias map.
 
 ```bash
-python3 -m memoryvault_kit.setup        # scaffold an empty vault
-python3 -m memoryvault_kit.migrate --apply --quick   # heal the graph
-python3 -m memoryvault_kit.doctor       # check vault health
-python3 -m memoryvault_kit.eval --soft  # measure retrieval coverage
+mv eval --soft           # retrieval coverage number
+mv doctor                # vault health check
+mv migrate --apply --quick   # rebuild alias map + heal links
+mv eval                  # the three-pillar suite (slower)
 ```
 
-If you don't have any notes yet, write five by hand using the schema in `docs/schema.md`. Even a tiny vault is enough to start working with the loops.
+If you don't have any notes yet, run `/memory-setup` — that's the right entry point. The CLI's `python3 -m memoryvault_kit.setup` exists as an escape hatch only.
 
 ## How retrieval works
 

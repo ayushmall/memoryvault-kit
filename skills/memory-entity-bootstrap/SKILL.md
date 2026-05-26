@@ -6,6 +6,19 @@ description: "Enrich a low-info entity by pulling source data specifically about
 
 # memory-entity-bootstrap — pull source data about ONE entity, enrich it
 
+## You are a sub-agent
+
+You were spawned by `/memory-refresh` Step 4c (or by memory-master-ingest when creating a new entity for the first time). **You inherit the parent's MCP wholesale** — vault MCP + every source MCP the user has connected. Use them in parallel to pull what the kit knows about this entity across all sources.
+
+Full contract: [`../../docs/AGENTS.md`](../../docs/AGENTS.md). The non-negotiables:
+
+- **Before writing the entity file:** call `memory_search_entity(name=entity_name)` first. If it resolves to an existing canonical, enrich; don't duplicate.
+- **For every memory you write:** check `source_ref` collision via `memory_search_entity` results before `memory_save`.
+- **Read `.mvkit/learned_preferences.json` if present** — respect skip_authors / skip_channels.
+- **Report back** in the structured shape: sources searched / items found / items already in vault / new memories written / entity file (created|enriched|unchanged) / skipped.
+
+---
+
 This skill is the deep-dive variant of ingest scoped to a specific
 entity. The triggering case:
 

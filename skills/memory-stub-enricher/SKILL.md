@@ -1,12 +1,24 @@
 ---
 name: memory-stub-enricher
 tier: full
-description: For a stub coverage-gap memory (tags include stub-enrich-me, enriched=false), read its auto-gathered Evidence section + any session context you have + write a grounded narrative via memory_update. Use when invoked by memory-queue-router for "enrich-stub" classified actions — or when the user notices a stub gap in retrieval results. Layer-4b in the kit's decomposition. Doesn't fetch from external sources — pure session-context-driven enrichment (deep-dive is the escape hatch when no session context applies).
+description: For a stub coverage-gap memory (tags include stub-enrich-me, enriched=false), read its auto-gathered Evidence section + any session context you have + write a grounded narrative via memory_update. Use when invoked by /memory-refresh Step 4b for "enrich-stub" classified items — or when the user notices a stub gap in retrieval results. Doesn't fetch from external sources — pure session-context-driven enrichment (memory-deep-dive is the escape hatch when no session context applies).
 ---
 
 # memory-stub-enricher — turn templates into narratives
 
-Layer-4b agent. **One job**: take a stub coverage-gap memory and
+## You are a sub-agent
+
+You were spawned by `/memory-refresh` Step 4b. **You inherit the parent session's MCP** — vault MCP (`mcp__plugin_memoryvault-kit_memoryvault__*`) and every source MCP the user has connected. Use `memory_get` to fetch the stub, `memory_update` to write the grounded narrative.
+
+Full contract: [`../../docs/AGENTS.md`](../../docs/AGENTS.md). The non-negotiables:
+
+- **Don't fabricate.** Only enrich the stub with facts you can ground in the Evidence section or in your current session context. If neither has the answer, set `status: superseded` instead of inventing.
+- **Read `.mvkit/learned_preferences.json` if present** before writing.
+- **Report back**: stub id + before/after summary + whether you enriched, skipped, or marked superseded.
+
+---
+
+**One job**: take a stub coverage-gap memory and
 replace its templated body with a context-grounded narrative.
 
 ## The input

@@ -1,12 +1,24 @@
 ---
 name: memory-deep-dive
 tier: full
-description: For a thin-retrieval queue item, fetch richer content from the source's native MCP, synthesize into a properly-shaped memory, save it. Use when invoked by memory-queue-router for "deep-dive" classified actions — or when the user explicitly says "deep-dive this query" / "fetch X from Notion" / "go to source for Y". Layer-4a in the kit's decomposition. Specialized per source (Notion, Slack, Linear, Gmail, GDrive, Granola, GitHub).
+description: For a thin-retrieval queue item, fetch richer content from the source's native MCP, synthesize into a properly-shaped memory, save it. Use when invoked by /memory-refresh Step 4b for "deep-dive" classified items — or when the user explicitly says "deep-dive this query" / "fetch X from Notion" / "go to source for Y". Specialized per source (Notion, Slack, Linear, Gmail, GDrive, Granola, GitHub).
 ---
 
 # memory-deep-dive — escape to the source
 
-Layer-4a agent. **One job**: when the vault's existing memories don't
+## You are a sub-agent
+
+You were spawned by `/memory-refresh` (or directly invoked for one query). **You inherit the parent session's MCP wholesale** — the vault MCP (`mcp__plugin_memoryvault-kit_memoryvault__*`) AND every source MCP the user has connected (Slack, Linear, Notion, Gmail, Granola, GitHub, GDrive, Pylon, …). Use them; don't read the vault from disk.
+
+The full handover contract is [`../../docs/AGENTS.md`](../../docs/AGENTS.md). The bits you must honor every run:
+
+- **Before saving:** dedupe with `memory_search_entity` (entities) + `source_ref` collision check (memories).
+- **Read `.mvkit/learned_preferences.json` if present** — respect `source_overrides.<source>.skip_*` and `filter_rules.*`.
+- **Report back** in the structured shape from AGENTS.md §4 (sources searched / items found / new memories written / skipped / notes).
+
+---
+
+**One job**: when the vault's existing memories don't
 answer a query, go to the source's native MCP and pull richer content.
 Synthesize that into a new memory the kit will retrieve next time.
 
