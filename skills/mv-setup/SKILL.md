@@ -484,6 +484,30 @@ Bootstrap ingest report:
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.migrate --apply --quick
 ```
 
+### Step 12c — Auto-tune retrieval config to THIS vault
+
+After the first big ingest + heal, try the small grid of retrieval
+variants against the eval set generated in Step 11. Pick the one
+that tests best for this user's data + questions. Write the winning
+config to `.mvkit/retrieval_config.json`.
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.eval.auto_tune bootstrap
+```
+
+The grid (4 variants):
+  - `default` — combined_graph + standard weights
+  - `graph_heavy` — boost_related=3.5, boost_q_entity=2.0
+  - `bm25_purer` — boost_related=1.5, boost_distinctive=0.5
+  - `recency_first` — D7 canonical_first=False
+
+Writes a `mem_QUALITY_auto-tune-bootstrap-*.md` audit memory showing
+all variants' soft coverage + which won. If `default` won (common on
+simple vaults), no overrides are written — kit uses code defaults.
+If a variant won, its overrides land in `retrieval_config.json` so
+future `/mv-refresh` runs honor them automatically.
+
 ### Step 13 — Baseline eval
 ```bash
 MEMORYVAULT_ROOT=$HOME/MemoryVault python3 -m memoryvault_kit.eval

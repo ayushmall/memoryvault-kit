@@ -183,6 +183,35 @@ Only if the user explicitly asks for `--full`, run the three-pillar
 eval (fill_quality + pollution + Lean⊆Full). That takes longer and
 is overkill for a daily refresh.
 
+## Step 5b — Tuning proposals (test-before-apply, never silent)
+
+If the user asks during refresh "try increasing boost_related" or
+similar tuning suggestion, OR if signal-quality findings suggest a
+tuning would help, do NOT silently change config. Use auto-tune's
+propose mode:
+
+```bash
+cd ~/memoryvault-kit && MEMORYVAULT_ROOT=$HOME/MemoryVault \
+  python3 -m memoryvault_kit.eval.auto_tune propose \
+    graph_walk.boost_related=2.5 --margin 0.005
+```
+
+This:
+  1. Measures baseline soft coverage with current config
+  2. Applies the proposed change to retrieval_config.json
+  3. Re-measures soft coverage
+  4. If delta >= margin (default +1pp): keeps the change
+  5. If delta < margin: reverts to baseline, writes audit memory
+     explaining the change didn't test better
+
+Either way, writes a `mem_QUALITY_auto-tune-*.md` so the user sees
+what was tried + outcome. The kit never modifies retrieval config
+silently — every change has a test-result trail.
+
+The bootstrap auto-tune (run during /mv-setup Step 12c) is the
+heavy version. The propose flow is the surgical version for
+specific tuning experiments after setup.
+
 ## Step 6 — Final report + write refresh_state.json
 
 Single dense paragraph. Format:

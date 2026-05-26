@@ -170,9 +170,16 @@ def retrieve(question, index, full_by_id, entity_idx, ent_aliases,
 
     # Pass 3: rerank. Boost magnitudes calibrated to BM25 scale (typical top score ~10-20).
     # We want graph signal to be a tiebreaker, not dominator.
-    BOOST_DISTINCTIVE = 0.8     # per shared distinctive entity, capped
-    BOOST_RELATED = 3.0         # author-curated edge — strong
-    BOOST_Q_ENTITY = 1.5        # question literally mentions an entity in this doc
+    # Defaults below; can be overridden via .mvkit/retrieval_config.json.
+    try:
+        from memoryvault_kit.retrieval.config import get as _cfg
+        BOOST_DISTINCTIVE = _cfg("graph_walk.boost_distinctive", 0.8)
+        BOOST_RELATED = _cfg("graph_walk.boost_related", 3.0)
+        BOOST_Q_ENTITY = _cfg("graph_walk.boost_q_entity", 1.5)
+    except Exception:
+        BOOST_DISTINCTIVE = 0.8     # per shared distinctive entity, capped
+        BOOST_RELATED = 3.0         # author-curated edge — strong
+        BOOST_Q_ENTITY = 1.5        # question literally mentions an entity in this doc
 
     final = []
     for mid in candidate_ids:

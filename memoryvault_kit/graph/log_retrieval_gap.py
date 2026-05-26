@@ -31,8 +31,14 @@ from pathlib import Path
 VAULT = Path(os.environ.get("MEMORYVAULT_ROOT") or Path.home() / "MemoryVault")
 MEM_DIR = VAULT / "memories" / "2026"
 
-SCORE_FLOOR = 5.0
-MIN_RESULTS = 3
+# Defaults; overridable via .mvkit/retrieval_config.json
+try:
+    from memoryvault_kit.retrieval.config import get as _cfg
+    SCORE_FLOOR = _cfg("thin_retrieval.score_floor", 5.0)
+    MIN_RESULTS = _cfg("thin_retrieval.min_results", 3)
+except Exception:
+    SCORE_FLOOR = 5.0
+    MIN_RESULTS = 3
 
 
 def is_thin(results: list) -> tuple[bool, str]:

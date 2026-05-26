@@ -41,9 +41,14 @@ our your their his her my we i you they them us he she who's whats lets let
 
 TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9\-_]+")
 
-# BM25 hyperparams
-K1 = 1.5
-B = 0.75
+# BM25 hyperparams — defaults; overridable via .mvkit/retrieval_config.json
+try:
+    from memoryvault_kit.retrieval.config import get as _cfg
+    K1 = _cfg("bm25.k1", 1.5)
+    B = _cfg("bm25.b", 0.75)
+except Exception:
+    K1 = 1.5
+    B = 0.75
 
 
 def tokenize(text: str) -> list[str]:
